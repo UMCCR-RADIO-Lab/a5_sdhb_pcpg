@@ -1,0 +1,17 @@
+##########################
+## GISTIC FOLDER README ##
+##########################
+
+Files:
+
+# A5_purple_segs_gistic_format.seg #
+Contains segments called by COBALT/AMBER/PURPLE for all A5 samples filtered to remove those with "Seg.CN <=0" and formatted for GISTIC input
+
+# A5_purple_segs_gistic_format_non_malignant_primary_nohn.seg #
+A5_purple_segs_gistic_format.seg filtered for only non-head-and-neck, non-malignant primaries (Type=Primary, Metastasised=No). One sample per patient.
+
+# A5_purple_segs_gistic_format_malignant_all_nohn.seg #
+A5_purple_segs_gistic_format.seg filtered for only non-head-and-neck, metastasic tumours (Type=Metastasis, Metastasised=Yes). One sample per patient.
+
+# A5_purple_segs_gistic_format_malignant_tert_atrx_nohn.seg #
+A5_purple_segs_gistic_format.seg filtered for only non-head-and-neck, metastasic tumours with ATRX/TERT mutations (Type=Metastasis, Metastasised=Yes, Driver=ATRX/TERT). One sample per patient.

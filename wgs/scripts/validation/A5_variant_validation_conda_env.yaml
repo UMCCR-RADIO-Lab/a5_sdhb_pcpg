@@ -1,0 +1,7 @@
+name: null
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - bwa=0.7.17
+  - sambamba=0.8.2

@@ -1,0 +1,21 @@
+#PBS -N star_second_pass_genome
+#PBS -l ncpus=16
+#PBS -l walltime=2:00:00
+#PBS -l mem=96gb
+#PBS -l storage=scratch/pq08+gdata/pq08
+#PBS -l jobfs=200GB
+#PBS -q normal
+#PBS -m ae
+#PBS -M aidan.flynn@unimelb.edu.au
+
+basedir="/g/data/pq08/projects/A5/WTS"
+threads=16
+module load star/2.7.9a
+
+STAR \
+--runMode genomeGenerate \
+--genomeDir ${basedir}/reference/star_second_pass_genome_neb \
+--genomeFastaFiles /g/data/pq08/reference/GRCh38/gencode/GRCh38_full_analysis_set_plus_decoy_hla.fa \
+--sjdbOverhang 150 \
+--runThreadN ${threads} \
+--sjdbFileChrStartEnd ${basedir}/reference/star_second_pass_genome_neb/A5_pooled_SJ_neb.out.tab --limitSjdbInsertNsj=5000000

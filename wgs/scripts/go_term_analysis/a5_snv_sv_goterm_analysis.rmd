@@ -1,0 +1,232 @@
+---
+title: "a5 SNV/sv GO Term Analysis"
+author: "Aidan Flynn"
+date: "07/07/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(width = 1500)
+```
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(dplyr)
+library(tidyr)
+library(biomaRt)
+library(topGO)
+library(org.Hs.eg.db)
+library(googlesheets4)
+
+# This script requires the 'A5_gridss' and 'A5_vcfs.keep' objects loaded by "load_all_data.R"
+
+if(!exists("A5_vcfs.keep"))
+{
+  A5_vcfs.keep <- readRDS("C:/ResearchData/RADIO/A5/Data/data_load_rds/A5_vcfs.keep.rds")
+}
+
+if(!exists("A5_gridss"))
+{
+  A5_gridss <- readRDS("C:/ResearchData/RADIO/A5/Data/data_load_rds/A5_gridss.rds")
+}
+
+if(!exists("Anno"))
+{
+  message("Loading Sample Annotation from gsheets...")
+  
+  gs4_auth("aidan.flynn@umccr-radio-lab.page")
+  Anno <- read_sheet("1hnXdXI29KvvuLxsaTBID1-EbE7mTSk6bG05HcSFfhgo", col_types = "c")
+  Anno <- Anno %>% dplyr::rename(`A5_ID`=`A5 ID`)
+  Anno <- Anno %>% filter(!is.na(`A5_ID`))
+}
+```
+# Load Annotations from Ensembl 
+```{r external_annotations}
+
+mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))#,host = "http://asia.ensembl.org")) 
+
+
+#list of genes interrupted by SVs
+sv_interrupted_genes <- unique(c(A5_gridss$GeneStartName[!is.na(A5_gridss$GeneStartDisrupted) & A5_gridss$GeneStartDisrupted==T], 
+                           A5_gridss$GeneEndName[!is.na(A5_gridss$GeneEndDisrupted) & A5_gridss$GeneEndDisrupted==T]))
+
+#Feed gene list to biomart requesting a table with ensembl_gene_id and external_gene_name (aka. gene symbol)
+hgnc2ens <- getBM(filters= "external_gene_name", 
+                  attributes= c("ensembl_gene_id", "external_gene_name", "chromosome_name"), 
+                  values=sv_interrupted_genes,
+                  mart= mart)
+#Filter for primary contigs
+hgnc2ens <- hgnc2ens %>%  filter(chromosome_name %in% c(1:22,"X","Y")) %>%  dplyr::select(-chromosome_name)
+
+#combine with gene IDs from variants calls
+hgnc2ens <- bind_rows(hgnc2ens,
+  A5_vcfs.keep %>%  ungroup() %>%  filter(Normal_AF==0, Tumour_AF > 0.15, A5_ID != "E167-1") %>% dplyr::select(Gene, PCGR_SYMBOL) %>% dplyr::rename(ensembl_gene_id=Gene, external_gene_name=PCGR_SYMBOL)) %>%  distinct()
+
+#Fetch related go terms and decription for mutated genes
+GoTerms <- getBM(filters= "ensembl_gene_id",
+                 attributes= c("ensembl_gene_id",
+                               "go_id",
+                               "name_1006",
+                               "definition_1006",
+                               "go_linkage_type",
+                               "namespace_1003",
+                               "external_gene_name"),
+                 values=hgnc2ens$ensembl_gene_id,mart= mart)
+
+#Get go term to ensembl gene ID mapping for all possible genes
+AllGenes <- select(org.Hs.eg.db,columns = c("ENSEMBL","SYMBOL","REFSEQ"),
+                   keys=keys(org.Hs.eg.db)) %>%  
+  filter(!is.na(ENSEMBL),!is.na(SYMBOL),!is.na(REFSEQ)) %>% 
+  pull(ENSEMBL) %>% unique()
+
+geneID2GO <- getBM(filters= "ensembl_gene_id", 
+                   attributes= c("ensembl_gene_id", "external_gene_name", "chromosome_name", "go_id"), 
+                   values=AllGenes,
+                   mart= mart)
+
+geneID2GO <- geneID2GO %>%  
+  filter(go_id != "",
+         ensembl_gene_id != "", 
+         external_gene_name != "", 
+         chromosome_name %in% c(1:22,"X","Y")) %>% 
+  dplyr::select(-external_gene_name, -chromosome_name)
+
+geneID2GO <- split(x = geneID2GO, f = geneID2GO$ensembl_gene_id)
+geneID2GO <- lapply(geneID2GO, function (golist) { golist$go_id })
+
+```
+# Gene to sample annotation mapping
+Here we match mutated genes to sample annotation and make a list of genes only mutated in metastatic samples
+```{r gene_sample_annotation}
+
+sample_gene_mapping <- 
+  bind_rows(A5_vcfs.keep %>%  ungroup() %>% dplyr::select(A5_ID, Gene) %>% dplyr::rename(ensembl_gene_id=Gene)
+            ,
+            A5_gridss %>% mutate(A5_ID=gsub("T0(.)","\\1",A5_ID)) %>% dplyr::select(A5_ID, GeneStartName, GeneEndName) %>% 
+              pivot_longer(cols=c(GeneStartName, GeneEndName), names_to = "discard", values_to="external_gene_name") %>% 
+              dplyr::select(-discard) %>%  distinct() %>% 
+              inner_join(hgnc2ens) %>%  dplyr::select(-external_gene_name)) %>% 
+  left_join(Anno %>%  dplyr::select(A5_ID, is_primary_or_met, tumour_metastasised))
+
+sample_gene_mapping <- sample_gene_mapping %>%  filter(A5_ID != "E167-1")
+
+genes_in_benign <- sample_gene_mapping %>% filter(is_primary_or_met=="Primary", tumour_metastasised!="Yes") %>% pull(ensembl_gene_id) %>%  unique()
+genes_in_metastatic_only <- sample_gene_mapping %>% filter(!(ensembl_gene_id %in% genes_in_benign), tumour_metastasised=="Yes") %>% pull(ensembl_gene_id) %>%  unique()
+```
+# Enrichment for all mutated genes against background of all possible genes
+```{r all_genes}
+
+geneList <- factor(as.integer(AllGenes %in% hgnc2ens$ensembl_gene_id), levels=c(0,1))
+names(geneList) <- AllGenes
+
+
+GOdata <- new("topGOdata", ontology = "BP", allGenes = geneList,
+              annot = annFUN.gene2GO, gene2GO = geneID2GO,  nodeSize = 20)
+
+GOdata <- updateGenes(object = GOdata, geneList = geneList[GOdata@feasible])
+
+# ts <- termStat(GOdata)
+# ts <- ts %>%  tibble::rownames_to_column(var = "GO_ID") %>% mutate(ratio=Significant/Expected) %>%  arrange(desc(ratio))
+
+resultFisher <- runTest(GOdata, algorithm = "classic", statistic = "fisher")
+
+allRes <- GenTable(GOdata, classicFisher = resultFisher,
+                    orderBy = "classicFisher", ranksOf = "classicFisher", topNodes = 1000)
+
+allRes <- allRes %>% filter(Annotated < 50)
+allRes$classicFisher_FDR <- p.adjust(allRes$classicFisher, method = p.adjust.methods, n = length(allRes$classicFisher))
+
+allRes %>%  arrange(desc(classicFisher_FDR)) %>% slice_head(n=50)
+
+```
+# Enrichment for met specific mutated genes against background of all possible genes
+```{r met_only_all_background}
+
+geneList <- factor(as.integer(AllGenes %in% genes_in_metastatic_only), levels=c(0,1))
+names(geneList) <- AllGenes
+
+
+GOdata <- new("topGOdata", ontology = "BP", allGenes = geneList,
+              annot = annFUN.gene2GO, gene2GO = geneID2GO,  nodeSize = 20)
+
+GOdata <- updateGenes(object = GOdata, geneList = geneList[GOdata@feasible])
+
+#GOdata@allScores <- as.numeric(GOdata@allGenes %in% metastatic_only)
+#GOdata@geneSelectionFun <- function(x) { return (x==1) }
+
+# ts <- termStat(GOdata)
+# ts <- ts %>%  tibble::rownames_to_column(var = "GO_ID") %>% mutate(ratio=Significant/Expected) %>%  arrange(desc(ratio))
+
+resultFisher <- runTest(GOdata, algorithm = "classic", statistic = "fisher")
+
+allRes <- GenTable(GOdata, classicFisher = resultFisher,
+                   orderBy = "classicFisher", ranksOf = "classicFisher", topNodes = 1000)
+
+allRes <- allRes %>% filter(Annotated < 50)
+allRes$classicFisher_FDR <- p.adjust(allRes$classicFisher, method = p.adjust.methods, n = length(allRes$classicFisher))
+
+allRes %>%  arrange(desc(classicFisher_FDR)) %>% slice_head(n=50)
+
+```
+# Enrichment for met specific mutated genes against background of all mutated genes
+```{r met_only_mutated_background}
+
+#############################################
+# Met Only Genes - Mutated Genes Background #
+#############################################
+
+geneList <- factor(as.integer(hgnc2ens$ensembl_gene_id %in% genes_in_metastatic_only), levels=c(0,1))
+names(geneList) <- hgnc2ens$ensembl_gene_id
+
+
+GOdata <- new("topGOdata", ontology = "BP", allGenes = geneList,
+              annot = annFUN.gene2GO, gene2GO = geneID2GO,  nodeSize = 20)
+
+GOdata <- updateGenes(object = GOdata, geneList = geneList[GOdata@feasible])
+
+# ts <- termStat(GOdata)
+# ts <- ts %>%  tibble::rownames_to_column(var = "GO_ID") %>% mutate(ratio=Significant/Expected) %>%  arrange(desc(ratio))
+
+resultFisher <- runTest(GOdata, algorithm = "classic", statistic = "fisher")
+
+allRes <- GenTable(GOdata, classicFisher = resultFisher,
+                   orderBy = "classicFisher", ranksOf = "classicFisher", topNodes = 1000)
+
+allRes <- allRes %>% filter(Annotated < 50)
+allRes$classicFisher_FDR <- p.adjust(allRes$classicFisher, method = p.adjust.methods, n = length(allRes$classicFisher))
+
+#allRes.sig <- allRes %>%  filter(classicFisher_FDR <0.05)
+
+
+# goID <- "GO:0001906"
+# gene.universe <- genes(GOdata)
+# go.genes <- genesInTerm(GOdata, goID)[[1]]
+# sig.genes <- sigGenes(GOdata)
+# my.group <- new("classicCount", testStatistic = GOFisherTest, name = "fisher",
+#  allMembers = gene.universe, groupMembers = go.genes,
+#  sigMembers = sig.genes)
+# contTable(my.group)
+# 
+# runTest(my.group)
+
+```
+# Summary table of Go Terms associated with Shiva's curated genes
+```{r curated_gene_go_summary}
+
+sample_gene_mapping.summary <- sample_gene_mapping %>% group_by(ensembl_gene_id) %>%
+summarise(PriMet=paste(unique(is_primary_or_met), collapse =","),
+A5_ID=paste(unique(A5_ID), collapse =","))
+
+
+GoTerms %>% 
+  filter(namespace_1003 != "cellular_component", go_linkage_type != "IEA") %>% #remove electronic annotation linkages (no experimental evidence)
+  inner_join(sample_gene_mapping.summary, by="ensembl_gene_id") %>% 
+group_by(name_1006,definition_1006, namespace_1003) %>% 
+  summarise(go_linkage_type=paste(unique(go_linkage_type), collapse =","), 
+              Genes=paste(unique(external_gene_name), collapse =","), 
+            gene_count=length(unique(external_gene_name)),
+            PriMet=paste(unique(PriMet), collapse =","),
+            A5_ID=paste(unique(A5_ID), collapse =",")) %>% 
+  filter(name_1006 != "") %>% 
+  #write.table("C:/ResearchData/RADIO/A5/secondary_analysis/mutated_genes/Shiva_curated_GOTerms_by_term.tsv", sep="\t", row.names = F)
+  filter(gene_count>3) %>% arrange(desc(gene_count))

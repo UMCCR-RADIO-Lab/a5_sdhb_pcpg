@@ -1,0 +1,2 @@
+samples_info_file: sample_info.tsv
+ref_genome_fa: '/g/data/pq08/local/bcbio/genomes/Hsapiens/hg38/seq/hg38.fa'

@@ -1,0 +1,589 @@
+---
+title: "Telomere_content"
+author: "Aidan Flynn"
+date: "07/10/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r dependencies}
+library(ggplot2)
+library(patchwork)
+library(tidyr)
+library(dplyr)
+library(googlesheets4)
+
+ColorPalette <- c(LightBlue1="#cadae8ff",LightBlue2="#abc4e2ff",LightBlue3="#8aa9d6ff",
+DarkBlue1="#7884baff",DarkBlue2="#606d9fff",DarkBlue3="#4c5a88ff",
+Purple1="#765b92ff",Purple2="#9370a5ff",Purple3="#b280a9ff",Purple4="#cc85b1ff",
+LightRed1="#ee7474ff",LightRed2="#e2696aff",LightRed3="#de5353ff",
+DarkRed1="#c25858ff",DarkRed2="#c04241ff",DarkOrange1="#c65a44ff",
+DarkOrange2="#eb7b54ff",LightOrange1="#f18d73ff",LightOrange2="#f5a697ff",
+LightBrown1="#f5b9b0ff",LightBrown2="#d6a097ff",DarkBrown1="#c17963ff",DarkBrown2="#96665aff",
+DarkGreen1="#637b62ff",DarkGreen2="#6ea668ff",LightGreen1="#98ca8cff",LightGreen2="#e2eab5ff",
+Yellow1="#fbf2adff",Yellow2="#fef8c6ff",Yellow3="#f4e764ff",Salmon="#f2c5a7ff",LightSalmon="#f2dec4ff",
+LemonGrey1="#f7f0e2ff",LemonWhite1="#fefbe5ff",LemonWhite2="#f7f4dcff",LemonGrey2="#efecdcff",
+LightGrey1="#e2e0d9ff",LightGrey2="#d6d6d4ff",DarkGrey1="#b4b4b4ff",DarkGrey2="#9a9999ff")
+
+```
+```{r data_loading}
+
+#################
+# Clinical Data #
+#################
+gs4_auth("aidan.flynn@umccr-radio-lab.page")
+a5_anno <- read_sheet("1hnXdXI29KvvuLxsaTBID1-EbE7mTSk6bG05HcSFfhgo", col_types = "c")
+a5_anno <- a5_anno %>% dplyr::rename(`A5_ID`=`A5 ID`)
+a5_anno <- a5_anno %>% filter(!is.na(`A5_ID`))
+
+####################
+# Genomic features #
+####################
+
+feature_sheet <- as_sheets_id("1IOczHu91crprHvjxTKDRpqLfpeuYLaGwNXZVsWmXIKY")
+gs4_auth("aidan.flynn@umccr-radio-lab.page")
+features <- read_sheet(ss = feature_sheet,sheet = "SampleFeatures", col_types = "c")
+features <- features %>%  filter(as.logical(Include))
+features$Gene <- factor(as.character(features$Gene), features %>% group_by(Gene) %>% dplyr::count() %>% arrange(n) %>% pull(Gene))
+features$Event <- factor(as.character(features$Event), levels = c("Missense", "Stop Gained", "Stop Lost", "Frameshift", "Promotor Mutation", "Structural Variant",
+                                                                  "Splice Acceptor", "Splice Region", "Homozyg. Del."))
+if (!("TERT_ATRX_Mutation_Event" %in% colnames(a5_anno)))
+{
+a5_anno <- a5_anno %>%  left_join(features %>% 
+                              filter(Gene %in% c("TERT","ATRX")) %>%  
+                              #mutate(Event=paste(Gene, Event, sep =" - ")) %>% 
+                              dplyr::select(A5_ID,Gene, Event) %>% 
+                              dplyr::rename(TERT_ATRX_Mutation_Event=Event, TERT_ATRX_Mutation=Gene)) %>% 
+  mutate(TERT_ATRX_Mutation_Event=ifelse(TERT_ATRX_Mutation=="WT","None",as.character(TERT_ATRX_Mutation_Event)))
+
+a5_anno$TERT_ATRX_Mutation_Event <- factor(as.character(a5_anno$TERT_ATRX_Mutation_Event), levels=c("Missense", "Splice Region", "Splice Acceptor", "Stop Gained", "Frameshift", "Structural Variant", "Promotor Mutation", "None"))
+levels(a5_anno$TERT_ATRX_Mutation_Event) <- c("Missense", "Splice", "Splice", "Stop/Frameshift", "Stop/Frameshift", "Structural Variant", "Promotor Mutation", "None")
+
+a5_anno$TERT_ATRX_Mutation <- factor(as.character(a5_anno$TERT_ATRX_Mutation), levels=c("ATRX", "TERT", "WT"))
+}
+
+################################
+# Telomere Hunter Summary Data #
+################################
+
+a5th.summary <- read.delim("c:/ResearchData/RADIO/A5/Data/WGS/hg38/Telomerehunter/telomerehunter_a5_summary.tsv")
+a5th.summary.tumour <- a5th.summary %>% filter(sample=="tumor")
+a5th.summary.control <- a5th.summary %>% filter(sample=="control")
+a5th.summary.ratio <- a5th.summary %>% filter(sample=="log2(tumor/control)")
+
+
+##################################
+# Telomere Hunter Singleton Data #
+##################################
+
+a5th.singletons <- read.delim("c:/ResearchData/RADIO/A5/Data/WGS/hg38/Telomerehunter/telomerehunter_a5_singletons.tsv")
+
+a5th.singletons.dist <- a5th.singletons %>%  
+  dplyr::select(PID, pattern, distance_to_expected_singleton_log2_ratio) %>% 
+  pivot_wider(id_cols = PID, names_from=pattern, values_from=distance_to_expected_singleton_log2_ratio) %>% 
+ dplyr::rename_with(~ paste0(.x, "_singleton_dist"), .cols=-PID) 
+
+#########################################
+# Telomere Hunter Normalized TVR counts #
+#########################################
+
+a5th.norm_tvr <- read.delim("c:/ResearchData/RADIO/A5/Data/WGS/hg38/Telomerehunter/telomerehunter_a5_normalized_TVR_counts.tsv")
+
+##################################
+# Telomere Hunter Top TVR counts #
+##################################
+
+a5th.top_tvr <- read.delim("c:/ResearchData/RADIO/A5/Data/WGS/hg38/Telomerehunter/telomerehunter_a5_TVR_top_contexts.tsv")
+
+##################################
+# LINX Telomere Insertion Counts #
+##################################
+
+a5th.telosv <- read.delim("c:/ResearchData/RADIO/A5/Data/WGS/hg38/Telomerehunter/telomere_rep_inserts_count.tsv")
+
+#########
+# TERRA #
+#########
+
+a5th.summary.rna <- read.delim("c:/ResearchData/RADIO/A5/Data/WGS/hg38/Telomerehunter/telomerehunter_a5_rna_summary.tsv")
+
+
+```
+```{r plots_telcontent_by_driver}
+
+a5th.summary.ratio %>% 
+  inner_join(a5_anno %>% 
+               dplyr::select(A5_ID, TERT_ATRX_Mutation, c_circle_result) %>% 
+               dplyr::rename(PID=A5_ID) %>% 
+               mutate(PID=gsub("-(.)","-T0\\1",PID))) %>% 
+  ggplot(aes(x=TERT_ATRX_Mutation, color=c_circle_result, y=tel_content)) + geom_point(position = position_jitter(width = 0.3, height=0, seed = 42)) + geom_text(position = position_jitter(width = 0.3, height=0, seed = 42), aes(label=PID))
+```
+```{r plots_TVRcontent_by_driver}
+
+a5th.summary.ratio %>% dplyr::select(-total_reads, -read_length, -repeat_threshold_set, 
+                              -repeat_threshold_used, -tel_reads, -intratel_reads, 
+                              -gc_bins_for_correction, -total_reads_with_tel_gc, -sample) %>% 
+  pivot_longer(cols = -PID, names_to="Feature", values_to="Value") %>% filter(!is.na(Value)) %>% 
+  inner_join(a5_anno %>% 
+               dplyr::select(A5_ID, TERT_ATRX_Mutation) %>% 
+               dplyr::rename(PID=A5_ID) %>% 
+               mutate(PID=gsub("-(.)","-T0\\1",PID))) %>%  
+  ggplot(aes(x=TERT_ATRX_Mutation, y=Value, color=TERT_ATRX_Mutation)) + geom_boxplot() + geom_jitter(width=0.1, height=0) + facet_wrap("Feature", scales = "free_y") + guides(color=F)
+```
+```{r plots_TERRAcontent_by_driver}
+
+a5th.summary.rna %>% 
+  inner_join(a5_anno %>% dplyr::select(A5_ID, TERT_ATRX_Mutation, TERT_ATRX_Mutation_Event) %>% dplyr::rename(PID=A5_ID)) %>% 
+  ggplot(aes(x=TERT_ATRX_Mutation, y=tel_content)) + geom_boxplot(outlier.alpha = 0) + geom_jitter(width = 0.2, height = 0) 
+
+```
+```{r plots_TERRAcontent_by_Telomerecontent}
+
+p1 <- a5th.summary.rna %>% 
+  inner_join(a5_anno %>% dplyr::select(A5_ID, `Patient ID`, TERT_ATRX_Mutation, TERT_ATRX_Mutation_Event, 
+                                       is_primary_or_met, tumour_metastasised, telhunter_log2_telcontentratio, c_circle_result) %>% 
+               mutate(isMet_didMet=paste(is_primary_or_met, tumour_metastasised, sep="-"), 
+                      isMet_didMet=gsub("Recurrent-.+","Recurrent",isMet_didMet),
+                      telhunter_log2_telcontentratio=as.numeric(telhunter_log2_telcontentratio),
+                      c_circle_result = factor(as.character(c_circle_result), levels = c("No data", "Negative", "Positive - Low", "Positive"))) %>% 
+               dplyr::rename(PID=A5_ID)) %>% 
+  #inner_join(a5th.singletons %>% dplyr::select(PID, tel_content_log2_ratio) %>% mutate(PID=gsub("T0","",PID)) %>% distinct()) %>% 
+  ggplot(aes(x=telhunter_log2_telcontentratio, y=log2(tel_content), color=TERT_ATRX_Mutation, shape=c_circle_result, group=`Patient ID`)) + 
+  geom_point() + 
+  geom_line(alpha=0.3) +
+  scale_shape_manual(values=c(4, 6, 8, 19)) +
+  #geom_text_repel(aes(label=PID)) + 
+  ylab("log 2 RNA Telomere Content") + 
+  xlab("log2 Tumour/Normal Telomere Ratio") +
+  theme_bw()
+
+p1 
+
+
+plot.data <- a5th.top_tvr   %>% pivot_wider(id_cols = c(PID, pattern), 
+                               names_from = Sample, 
+                               values_from=c(Bases, Percent)) %>% 
+  mutate(PID=gsub("T0","",PID)) %>% 
+  inner_join(a5_anno %>% 
+               dplyr::select(A5_ID, `Patient ID`, TERT_ATRX_Mutation, TERT_ATRX_Mutation_Event, `Primary_Location_Simplified` ,is_primary_or_met, tumour_metastasised) %>% 
+               dplyr::rename(PID=A5_ID, 
+                             location_simple=Primary_Location_Simplified,
+                             Primary_Met=is_primary_or_met, 
+                             Met_Case=tumour_metastasised)) %>% 
+               
+  inner_join(a5th.summary.rna %>% dplyr::select(PID, tel_content) %>% dplyr::rename(TERRA_content=tel_content))
+
+p1 <- ggplot(plot.data, aes(x=Percent_tumor, y=Percent_control, label=PID, color=TERT_ATRX_Mutation, shape=Primary_Met, group=`Patient ID`)) + 
+  #geom_text(size=3) + 
+  geom_line(alpha=0.3) +   
+  geom_point() +
+  facet_wrap("pattern", scales="free")
+  
+p2 <- ggplot(plot.data, aes(y=Percent_tumor/Percent_control, x=pattern, color=TERT_ATRX_Mutation)) + 
+    #geom_text(size=3) + 
+    #geom_line(alpha=0.3) +   
+    geom_boxplot(outlier.alpha = 0) +
+    geom_point(position=position_jitterdodge(jitter.width = 0.1)) 
+    #facet_wrap("pattern", scales="free")
+  
+p1/p2
+```
+
+# ATRX/TERT Expression vs Telomere content
+```{r plots_expression_vs_telcontent_outcome }  
+
+source("C:/Users/AFFLY/OneDrive - The University of Melbourne/ResearchData/RADIO/A5/Scripts/dataloaders/load_All_Data.R")
+
+dataloader_gene_expression()
+
+plot.list <- list()
+for (g in c("ATRX", "TERT"))
+{  
+  plot.list[[g]] <-  A5_exp %>% 
+    filter(Symbol==g) %>%  
+    left_join(a5_anno %>%  
+                dplyr::select(A5_ID, `Patient ID`, TERT_ATRX_Mutation, TERT_ATRX_Mutation_Event, 
+                              telhunter_log2_telcontentratio, Primary_Location_Simplified ,is_primary_or_met, 
+                              tumour_metastasised) %>% 
+                dplyr::rename(Primary_Met=is_primary_or_met)) %>% 
+    mutate(Primary_Met=factor(as.character(Primary_Met), levels=c("Primary","Recurrent", "Metastatic")))  %>% 
+    
+    ggplot(aes(x=as.numeric(telhunter_log2_telcontentratio), y= log2cpm_z, color=TERT_ATRX_Mutation, shape=tumour_metastasised, group=`Patient ID`, size=Primary_Met)) + 
+    geom_point() + 
+    geom_line( alpha=0.3, size=0.5) +
+    #geom_text(aes(label=A5_ID)) + 
+    scale_color_manual(values = c(ColorPalette[["DarkBlue1"]], 
+                                  ColorPalette[["LightOrange1"]], 
+                                  ColorPalette[["LightGreen1"]])) +
+    scale_shape_manual(values = c(16,8,17)) +
+    #scale_shape_manual(values = c(8,18,15,17,19,4)) +
+    scale_size_manual(values=c(1.3,2.2,2.2)) +
+    theme_bw() +
+    ylab(paste(g," Expression (z-scaled)")) +
+    xlab("Tumour/Normal Telomere Content Ratio (log2)")
+  
+}
+  plot.list[[1]]   +  plot.list[[2]]  + plot_layout(guides = "collect") #+ geom_text(aes(label=A5_ID), size=5)
+
+```
+```{r plots_expression_vs_telcontent_muttype }  
+  A5_exp %>% 
+    filter(Symbol=="ATRX") %>%  
+    left_join(a5_anno %>%  
+                dplyr::select(A5_ID, `Patient ID`, TERT_ATRX_Mutation, TERT_ATRX_Mutation_Event, telhunter_log2_telcontentratio, Primary_Location_Simplified ,is_primary_or_met, tumour_metastasised) %>% 
+                dplyr::rename(Primary_Met=is_primary_or_met)) %>% mutate(Primary_Met=factor(as.character(Primary_Met), levels=c("Primary","Recurrent", "Metastatic")))  %>% 
+    ggplot(aes(x=as.numeric(telhunter_log2_telcontentratio), y= log2cpm_z, color=TERT_ATRX_Mutation, shape=TERT_ATRX_Mutation_Event, size=Primary_Met)) + 
+    geom_point() + 
+    #geom_text(aes(label=A5_ID)) + 
+    scale_color_manual(values = c(ColorPalette[["DarkBlue1"]], 
+                                  ColorPalette[["LightOrange1"]], 
+                                  ColorPalette[["LightGreen1"]])) +
+    #scale_shape_manual(values = c(16,8,17)) +
+    scale_shape_manual(values = c(8,18,15,17,19,4)) +
+    scale_size_manual(values=c(1.3,2.2,2.2)) +
+    theme_bw() +
+    ylab("ATRX Expression (z-scaled)") +
+    xlab("Tumour/Normal Telomere Content Ratio (log2)")
+ 
+```
+```{r plot_ANOVA_Sig_TVRs}
+########
+# TVRs normalised by all reads
+########
+  
+#Find sig diff TVRs with ANOVA
+
+anova.data <- a5th.norm_tvr %>%  mutate(PID=gsub("T0","",PID)) %>%  
+  mutate(log2_ratio_count_norm_by_all_reads=log2(Count_norm_by_all_reads_T/Count_norm_by_all_reads_C)) %>% 
+  dplyr::select(PID, Pattern, log2_ratio_count_norm_by_all_reads) %>% 
+  inner_join(a5_anno %>% 
+               dplyr::select(A5_ID, TERT_ATRX_Mutation) %>% 
+               dplyr::rename(PID=A5_ID)) %>% dplyr::select(-PID) 
+anova.data$Pattern <- as.factor(anova.data$Pattern)
+anova.data$TERT_ATRX_Mutation <- as.factor(anova.data$TERT_ATRX_Mutation)
+#summary(anova.data)
+  
+sig_patterns <- c()
+for (p in levels(anova.data$Pattern))
+{
+  
+  ooa <- aov(formula = log2_ratio_count_norm_by_all_reads ~ TERT_ATRX_Mutation, 
+             data = anova.data %>% filter(Pattern==p, !is.infinite(log2_ratio_count_norm_by_all_reads)))
+  
+  if(summary(ooa)[[1]][['Pr(>F)']][[1]] < 0.05)
+  {
+    sig_patterns <- c(sig_patterns, p)  
+  }
+}
+  
+#Plot sig diff TVRs
+
+plot.data <-  a5th.norm_tvr %>%  
+  filter(Pattern %in% sig_patterns) %>%  
+  mutate(PID=gsub("T0","",PID)) %>%  
+    mutate(log2_ratio_count_norm_by_all_reads=log2(Count_norm_by_all_reads_T/Count_norm_by_all_reads_C)) %>%
+    inner_join(a5_anno %>% 
+                 dplyr::select(A5_ID, `Patient ID`, TERT_ATRX_Mutation, 
+                               TERT_ATRX_Mutation_Event, Primary_Location_Simplified, is_primary_or_met, tumour_metastasised) %>% 
+                 dplyr::rename(PID=A5_ID, 
+                               Primary_Met=is_primary_or_met, 
+                               Met_Case=tumour_metastasised)) # %>% filter(Pattern %in% sig_patterns)
+
+plot.data <- plot.data %>% 
+  dplyr::select(Pattern, TERT_ATRX_Mutation, 
+                log2_ratio_count_norm_by_all_reads, log2_ratio_count_norm_by_intratel_reads) %>% 
+  pivot_longer(cols = c(log2_ratio_count_norm_by_all_reads, log2_ratio_count_norm_by_intratel_reads), names_to="Normalisation", values_to="log2_ratio_TN")
+    
+ggplot(plot.data, aes(y=log2_ratio_TN, x=Pattern, color=TERT_ATRX_Mutation)) + 
+    #geom_text(size=3) + 
+    #geom_line(alpha=0.3) +   
+    geom_boxplot(outlier.alpha = 0) +
+    geom_point(position=position_jitterdodge(jitter.width = 0.1), alpha=0.4) + 
+      theme_bw()  + 
+      theme(axis.text.x = element_text(angle=90, hjust=1,vjust=0.5)) +
+      coord_cartesian(ylim=c(-3,3)) + 
+    scale_color_manual(values = c(ColorPalette[["DarkBlue1"]], 
+                                  ColorPalette[["LightOrange1"]], 
+                                  ColorPalette[["DarkGrey1"]])) + 
+      ylab("Tumour/Normal Ratio (log2)") + xlab("") + facet_wrap("Normalisation", nrow = 2)
+      
+```
+```{r plot_singletons}
+
+plot.data <- a5th.singletons %>%  filter(!is.na(distance_to_expected_singleton_log2_ratio )) %>% 
+       dplyr::select(PID, pattern, distance_to_expected_singleton_log2_ratio) %>%  mutate(PID=gsub("T0","",PID)) %>% inner_join(a5_anno %>% 
+                                      dplyr::select(A5_ID, `Patient ID`, TERT_ATRX_Mutation, TERT_ATRX_Mutation_Event, Primary_Location_Simplified, is_primary_or_met, tumour_metastasised, telhunter_log2_telcontentratio) %>% 
+                                      dplyr::rename(PID=A5_ID, 
+                                                    Primary_Met=is_primary_or_met, 
+                                                    Met_Case=tumour_metastasised)) 
+plot.data$telhunter_log2_telcontentratio <- as.numeric(plot.data$telhunter_log2_telcontentratio)
+    
+# Pattern vs singleton distance, color by mutation
+ggplot(plot.data, aes(y=distance_to_expected_singleton_log2_ratio, x=pattern, color=TERT_ATRX_Mutation)) + 
+  #geom_text(size=3) + 
+  #geom_line(alpha=0.3) +   
+  geom_boxplot(outlier.alpha = 0) +
+  geom_point(position=position_jitterdodge(jitter.width = 0.1), alpha=0.4) + 
+  theme_bw()  + 
+  theme(axis.text.x = element_text(angle=90, hjust=1,vjust=0.5)) +
+  coord_cartesian(ylim=c(-3,3)) + 
+  scale_color_manual(values = c(ColorPalette[["DarkBlue1"]], 
+                                ColorPalette[["LightOrange1"]], 
+                                ColorPalette[["LightGreen1"]])) 
+
+# TelContent vs singleton distance, color by mutation, facet by pattern
+ggplot(plot.data, aes(y=distance_to_expected_singleton_log2_ratio, x=telhunter_log2_telcontentratio, color=TERT_ATRX_Mutation)) + 
+  #geom_text(size=3) + 
+  #geom_line(alpha=0.3) +   
+  geom_point(alpha=0.4) + 
+  theme_bw()  + 
+  theme(axis.text.x = element_text(angle=90, hjust=1,vjust=0.5)) +
+  coord_cartesian(ylim=c(-3,3)) + 
+  scale_color_manual(values = c(ColorPalette[["DarkBlue1"]], 
+                                ColorPalette[["LightOrange1"]], 
+                                ColorPalette[["LightGreen1"]])) + facet_wrap("pattern")
+    
+```
+```{r plots_driver_vs_ccircle }
+plot.data <- a5_anno %>%
+    mutate(c_circle_result = factor(as.character(c_circle_result), levels = c("No data", "Negative", "Positive - Low", "Positive")),
+           telhunter_log2_telcontentratio=as.numeric(telhunter_log2_telcontentratio),
+           Primary_Met = case_when(
+    is_primary_or_met == "Primary" & 
+      tumour_metastasised == "Yes" ~ "MetastaticPrimary",
+    is_primary_or_met == "Primary" & 
+      tumour_metastasised == "No" ~ "NonMetastaticPrimary",
+    is_primary_or_met == "Metastatic" & 
+      tumour_metastasised == "Yes" ~ "Metastasis",
+    TRUE ~ "Recurrance/Short Follow-up"))
+
+ggplot(
+  plot.data,
+  aes(
+    x = c_circle_result,
+    y = telhunter_log2_telcontentratio,
+    color = TERT_ATRX_Mutation,
+    shape = Primary_Met
+  )
+) +
+  geom_point(position = position_jitter(width=0.15, seed=42), size=2) +
+  #geom_text(aes(label=A5_ID)) +
+  scale_color_manual(values = c(ColorPalette[["DarkBlue1"]],
+                                ColorPalette[["LightOrange1"]],
+                                ColorPalette[["LightGreen1"]])) +
+  #scale_shape_manual(values = c(16,8,17)) +
+  scale_shape_manual(values = c(8, 18, 15, 17, 19, 4)) +
+  theme_bw() +
+  ylab("Log2 T/N Telomere Ratio") +
+  xlab("C-Circle Result")
+
+
+ggplot(
+  plot.data,
+  aes(
+    x = TERT_ATRX_Mutation,
+    y = telhunter_log2_telcontentratio,
+    color = c_circle_result,
+    shape = Primary_Met,
+    size=`is_head_and_neck`
+  )
+) +
+  geom_point(position = position_jitter(width=0.15, seed=42)) +
+  #geom_text(aes(label=A5_ID)) +
+  scale_color_manual(values = c(ColorPalette[["DarkGrey1"]],
+                                ColorPalette[["DarkRed1"]],
+                                ColorPalette[["Yellow3"]],
+                                ColorPalette[["DarkGreen1"]])) +
+  scale_shape_manual(values = c(8, 18, 15, 17, 19, 4)) +
+  scale_size_manual(values = c(4.2, 2)) +
+  theme_bw() +
+  ylab("Log2 T/N Telomere Ratio") +
+  xlab("Driver Mutation")
+
+```
+```{r plots_expression_vs_ccircle }  
+plot.data <- A5_exp %>%
+  filter(Symbol %in% c("TERT","ATRX")) %>%
+  left_join(
+    a5_anno %>%
+      dplyr::select(
+        A5_ID,
+        `Patient ID`,
+        TERT_ATRX_Mutation,
+        TERT_ATRX_Mutation_Event,
+        telhunter_log2_telcontentratio,
+        Primary_Location_Simplified ,
+        is_primary_or_met,
+        tumour_metastasised,
+        c_circle_result
+      ) %>%
+      dplyr::rename(Primary_Met = is_primary_or_met)
+  ) %>% mutate(Primary_Met = factor(as.character(Primary_Met), levels = c("Primary", "Recurrent", "Metastatic")),
+               c_circle_result = factor(as.character(c_circle_result), levels = c("No data", "Negative", "Positive - Low", "Positive")))
+
+ggplot(
+  plot.data,
+  aes(
+    x = c_circle_result,
+    y = log2cpm_z,
+    color = TERT_ATRX_Mutation,
+    shape = Primary_Met,
+    size = (telhunter_log2_telcontentratio > 0.5)
+  )
+) +
+  geom_point(position = position_jitter(width=0.15, seed=42), alpha=0.5) +
+  #geom_text(aes(label=A5_ID)) +
+  scale_color_manual(values = c(ColorPalette[["DarkBlue1"]],
+                                ColorPalette[["LightOrange1"]],
+                                ColorPalette[["LightGreen1"]])) +
+  #scale_shape_manual(values = c(16,8,17)) +
+  scale_shape_manual(values = c(8, 18, 15, 17, 19, 4)) +
+  scale_size_manual(values = c(1.3, 4.2), name="Elongated Telomeres\n(log2_ratio > 0.5)") +
+  theme_bw() +
+  ylab("Expression (z-scaled)") +
+  xlab("C-Circle Result") + facet_wrap("Symbol")
+ 
+```
+```{r plots_TVR_vs_ccircle }  
+plot.data <-  a5th.norm_tvr %>%  
+  #filter(Pattern %in% sig_patterns) %>%  
+  mutate(PID=gsub("T0","",PID)) %>%  
+    mutate(log2_ratio_count_norm_by_all_reads=log2(Count_norm_by_all_reads_T/Count_norm_by_all_reads_C)) %>%
+    inner_join(a5_anno %>% 
+                 dplyr::select(A5_ID, `Patient ID`, TERT_ATRX_Mutation, 
+                               TERT_ATRX_Mutation_Event, Primary_Location_Simplified, is_primary_or_met, 
+                               tumour_metastasised, c_circle_result, telhunter_log2_telcontentratio) %>% 
+                 dplyr::rename(PID=A5_ID, 
+                               Primary_Met=is_primary_or_met, 
+                               Met_Case=tumour_metastasised)) # %>% filter(Pattern %in% sig_patterns)
+plot.data$telhunter_log2_telcontentratio <- as.numeric(plot.data$telhunter_log2_telcontentratio)
+plot.data$c_circle_result <- factor(as.character(plot.data$c_circle_result), levels = c("No data", "Negative", "Positive - Low", "Positive"))
+
+plot.data.long <- plot.data %>%  
+    mutate(PID=factor(as.character(PID), 
+                      levels= (plot.data %>% arrange(c_circle_result, telhunter_log2_telcontentratio, TERT_ATRX_Mutation) %>% pull(PID) %>% unique()))) %>%
+    dplyr::select(PID, Pattern, log2_ratio_count_norm_by_intratel_reads, log2_ratio_count_norm_by_all_reads, 
+                  c_circle_result, telhunter_log2_telcontentratio, TERT_ATRX_Mutation) %>% 
+    pivot_longer(cols = c(log2_ratio_count_norm_by_intratel_reads, log2_ratio_count_norm_by_all_reads), 
+                 names_to="NormMethod", values_to="log2_ratio_count") %>% mutate(NormMethod=gsub("log2_ratio_count_norm_by_","",NormMethod))
+plot.data.long$NormMethod <- factor(as.character(plot.data.long$NormMethod), levels=c("all_reads","intratel_reads"))
+
+
+#POI <- c("AAAGGG", "AATGGG", "ACAGGG", "ACGGGG", "ATTGGG", "GGCGGG", "TGAGGG", "TCTGGG", "TTTGGG", "TTAGGG")
+POI <- sig_patterns
+
+## TVR ratio vs C-Circle result
+ggplot(
+  plot.data.long %>% filter(Pattern %in% POI)
+  ) +
+  geom_boxplot(mapping = aes(
+    x = interaction(c_circle_result, NormMethod),
+    y = log2_ratio_count,
+    fill=NormMethod
+), outlier.alpha = 0) +
+  geom_point(aes(
+    x = interaction(c_circle_result, NormMethod),
+    y = log2_ratio_count,
+    color = TERT_ATRX_Mutation,
+    fill=NormMethod,
+    size = (telhunter_log2_telcontentratio > 0.5)
+), position = position_jitter(width=0.15, height=0, seed=42), alpha=0.5) +
+  #geom_text(aes(label=A5_ID)) +
+  scale_color_manual(values = c(ColorPalette[["DarkBlue1"]],
+                                ColorPalette[["LightOrange1"]],
+                                ColorPalette[["LightGreen1"]])) +
+  #scale_shape_manual(values = c(16,8,17)) +
+  scale_size_manual(values = c(1.3, 3.5)) +
+  scale_x_discrete(labels=rep(levels(plot.data.long$c_circle_result),2)) +
+  theme_bw() + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5)) +
+  ylab("log2_ratio_count") +
+  xlab("C-Circle Result") + facet_wrap("Pattern", scale="free_y")
+
+## Telomere ratio vs TVR ratio
+ggplot(
+  plot.data.long %>% filter(Pattern %in% POI)
+  , aes(
+    x = telhunter_log2_telcontentratio,
+    y = log2_ratio_count,
+    color = c_circle_result,
+    shape = TERT_ATRX_Mutation
+  )
+) +
+  geom_point(position = position_jitter(width=0.15, seed=42)) +
+  #geom_text(aes(label=A5_ID)) +
+  scale_color_manual(values = c(
+    "Black",
+    ColorPalette[["LightBlue1"]],
+                                ColorPalette[["LightOrange1"]],
+                                ColorPalette[["LightGreen1"]])) +
+  #scale_shape_manual(values = c(16,8,17)) +
+  scale_shape_manual(values = c(8, 18, 15, 17, 19, 4)) +
+  #scale_size_manual(values = c(1.3, 4.2)) +
+  theme_bw() +
+  ylab("log2_ratio_count") +
+  xlab("telhunter_log2_telcontentratio") + facet_grid(NormMethod~Pattern, scale="free")
+
+
+#Per sample TVR ratio
+ggplot(
+  plot.data.long %>%
+    filter(Pattern %in% POI)
+  , aes(
+    x = Pattern,
+    y = log2_ratio_count,
+    color = TERT_ATRX_Mutation,
+    size = (telhunter_log2_telcontentratio > 0.5),
+    shape= c_circle_result,
+    alpha=NormMethod
+  )
+) +
+  geom_hline(yintercept = 0) +
+  geom_point() +
+  #geom_text(aes(label=A5_ID)) +
+  scale_color_manual(values = c(ColorPalette[["DarkBlue1"]],
+                                ColorPalette[["LightOrange1"]],
+                                ColorPalette[["LightGreen1"]])) +
+  #scale_shape_manual(values = c(16,8,17)) +
+  scale_shape_manual(values = c(8, 18, 15, 17, 19, 4)) +
+  scale_size_manual(values = c(1.8, 3.2)) +
+  scale_alpha_manual(values = c(1,0.3)) +
+  theme_bw() + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5)) +
+  ylab("log2_ratio_count_norm_by_all_reads") +
+  xlab("Pattern") + facet_wrap("PID")
+ 
+```
+```{r write_summary_sheet, eval=FALSE, include=FALSE}
+    summary_sheet.tvr <- a5th.norm_tvr %>%  filter(Pattern %in% sig_patterns) %>%  
+      mutate(log2_ratio_count_norm_by_all_reads=log2(Count_norm_by_all_reads_T/Count_norm_by_all_reads_C)) %>% 
+     dplyr::select(PID, Pattern, log2_ratio_count_norm_by_intratel_reads, log2_ratio_count_norm_by_all_reads) %>%  
+      pivot_longer(cols = c(-PID, -Pattern)) %>%  
+      pivot_wider(id_cols = PID, names_from=c(Pattern, name), values_from=value, names_sep="_")
+
+    summary_sheet <- a5_anno %>% mutate(PID=gsub("-","-T0",A5_ID)) %>% 
+     dplyr::select(PID, is_primary_or_met, 
+             tumour_metastasised, TERT_ATRX_Mutation,
+             `is_head_and_neck`) %>% 
+      full_join(a5th.summary.ratio %>% 
+     dplyr::select(-sample, -total_reads, -read_length, -repeat_threshold_set, 
+             -repeat_threshold_used, -tel_reads, -intratel_reads, 
+             -gc_bins_for_correction, -total_reads_with_tel_gc) %>% 
+     dplyr::rename(dna_tel_content_tumour_control_log2ratio=tel_content)) %>% 
+      full_join(a5th.summary.rna %>% 
+                 dplyr::select(PID, tel_content) %>% 
+                 dplyr::rename(terra_rna_tel_content=tel_content) %>% 
+                  mutate(PID=gsub("-","-T0",PID))) %>% 
+      full_join(a5th.singletons.dist) %>% full_join(summary_sheet.tvr) %>% 
+      relocate(terra_rna_tel_content, .after=dna_tel_content_tumour_control_log2ratio) %>% 
+      full_join(a5th.telosv %>%dplyr::rename(PID=A5_ID)) 
+    
+write_sheet(summary_sheet %>% mutate(across(.cols = everything(),.fns=function(x){ ifelse(is.infinite(x), NA, x) })), ss = "15aaq-0BD3ZVcZDqK2SwLmb5YntWO42xWIRmIoayl8HI", sheet = "Combined_summary")     
+
+```
