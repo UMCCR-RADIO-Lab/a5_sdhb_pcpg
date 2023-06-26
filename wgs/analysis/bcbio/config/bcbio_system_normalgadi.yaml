@@ -1,0 +1,15 @@
+# Reference genomes and pointer to samples
+local:
+  ref: /g/data/pq08/local/bcbio/genomes/Hsapiens
+# Define resources to be used for individual programs on multicore machines.
+resources:
+  machine:
+    cores: 24
+    memory: 96
+  # default options, used if other items below are not present
+  default:
+    memory: 3G
+    cores: 24
+    jvm_opts: ["-Xms750m", "-Xmx3000m"]
+  star:
+    memory: 6G
