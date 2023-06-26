@@ -439,11 +439,53 @@ if(output_tables)
   
 }
 
-#+ de_hnabdo_boxplots_header, eval=output_plots, echo=FALSE, results='asis' 
+#+ de_hnabdo_volcano_header, eval=output_plots, echo=FALSE, results='asis' 
 
 #########
 # Result Plots 
 #########
+
+  #########
+  # Volcano Plot
+  #########
+
+knitr::knit_expand(text="\n\n# Volcano Plot - H/N vs abdo/thoracic\n\n") %>% cat()
+
+#+ de_hnabdo_volcano_code, eval=output_plots, fig.width=7, fig.height=5
+if(output_plots){
+  plot_volcano <- function(tt, n_label){
+    
+    genes_to_label <- tt %>%
+      slice_min(adj.P.Val, n = n_label) %>% 
+      pull(Gene)
+    
+    tt_plot <- tt %>% #flag the most significant genes to label
+      mutate(significant = if_else(adj.P.Val < 0.05, "Adj. P Value < 0.05", "not significant")) %>% 
+      mutate(label = if_else(Gene %in% genes_to_label, TRUE, FALSE))
+    
+    volcano <- ggplot(tt_plot, aes(logFC, -log10(adj.P.Val))) +
+      geom_point(aes(col=significant)) +
+      scale_color_manual(values=c("red", "black")) +
+      geom_text_repel(
+        data = . %>% filter(label == TRUE),
+        box.padding = unit(0.5, "lines"),
+        point.padding = unit(0.1, "lines"),
+        segment.color = "grey",
+        max.overlaps = Inf,
+        size = 3,
+        aes(label=gene_symbol))
+    
+    return(volcano)
+    
+  }
+  
+  plot_volcano(wts_top_tables[["Parasympathetic_vs_Sympathetic"]], 60) + ggtitle("Head and Neck vs Abdo-thoracic")
+  
+}
+
+
+#+ de_hnabdo_boxplots_header, eval=output_plots, echo=FALSE, results='asis' 
+
 
   #########
   # Box Plots
