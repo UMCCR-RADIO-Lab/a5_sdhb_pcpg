@@ -66,7 +66,7 @@ if(!exists("a5_anno"))
 
 source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
 location_cols[["Extraadrenal (abdominal/thoracic)"]] <-  location_cols[["Extraadrenal"]]
-location_cols[["Extraadrenal (cardiac)"]] <-  location_cols[["Extraadrenal_cardiac"]]
+location_cols[["Extraadrenal (aortic)"]] <-  location_cols[["Extraadrenal_aortic"]]
 location_cols[["Extraadrenal (bladder)"]] <-  location_cols[["Extraadrenal_bladder"]]
 
 ################################
@@ -102,15 +102,16 @@ waffle_data <- a5_anno %>% filter(Exclude != "Y") %>%
   mutate(Primary_Location_Simplified=dplyr::recode(Primary_Location_Simplified,
                                                    "Extraadrenal_abdominal"="Extraadrenal (abdominal/thoracic)",
                                                    "Extraadrenal_thoracic"="Extraadrenal (abdominal/thoracic)",
+                                                   "Extraadrenal_thoracic_cardiac"="Extraadrenal (abdominal/thoracic)",
                                                    "Extraadrenal_bladder"="Extraadrenal (bladder)",
-                                                   "Extraadrenal_thoracic_cardiac"="Extraadrenal (cardiac)",
+                                                   "Extraadrenal_thoracic_aortic"="Extraadrenal (aortic)",
                                                    "Adrenal_left"="Adrenal",
                                                    "Adrenal_right"="Adrenal",
                                                    "Head_neck"="Head and neck"),
          Primary_Location_Simplified=factor(Primary_Location_Simplified,
                                             levels=c("Extraadrenal (abdominal/thoracic)",
                                                      "Extraadrenal (bladder)",
-                                                     "Extraadrenal (cardiac)",
+                                                     "Extraadrenal (aortic)",
                                                      "Adrenal",
                                                      "Head and neck",
                                                      "Unspecified"))) %>% 

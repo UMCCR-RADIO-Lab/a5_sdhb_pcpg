@@ -270,7 +270,7 @@ not_sdhb.excl <- genotype_subtype_anno$Sample[genotype_subtype_anno$Genotype!="S
 #   left_join(meth_tcga_comete_a5_27k_anno %>% 
 #               mutate(new_naming=case_when(
 #                 new_naming %in% c("A5 - Adrenal","A5 - Extraadrenal") ~ "SDHx",
-#                 new_naming %in% c("A5 - Head_neck","A5 - Extraadrenal_cardiac") ~ "SDHx-HN",
+#                 new_naming %in% c("A5 - Head_neck","A5 - Extraadrenal_aortic") ~ "SDHx-HN",
 #                 TRUE ~ new_naming
 #               )))
 # ggplot(plot.data, aes(x=X1, y=X2, color=new_naming, shape=Dataset)) + 

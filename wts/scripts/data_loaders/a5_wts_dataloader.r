@@ -66,7 +66,7 @@ data_loader_a5_wts_counts <- function(count_file_dir=NULL, count_file_pattern=".
   # Anatomy groups
   #######
   
-  #Select head/neck+cardiac tumours
+  #Select head/neck+aortic tumours
   samples_hn <- a5_anno %>% 
     filter(differential_group_anatomy == "Head_Neck") %>% 
     pull(A5_ID)
@@ -77,8 +77,8 @@ data_loader_a5_wts_counts <- function(count_file_dir=NULL, count_file_pattern=".
     pull(A5_ID)
   
   #Select samples of unclear origin tumours based on UMAP
-  samples_cardiac <- a5_anno %>% 
-    filter(differential_group_anatomy == "Cardiac") %>% 
+  samples_aortic <- a5_anno %>% 
+    filter(differential_group_anatomy == "Aortic") %>% 
     pull(A5_ID)
   
   #Select samples of unclear origin tumours based on UMAP
@@ -101,7 +101,7 @@ data_loader_a5_wts_counts <- function(count_file_dir=NULL, count_file_pattern=".
   #Poor QC, samples with no WGS, and NF/VHL samples excluded
   counts_df_list[["SDHB"]] <- counts_df[,!(colnames(counts_df) %in% c(exclude_base, exclude_genotype))]
   
-  #Head and neck based on clinical and UMAP annotation (cardiac cases excluded)
+  #Head and neck based on clinical and UMAP annotation (aortic cases excluded)
   samples_hn_keep <- setdiff(samples_hn, c(exclude_base, exclude_genotype))
   counts_df_list[["SDHB_HN"]] <- counts_df[,colnames(counts_df) %in% samples_hn_keep]
   
@@ -150,8 +150,8 @@ data_loader_a5_wts_counts <- function(count_file_dir=NULL, count_file_pattern=".
                           - all: All profiled samples
                           - qc_ok: Excluded samples removed (",toString(exclude_base),")
                           - SDHB: QC_OK with non-SDHB samples removed (",toString(exclude_genotype),")
-                          - SDHB_abdothoracic: Abdominal/thoracic based on clinical and UMAP annotation (cardiac and ambiguous cases excluded:",toString(samples_ambiguous),")
-                          - SDHB_HN: Head and neck based on clinical and UMAP annotation (cardiac and ambiguous cases excluded)"
+                          - SDHB_abdothoracic: Abdominal/thoracic based on clinical and UMAP annotation (aortic and ambiguous cases excluded:",toString(samples_ambiguous),")
+                          - SDHB_HN: Head and neck based on clinical and UMAP annotation (aortic and ambiguous cases excluded)"
           )
   
   message("Completed A5 WTS data loader.")
@@ -287,7 +287,7 @@ hgnc_to_ensgid_from_biomart <- function(hgnc_symbols,
     if (any(!(hgnc_symbols %in% hgnc_to_ensgid$hgnc_symbol))) {
       message("WARNING: Not all requested gene symbols are present in the offline cache, rerun in online mode to update")
     }
-    hgnc_to_ensgid <- hgnc_to_ensgid %>% filter(external_gene_name %in% hgnc_symbols)
+    hgnc_to_ensgid <- hgnc_to_ensgid %>% filter(hgnc_symbol %in% hgnc_symbols)
   } else {
     message("Fetching ensembl_ids from biomart")
     mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl",host = ensembl_mirror))

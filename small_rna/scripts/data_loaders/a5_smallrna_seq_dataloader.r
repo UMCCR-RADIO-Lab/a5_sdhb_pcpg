@@ -75,7 +75,7 @@ data_loader_a5_smallrna <- function(genome_version="hg38", exclude_samples=c(), 
   # Anatomy groups
   #######
   
-  #Select head/neck+cardiac tumours
+  #Select head/neck+aortic tumours
   samples_hn <- a5_anno %>% 
     filter(differential_group_anatomy == "Head_Neck") %>% 
     pull(A5_ID)
@@ -86,8 +86,8 @@ data_loader_a5_smallrna <- function(genome_version="hg38", exclude_samples=c(), 
     pull(A5_ID)
   
   #Select samples of unclear origin tumours based on UMAP
-  samples_cardiac <- a5_anno %>% 
-    filter(differential_group_anatomy == "Cardiac") %>% 
+  samples_aortic <- a5_anno %>% 
+    filter(differential_group_anatomy == "Aortic") %>% 
     pull(A5_ID)
   
   #Select samples of unclear origin tumours based on UMAP
@@ -110,7 +110,7 @@ data_loader_a5_smallrna <- function(genome_version="hg38", exclude_samples=c(), 
   #Poor QC, samples with no WGS, and NF/VHL samples excluded
   counts_df_list[["SDHB"]] <- smallrna_read_counts_mat[,!(colnames(smallrna_read_counts_mat) %in% c(exclude_base, exclude_genotype))]
   
-  #Head and neck based on clinical and UMAP annotation (cardiac cases excluded)
+  #Head and neck based on clinical and UMAP annotation (aortic cases excluded)
   samples_hn_keep <- setdiff(samples_hn, c(exclude_base, exclude_genotype))
   counts_df_list[["SDHB_HN"]] <- smallrna_read_counts_mat[,colnames(smallrna_read_counts_mat) %in% samples_hn_keep]
   
@@ -165,8 +165,8 @@ data_loader_a5_smallrna <- function(genome_version="hg38", exclude_samples=c(), 
                           - all: All profiled samples
                           - qc_ok: Excluded samples removed (",toString(exclude_base),")
                           - SDHB: QC_OK with non-SDHB samples removed (",toString(exclude_genotype),")
-                          - SDHB_abdothoracic: Abdominal/thoracic based on clinical and UMAP annotation (cardiac and ambiguous cases excluded:",toString(samples_ambiguous),")
-                          - SDHB_HN: Head and neck based on clinical and UMAP annotation (cardiac and ambiguous cases excluded)"
+                          - SDHB_abdothoracic: Abdominal/thoracic based on clinical and UMAP annotation (aortic and ambiguous cases excluded:",toString(samples_ambiguous),")
+                          - SDHB_HN: Head and neck based on clinical and UMAP annotation (aortic and ambiguous cases excluded)"
           )
   
   message("Completed A5 small-RNA data loader.")

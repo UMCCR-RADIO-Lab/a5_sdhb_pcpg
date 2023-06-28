@@ -40,7 +40,7 @@ exp <- exp %>%
                               "A5 - Adrenal"="C1A1 (SDHx)",
                               "A5 - Head_neck"="C1A2 (SDHx-HN)",
                               "A5 - VHL"="C1B1 (VHL)",
-                              "A5 - Extraadrenal_cardiac"="C1A2 (SDHx-HN)",
+                              "A5 - Extraadrenal_aortic"="C1A2 (SDHx-HN)",
                               "A5 - Unspecified"="C1A1 (SDHx)",
                               "C2B2 (MAML)"="C2B2 (MAML3)"))
 

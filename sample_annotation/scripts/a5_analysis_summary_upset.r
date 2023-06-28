@@ -49,9 +49,10 @@ assay_combo_by_anatomy <- a5_anno %>% filter(Exclude=="N") %>%
                          "Head_neck"="Head and neck",
                          "Extraadrenal_abdominal"="Extraadrenal",
                          "Extraadrenal_thoracic"="Extraadrenal",
+                         "Extraadrenal_thoracic_cardiac"="Extraadrenal",
                          "Extraadrenal_abdominal"="Extraadrenal",
                          "Extraadrenal_bladder"="Extraadrenal",
-                         "Extraadrenal_thoracic_cardiac"="Extraadrenal")) %>% 
+                         "Extraadrenal_thoracic_aortic"="Extraadrenal")) %>% 
   inner_join(assay_groups) %>% 
   group_by(Assay, Primary_Location_Simplified, n_assay_combo) %>% dplyr::count(name="n_samples")
 

@@ -81,7 +81,7 @@ plot_shape_location <- c("Extraadrenal"=19,
                          "Adrenal"=17, 
                          "Unspecified"=8,
                          "Head_neck"=3,
-                         "Extraadrenal_cardiac"=4)
+                         "Extraadrenal_aortic"=4)
 
 samples.exclude <- a5_anno.meth %>% filter(Exclude=="Y") %>% pull(A5_ID)
 samples.hn <- a5_anno.meth %>% filter(Primary_Location_Base == "Head_neck") %>% pull(A5_ID)

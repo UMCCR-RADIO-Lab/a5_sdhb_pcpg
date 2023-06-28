@@ -97,7 +97,7 @@ specimen_type_cols[["Other"]] <- "#999999"
 location_cols = c("Adrenal"=ColorPalette[["LightGreen1"]], 
                   "Extraadrenal"=ColorPalette[["DarkBlue1"]], 
                   "Head_neck"=ColorPalette[["LightOrange1"]], 
-                  "Extraadrenal_cardiac"=ColorPalette[["DarkRed1"]], 
+                  "Extraadrenal_aortic"=ColorPalette[["DarkRed1"]], 
                   "Metastasis"=ColorPalette[["Purple3"]], 
                   "Unspecified"=ColorPalette[["DarkGrey1"]])
 location_cols[["Head and neck"]] <- location_cols[["Head_neck"]] 
