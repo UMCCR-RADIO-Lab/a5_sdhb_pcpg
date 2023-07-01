@@ -101,7 +101,7 @@ class BaseCall:
 
 colDefs = ["chr","pos", "ref"]
 for s in args.pileupSamples:
-    colDefs = colDefs + ["%s-total" % s, "%s-calls" % s, "%s-quality" % s]
+    colDefs = colDefs + ["%s$total" % s, "%s$calls" % s, "%s$quality" % s]
 
 VAFs = dict()
 Totals = dict()
@@ -122,10 +122,10 @@ with open(args.pileup, 'r') as pileupfh:
 
             for i in range(1,len(fields)):
                 if "total" in colDefs[i]:
-                    s = colDefs[i].split("-")[0]
+                    s = colDefs[i].split("$")[0]
                     Totals[Chr][Pos][s] = fields[i]
                 if "calls" in colDefs[i]:
-                    s = colDefs[i].split("-")[0]
+                    s = colDefs[i].split("$")[0]
                     VAFs[Chr][Pos][s] = dict()
                     bases = fields[i]
                     bases = re.sub("[$]|\^.|[+-][0-9]+[ACGTNacgtn]+", "", bases)
