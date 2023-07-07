@@ -29,6 +29,8 @@ class BaseCall:
         self.fwd_qualities = []
         self.rvrs_qualities = []
         self.quality_threshold = quality_threshold
+        self.has_deletion = False
+        self.has_insertion = False
  
     def ascii2numeric(self, ascii_bq):
         return ord(ascii_bq) - 33
@@ -97,6 +99,28 @@ class BaseCall:
         return "min:%s,mean:%s,med:%s,max:%s,rawF:%s,rawR:%s,qfF:%s,qfR:%s" % (self.min_quality(), self.mean_quality(),self.median_quality(), self.max_quality(), self.raw_fwd_support, self.raw_rvrs_support, self.qf_fwd_support, self.qf_rvrs_support)
 
 
+def process_indels(bases, qualities):
+    
+    insertions = []
+    deletions = []
+    while indel := re.search("[.,][+-][0-9]+", string=bases):
+        match_start = indel.span()[0]
+        match_type = bases[match_start+1:match_start+2]
+        len_start = match_start + 2
+        len_end = indel.span()[1]
+        ins_len = int(bases[len_start:len_end])
+        ins_seq = bases[(len_end):(len_end + ins_len)]
+        
+        if match_type == "+":
+            insertions.append(ins_seq)
+        else:
+            deletions.append(ins_seq)
+
+        bases=bases[0:len_start-2] + ("_" * ((len_end - match_start) + ins_len)) + bases[len_end + ins_len:]
+        qualities=qualities[0:match_start] + ("_" * ((len_end - match_start) + ins_len)) + qualities[match_start + 1:]
+
+
+    return ((bases, qualities, insertions, deletions))
 
 
 colDefs = ["chr","pos", "ref"]
@@ -128,27 +152,58 @@ with open(args.pileup, 'r') as pileupfh:
                     s = colDefs[i].split("$")[0]
                     VAFs[Chr][Pos][s] = dict()
                     bases = fields[i]
-                    bases = re.sub("[$]|\^.|[+-][0-9]+[ACGTNacgtn]+", "", bases)
-                    qualities = fields[i+1]
+                    bases = re.sub("[$><#]|\^.", "", bases)
+                    qualities = fields[i+1].strip()
+
+                    bases, qualities, insertions, deletions = process_indels(bases, qualities)
                     
-                    for q in range(0,len(bases)):
+                    
+                    if(len(bases) != len(qualities)):
+                        print("Base and quality string equality sanity check failed for %s %s Exiting. " % (Chr, Pos))
+                        print(bases)
+                        print(qualities)
+                        exit(11)
+
+                    for insertion in insertions:
+                        ins_key = Ref + "/" + Ref + insertion
+                        ins_key = ins_key.upper()
+                        if (ins_key not in VAFs[Chr][Pos][s].keys()):
+                            VAFs[Chr][Pos][s][ins_key] = BaseCall(insertion, args.minBaseQuality)
+                            
+                        if (insertion == insertion.upper()):
+                            VAFs[Chr][Pos][s][ins_key].add_support("fwd", "F") #F=phread-33
+                        else:
+                            VAFs[Chr][Pos][s][ins_key].add_support("rvrs", "F")
+
+                    for deletion in deletions:
+                        del_key = Ref + deletion + "/" + Ref
+                        del_key = del_key.upper()
+                        if (del_key not in VAFs[Chr][Pos][s].keys()):
+                            VAFs[Chr][Pos][s][del_key] = BaseCall(deletion, args.minBaseQuality)
+                            
+                        if (deletion == deletion.upper()):
+                            VAFs[Chr][Pos][s][del_key].add_support("fwd", "F") #F=phread-33
+                        else:
+
+                            VAFs[Chr][Pos][s][del_key].add_support("rvrs", "F")
+
+                    for q in range(0,len(bases)-1):
                         b=bases[q].upper()
                         
+                        if b == "_": continue #spacer inserted for indel
+
                         if b in ".,":
-                            if (Ref not in VAFs[Chr][Pos][s].keys()):
-                                VAFs[Chr][Pos][s][Ref] = BaseCall(Ref, args.minBaseQuality)
-                            if b == ".":
-                                VAFs[Chr][Pos][s][Ref].add_support("fwd", qualities[q])
-                            else:
-                                VAFs[Chr][Pos][s][Ref].add_support("rvrs", qualities[q])
+                            sbs_key = Ref + "/" + Ref
                         else:
-                            if (b not in VAFs[Chr][Pos][s].keys()):
-                                VAFs[Chr][Pos][s][b] = BaseCall(b, args.minBaseQuality)
-                             
-                            if (b==bases[q]):
-                                VAFs[Chr][Pos][s][b].add_support("fwd", qualities[q])
-                            else:
-                                VAFs[Chr][Pos][s][b].add_support("rvrs", qualities[q])
+                            sbs_key = Ref + "/" + b
+
+                        if (sbs_key not in VAFs[Chr][Pos][s].keys()):
+                            VAFs[Chr][Pos][s][sbs_key] = BaseCall(b, args.minBaseQuality)
+                            
+                        if (b==bases[q]):
+                            VAFs[Chr][Pos][s][sbs_key].add_support("fwd", qualities[q])
+                        else:
+                            VAFs[Chr][Pos][s][sbs_key].add_support("rvrs", qualities[q])
 
 
 header="CHROM\tPOS\tREF\tALT\t"
@@ -177,30 +232,42 @@ with open(args.variantCalls, 'r') as mutectfh:
         Chr = fields[0]
         Pos = fields[1]
         Ref = fields[2]
-        Alt = fields[3].strip()                         
+        Alt = fields[3].strip() 
+
+        mut_key = Ref + "/" + Alt
+        if len(Ref) == 1 and len(Alt) == 1:
+            #mut_type="SBS"
+            ref_key = Ref + "/" + Ref               
+        elif len(Ref) > 1 and len(Alt) == 1:
+            #mut_type="Deletion"
+            ref_key = Alt + "/" + Alt                            
+        elif len(Ref) == 1 and len(Alt) > 1:
+            #mut_type="Insertion"
+            ref_key = Ref + "/" + Ref             
 
         print("%s\t%s\t%s\t%s" % (Chr, Pos, Ref, Alt), end="")
         for s in args.pileupSamples:
             altCount_raw = 0
             altCount = 0
             try:
-                altCount_raw = float(VAFs[Chr][Pos][s][Alt].support(raw=True))
+                altCount_raw = float(VAFs[Chr][Pos][s][mut_key].support(raw=True))
                 if args.OneForAllMode == "Cohort":
                     for c in args.pileupSamples:
                         try:
-                            if float(VAFs[Chr][Pos][c][Alt].support(OneForAll=False)) > 0:
-                                altCount = float(VAFs[Chr][Pos][s][Alt].support(OneForAll=True, raw=True))
+                            if float(VAFs[Chr][Pos][c][mut_key].support(OneForAll=False)) > 0:
+                                altCount = float(VAFs[Chr][Pos][s][mut_key].support(OneForAll=True, raw=True))
                                 break
                         except KeyError:
                             continue
                 else:
-                    altCount = float(VAFs[Chr][Pos][s][Alt].support(args.OneForAll))
+                    altCount = float(VAFs[Chr][Pos][s][mut_key].support(args.OneForAll))
             except: 
                 if int(args.debugLevel) > 3:
                     print("Missing Key -defaulting AltCount to 0 \n")
                 altCount= 0          
             try:
-               refCount = float(VAFs[Chr][Pos][s][Ref].support(args.OneForAll))
+               key = Ref + "/" + Ref
+               refCount = float(VAFs[Chr][Pos][s][ref_key].support(args.OneForAll))
             except: 
                 refCount= 0       
             
