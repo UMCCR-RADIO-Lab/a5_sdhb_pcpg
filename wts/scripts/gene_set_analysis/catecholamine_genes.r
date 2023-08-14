@@ -12,8 +12,7 @@ source("./a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
 # Load data #
 #############
 
-htseq_outs <- "/g/data/pq08/projects/ppgl/a5/wts/analysis/htseq/truseq/gene/"
-data_loader_a5_wts_counts(htseq_outs)
+source("./a5/tertiary/scripts/data_mergers/combine_tcga_flynn_a5_wts_data.r")
 
 #########
 # Plots #
@@ -21,31 +20,35 @@ data_loader_a5_wts_counts(htseq_outs)
 
 plot_data <- cpm(a5_wts_dge_list$qc_ok,log = T) %>% 
   as_tibble(rownames = "ensgid_symbol") %>% 
-  separate(ensgid_symbol, into=c("ensgid","symbol"), se="_", extra = "merge") %>% 
-  filter(symbol %in% c("TH","DBH","PNMT")) %>% #, "SLC6A2"
+  separate(ensgid_symbol, into=c("ensgid","symbol"), sep="_", extra = "merge") %>% 
+  filter(symbol %in% c("TH", "DDC","DBH","PNMT")) %>% #, "SLC6A2"
   pivot_longer(cols = c(-ensgid,-symbol), names_to = "A5_ID", values_to = "log2_cpm") %>% 
   group_by(symbol) %>% mutate(log2_cpm_z=(log2_cpm-mean(log2_cpm))/sd(log2_cpm)) %>% 
   inner_join(a5_anno %>% 
                filter(!Exclude_RNA) %>% 
-               dplyr::select(A5_ID, differential_group_anatomy, Catecholamine_profile)) %>% 
-  mutate(symbol=factor(symbol, levels=rev(c("TH","DBH","PNMT", "SLC6A2")))) %>% 
-  arrange(symbol, differential_group_anatomy, A5_ID) %>% 
+               dplyr::select(A5_ID, Primary_Location_Simplified, Catecholamine_profile)) %>% 
+  mutate(symbol=factor(symbol, levels=rev(c("TH","DDC" , "DBH","PNMT", "SLC6A2")))) %>% 
+  arrange(symbol, Primary_Location_Simplified, A5_ID) %>% 
   mutate(label=ifelse(A5_ID %in% c("E152-1","E186-1","E182-1","E188-1",
                                    "E225-1","E225-2", 
                                    "E125-1","E133-1", 
                                    "E146-1", "E146-2", "E160-1",
-                                   "E141-1","E200-1"), A5_ID,NA))
+                                   "E141-1","E200-1"), A5_ID,NA)) %>% 
+  mutate(Primary_Location_Simplified=gsub("_abdominal|_thoracic|_bladder|_cardiac|_[Ll]eft|_[Rr]ight",
+                                         "",
+                                         Primary_Location_Simplified))
 
 
 ggplot(plot_data %>% filter(Catecholamine_profile %in% c("Norepinephrine", "Non secreting", "Dopamine")) %>% 
          mutate(Catecholamine_profile=factor(Catecholamine_profile, levels=c("Non secreting", "Dopamine", "Norepinephrine"))), 
        aes(y=symbol, 
            x=log2_cpm_z, 
-           color=differential_group_anatomy,
+           color=Primary_Location_Simplified,
            label=label,
            group=A5_ID)) + 
   geom_point() +
   geom_path(alpha=0.5,linetype="22") +
+  scale_color_manual(values=location_cols) +
   #ggrepel::geom_text_repel(nudge_y = 0.2) +       
   #geom_text(nudge_y = 0.2) +
   facet_wrap("Catecholamine_profile", ncol=3) +
@@ -65,8 +68,12 @@ ggplot(plot_data %>% filter(Catecholamine_profile %in% c("Norepinephrine", "Non 
 # "September 24, 2013 (outside NIH): Urine catecholamines were within normal limits. Twenty-four hour urine dopamine was 205.6 mcg/24 hr (0-498), 24 hr urine norepinephrine was 10.6 mcg/24 hr (12.1-85.5), and 24 hr urine epinephrine was 4.3 mcg/24 hr (1.7-22.4). Labs drawn at NIH before operation on 11/6/13 found elevated Dopamine >25 pg/mL (range: 0-24). All other levels within normal limits. No record of methoxytyramine at NIH."
 
 
-cat_path_genes <- tibble(ensgid=c("ENSG00000180176","ENSG00000123454","ENSG00000141744"), 
-symbol=c("TH","DBH","PNMT"))
+##########################
+# Super-set PNMT Example #
+##########################
+
+cat_path_genes <- tibble(ensgid=c("ENSG00000180176", "ENSG00000132437","ENSG00000123454","ENSG00000141744"), 
+symbol=c("TH", "DDC","DBH","PNMT"))
 
 plot_data <- wts_tcga_flynn_a5_lcpm.batch_removed %>% 
   as_tibble(rownames = "ensgid") %>% 
@@ -75,7 +82,7 @@ plot_data <- wts_tcga_flynn_a5_lcpm.batch_removed %>%
   group_by(symbol) %>% mutate(log2_cpm_z=(log2_cpm-mean(log2_cpm))/sd(log2_cpm)) %>% 
   inner_join(wts_tcga_flynn_a5_anno %>% 
                dplyr::select(Sample, new_naming, Dataset)) %>% 
-  mutate(symbol=factor(symbol, levels=rev(c("TH","DBH","PNMT", "SLC6A2")))) %>% 
+  mutate(symbol=factor(symbol, levels=rev(c("TH","DDC","DBH","PNMT", "SLC6A2")))) %>% 
   mutate(subtype=dplyr::recode(new_naming,
                                "A5 - Extraadrenal"="C1A1 (SDHx)",
                                "A5 - NF1"="C2A (Kinase)",

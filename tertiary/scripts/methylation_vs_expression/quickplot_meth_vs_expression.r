@@ -12,7 +12,7 @@ library(patchwork)
 source("./methylation/scripts/go_meth_offline.r")
 
 #Plotting helper functions
-source("/g/data/pq08/projects/ppgl/a5/methylation/scripts/helpers/plot_methylation.r")
+source("./methylation/scripts/helpers/plot_methylation.r")
 
 ###############
 # DataLoaders #
@@ -46,18 +46,18 @@ b_vals <- getBeta(a5_methylation_filtered)
 
 a5_wts_lcpm_list <- lapply(a5_wts_dge_list, cpm, log = T)
 
-plot_methylation_vs_expr(gene_symbol = "MSH2",
-                         samples_to_label = c("E169-1","E169-2"),
+plot_methylation_vs_expr(gene_symbol = "MSH6",
+                         samples_to_label = c("E169-1", "E169-2"),
                          label_outliers = F,
-                         sample_annotation = (a5_anno %>% dplyr::select(Sample_ID=A5_ID,differential_group_sampletype, Gender, TERT_ATRX_Mutation)), 
+                         sample_annotation = (a5_anno %>% dplyr::select(Sample_ID=A5_ID,differential_group_sampletype, Gender, TERT_ATRX_Mutation, differential_group_anatomy)), 
                          b_vals = b_vals, 
                          summarise_probes_by_region = F,
-                         m_vals = m_vals, 
-                         log2_cpm =a5_wts_lcpm_list$qc_ok, 
+                         m_vals = m_vals,
+                         log2_cpm =a5_wts_lcpm_list$SDHB, 
                          plot_mode = "beta", 
                          array_type = "EPIC", 
-                         #colour_column = "differential_group_sampletype", 
-                         grouping_column = "differential_group_sampletype",
+                         colour_column = "differential_group_anatomy", 
+                         grouping_column = "differential_group_anatomy",
                          #shape_column = "TERT_ATRX_Mutation",
                          )
 

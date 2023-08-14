@@ -79,7 +79,7 @@ a5_anno.meth <- a5_anno.meth %>%
     Primary_Location_Simplified, A5_ID=="E185-1", "Extraadrenal_thoracic"))
 
 a5_anno.meth <- a5_anno.meth %>% 
-  mutate(Primary_Location_Base=gsub("_abdominal|_thoracic|_bladder|_[Ll]eft|_[Rr]ight",
+  mutate(Primary_Location_Base=gsub("_abdominal|_thoracic|_bladder|_cardiac|_[Ll]eft|_[Rr]ight",
                                     "",
                                     Primary_Location_Simplified))
 

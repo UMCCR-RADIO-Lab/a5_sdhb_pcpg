@@ -67,8 +67,8 @@ subtype_cols <- subtype_cols[!duplicated(names(subtype_cols))]
 subtype_cols[["C2B2 (MAML3)"]] <- subtype_cols[["C2B2 (MAML)"]]
 
 
-differential_group_colors=c("green","darkgreen","burlywood1", "burlywood4",  "red", "coral","coral", "coral3",
-                            "lightblue", "darkblue", "grey", "grey", "lightgreen"," lightgreen", "green", "purple","palevioletred2")
+differential_group_colors=c("darkolivegreen","darkgreen","burlywood1", "burlywood4",  "red", "coral","coral", "coral3",
+                            "lightblue", "darkblue", "grey", "grey", "chocolate3"," cornsilk2", "cornsilk2", "purple","palevioletred2")
 names(differential_group_colors) <- differential_group_levels
 
 # ggplot scales
@@ -94,6 +94,17 @@ specimen_type_cols[["MetastaticPrimary"]] <- specimen_type_cols[["Malignant prim
 specimen_type_cols[["NonMetastaticPrimary"]] <- specimen_type_cols[["Non-malignant Primary"]]
 specimen_type_cols[["Other"]] <- "#999999"
 
+
+sampletype_strict_cols <- c(`Non-metastatic primary` = ColorPalette[["DarkGreen2"]],
+  `Non-metastatic local recurrence` = ColorPalette[["LightBlue1"]],
+  `Primary (short follow up)` = ColorPalette[["Yellow3"]],
+  `Primary (metastasis present)` = ColorPalette[["DarkBrown2"]],
+  `Local recurrence (metastasis present)` = ColorPalette[["LightBlue3"]],
+  `Metastatic primary` = ColorPalette[["LightOrange2"]],
+  `Metastatic local recurrence` = ColorPalette[["DarkBlue3"]],
+  `Metastasis` = ColorPalette[["LightRed2"]])
+
+
 location_cols = c("Adrenal"=ColorPalette[["LightGreen1"]], 
                   "Extraadrenal"=ColorPalette[["DarkBlue1"]], 
                   "Head_neck"=ColorPalette[["LightOrange1"]], 
@@ -102,6 +113,9 @@ location_cols = c("Adrenal"=ColorPalette[["LightGreen1"]],
                   "Unspecified"=ColorPalette[["DarkGrey1"]])
 location_cols[["Head and neck"]] <- location_cols[["Head_neck"]] 
 location_cols[["Extraadrenal_bladder"]] = "#99cccc"
+location_cols[["Extraadrenal (abdominal/thoracic)"]] <-  location_cols[["Extraadrenal"]]
+location_cols[["Extraadrenal (aortic)"]] <-  location_cols[["Extraadrenal_aortic"]]
+location_cols[["Extraadrenal (bladder)"]] <-  location_cols[["Extraadrenal_bladder"]]
 
 driver_cols <- c(ATRX=ColorPalette[["DarkBlue1"]], 
                 TERT=ColorPalette[["LightOrange1"]], 

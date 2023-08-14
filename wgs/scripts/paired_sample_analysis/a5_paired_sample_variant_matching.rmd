@@ -4,7 +4,7 @@ author: "Aidan Flynn"
 date: "19/05/2022"
 output: html_document
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -163,7 +163,7 @@ matched_variant_tables <-
   })
 
 #Annotate black listed variants
-blacklist="/g/data/pq08/projects/ppgl/a5/wgs/analysis/mpileup/blacklists/blacklist_readsupport_gteq3_samplesupport_gteq3.tsv"
+blacklist="/g/data/pq08/projects/ppgl/a5/wgs/analysis/mpileup/blacklist/blacklists/blacklist_readsupport_gteq3_samplesupport_gteq3.tsv"
 blacklisted_variants <- read.delim(blacklist)
 
 matched_variant_tables <-
@@ -172,7 +172,7 @@ matched_variant_tables <-
       left_join(black_list %>% 
                   dplyr::rename("blacklist_n_normal_observed"=n_above_threshold) %>% 
                   mutate(blacklist=TRUE),
-                by = c("seqnames", "start", "end", "ALT"))
+                by = c("seqnames"="CHROM", "start"="POS", "ALT"="ALT"))
     
     table$blacklist_n_normal_observed[is.na(table$blacklist_n_normal_observed)] <- 0
     table$blacklist[is.na(table$blacklist)] <- F
@@ -246,6 +246,53 @@ vcf_files <- paste0(basedir, "/wgs/analysis/bcbio/",
       
   
 ```
+
+```{r annotate_pileups, eval=TRUE, include=TRUE}
+
+source(file.path(basedir,"wgs/scripts/paired_sample_analysis/process_paired_pileups.r"))
+
+if (!all(names(pileup_vafs) == names(matched_variant_tables))) { stop("Pileup and matched table names do not match") }
+
+#annotate matched VCFs with pileup data
+matched_variant_tables <- map2(.x = matched_variant_tables, 
+     .y = pileup_vafs, 
+     .f = \(match_table, pileup_table) left_join(match_table, 
+                                                 pileup_table, 
+                                                 by=c("seqnames"="CHROM", 
+                                                      "start"="POS",  
+                                                      "ALT"="ALT")))
+
+#Update called status of variants using pileup data and filter variants with any support in the normal
+matched_variant_tables <- map(.x = matched_variant_tables, 
+     .f = function(match_table) {
+       
+       called_columns = colnames(match_table)[grepl("_Called",colnames(match_table))]
+       tumour_samples <- gsub("_Called","",called_columns)
+       normal <- gsub("-T0.","-B01",tumour_samples[1])
+       
+       match_table <- match_table %>% filter(is.na(!!sym(paste0(normal,"_pileup_vaf"))) |
+                                               (!!sym(paste0(normal,"_pileup_vaf")) == 0 &
+                                                  !!sym(paste0(normal,"_VAF")) == 0)) 
+       
+       for (tumour in tumour_samples){
+         match_table <- match_table %>% 
+           mutate("{tumour}_Called" := ifelse(!is.na(!!sym(paste0(tumour,"_pileup_vaf"))) &
+                                                !!sym(paste0(tumour,"_pileup_vaf")) > 0, 
+                                                            yes="Y", 
+                                                            no= !!sym(paste0(tumour,"_Called")))) %>%
+           #update VAF from pileup if variant missed
+           mutate("{tumour}_VAF" := ifelse(!!sym(paste0(tumour,"_Called")) == "Y" &
+                                             !!sym(paste0(tumour,"_VAF")) == 0 &
+                                              !is.na(!!sym(paste0(tumour,"_pileup_vaf"))), 
+                                                            yes=!!sym(paste0(tumour,"_pileup_vaf")), 
+                                                            no= !!sym(paste0(tumour,"_VAF"))))
+       }
+       
+       return(match_table)
+       
+     })
+
+```
 ## Preprocess data for input to ggplots
 ```{r figure_input_preprocessing, eval=TRUE, include=TRUE}
 
@@ -291,7 +338,7 @@ for (patient in names(Samples))
   
   matched_variant.longform <- matched_variant_tables[[patient]] %>% 
     ungroup() %>% 
-    dplyr::select(PCGR_SYMBOL, seqnames, start, end, REF, ALT,PCGR_TIER, ends_with(c("_Called", "_VAF"))) %>% 
+    dplyr::select(PCGR_SYMBOL, seqnames, start, end, REF, ALT,PCGR_TIER, matches(c("E...-T0._Called", "E...-T0._VAF"))) %>% 
     mutate(across(.cols = ends_with("_Called"), .fns=~ifelse(.x=="Y", 1,0))) %>% #convert called to numeric so it rbinds with VAF
     #Pivot into long form separating  sample name and data-type into columns 
     pivot_longer(cols = matches(c("_Called$", "T[0-9]{2}_VAF$")), 
@@ -353,7 +400,7 @@ for (patient in names(Samples))
       Annotation=case_when(
         A5_ID %in% c("E167-T01","E167-T02") & (PCGR_SYMBOL %in% GOI.E167$gene & start %in% GOI.E167$position) ~ PCGR_SYMBOL,
         #Keep annotation for variants also present in E167-2
-        A5_ID == "E167-T01" & Called==2 ~ Annotation,
+        A5_ID == "E167-T01" & nSamplesCalled==2 ~ Annotation,
         A5_ID == "E167-T01" & Annotation=="Non-Coding/Syn." ~ Annotation,
         A5_ID == "E167-T01" ~ PCGR_TIER,
         TRUE ~ Annotation),
@@ -483,7 +530,7 @@ for (patient in names(Samples))
     ggsave(filename = paste0("./wgs/results/paired_sample_analysis/",patient,"_variant_only.pdf"),
            plot = composed_plots[[patient]],
            device = pdf(),
-           width = 3+(0.3*length(unique(dotplot_data[[patient]]$Sample))),
+           width = 3+(0.3*length(unique(dotplot_data[[patient]]$A5_ID))),
            height=3+(0.07*nrow(dotplot_data[[patient]])),
            limitsize = F)
     dev.off()

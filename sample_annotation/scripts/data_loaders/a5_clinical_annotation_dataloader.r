@@ -51,7 +51,7 @@ a5_to_zethoven_anno_format <- function(a5_anno) {
       ),
       Cluster = paste(
         "A5",
-        gsub("_abdominal|_thoracic|_bladder|_[Ll]eft|_[Rr]ight", "", Primary_Location_Simplified),
+        gsub("_abdominal|_thoracic|_bladder|_cardiac|_[Ll]eft|_[Rr]ight", "", Primary_Location_Simplified),
         sep = " - "
       ),
       new_naming = Cluster

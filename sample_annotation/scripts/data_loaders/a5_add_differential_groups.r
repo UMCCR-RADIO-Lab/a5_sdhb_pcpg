@@ -56,6 +56,43 @@ add_differential_groups <- function(sample_annotation) {
         TRUE ~ "Other")
     )
     
+  #######################
+  # Sample Type Strict  #
+  #######################
+  
+  #strict = primaries and relapse only considered metastatic if 
+  # primary/met relationship proven by shared genomic features
+  
+  sample_annotation <- sample_annotation %>%
+    mutate(
+      differential_group_sampletype_strict = case_when(
+      A5_ID %in% c("E143-3", "E146-1", "E158-1",  "E159-3", "E225-1") ~ "Metastatic primary",
+      is_primary_or_met == "Primary" &
+        tumour_metastasised == "Yes" ~ paste("Primary (metastasis present)"),
+      is_primary_or_met == "Primary" &
+        tumour_metastasised == "Short follow up" ~ paste("Primary (short follow up)"),
+      is_primary_or_met == "Primary" &
+        tumour_metastasised == "No" ~ "Non-metastatic primary",
+      is_primary_or_met == "Metastasis" &
+        tumour_metastasised == "Yes" ~ "Metastasis",
+      A5_ID == "E132-2" ~ "Metastatic local recurrence",
+      is_primary_or_met == "Recurrent" &
+        tumour_metastasised == "Yes" ~ "Local recurrence (metastasis present)",
+      is_primary_or_met == "Recurrent" &
+        tumour_metastasised == "No" ~ "Non-metastatic local recurrence",
+      TRUE ~ "Other"
+    )) %>% 
+    mutate(differential_group_sampletype_strict = 
+               factor(differential_group_sampletype_strict, 
+                     levels=c("Non-metastatic primary",
+                              "Primary (short follow up)",
+                              "Non-metastatic local recurrence",
+                              "Primary (metastasis present)",
+                              "Metastatic primary",
+                              "Local recurrence (metastasis present)",
+                              "Metastatic local recurrence",
+                              "Metastasis"))
+           )
 
   ############
   # Genotype #

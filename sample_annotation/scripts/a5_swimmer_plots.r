@@ -482,10 +482,10 @@ for (patient in names(plot_tables))
     xlab("Days") + ggtitle(patient)
 }
 
-all_plots <- Reduce(x=swimmer_plots, f="/")
-ggsave(plot = all_plots, filename = "./a5/sample_annotation/figures/swimmer_plots.pdf", 
-       width = 12, 
-       height = 
-         60,
-       units = "in",
-       limitsize = F)
+# all_plots <- Reduce(x=swimmer_plots, f="/")
+# ggsave(plot = all_plots, filename = "./a5/sample_annotation/figures/swimmer_plots.pdf", 
+#        width = 12, 
+#        height = 
+#          60,
+#        units = "in",
+#        limitsize = F)

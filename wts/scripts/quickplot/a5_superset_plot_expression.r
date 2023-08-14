@@ -12,7 +12,7 @@ source("./a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
 # Define genes of interest #
 ############################
 
-hgnc_symbols <- c("FOLH1")
+hgnc_symbols <- c("CDKN2B")
 #"ENSG00000086205"
 
 ##########################
@@ -83,7 +83,8 @@ exp <- a5_wts_lcpm_list[["SDHB"]][symbol_lookup[hgnc_symbols],,drop=F] %>%
                names_to = "A5_ID", 
                values_to = "log2_cpm") %>% 
   inner_join(a5_anno) %>% 
-  mutate(Primary_Location_Simplified=gsub("_left|_right","", Primary_Location_Simplified))
+  mutate(Primary_Location_Simplified=gsub("_left|_right","", Primary_Location_Simplified),
+         label=ifelse(A5_ID %in% c("E167-1","E167-2"), A5_ID, NA))
   
 
 
@@ -92,6 +93,7 @@ ggplot(exp %>% arrange(Primary_Location_Simplified, `Patient ID`), aes(x=Primary
   geom_boxplot(mapping=aes(group=NULL)) +
   geom_path(alpha=0.2, position=jp, linetype=2) +
   geom_point(mapping=aes(color=is_primary_or_met), position=jp) +
+  geom_text(mapping=aes(label=label), position=jp) +
   facet_wrap("hgnc_symbol") + 
   theme_bw() + 
   theme(axis.text.x = element_text(angle=90, vjust=0.5,hjust=1))

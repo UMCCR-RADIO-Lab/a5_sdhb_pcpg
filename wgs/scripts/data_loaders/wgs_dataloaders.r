@@ -88,7 +88,7 @@ data_loader_germline_variants <- function(threads = 1)
 snv_quickloadRDS <- "/g/data/pq08/projects/ppgl/a5/wgs/quickload_checkpoints/somatic_vcfs.rds"
 
 data_loader_somatic_variants <- function(somatic_vcf_dir=NULL, quickload=TRUE, 
-                                         blacklist="/g/data/pq08/projects/ppgl/a5/wgs/analysis/mpileup/blacklists/blacklist_readsupport_gteq3_samplesupport_gteq3.tsv")
+                                         blacklist="/g/data/pq08/projects/ppgl/a5/wgs/analysis/mpileup/blacklist/blacklists/blacklist_readsupport_gteq3_samplesupport_gteq3.tsv")
 {
  if(quickload==FALSE & is.null(somatic_vcf_dir)) {
    stop("You must provide a somatic VCF directory when quickload==FALSE")
@@ -157,23 +157,26 @@ data_loader_somatic_variants <- function(somatic_vcf_dir=NULL, quickload=TRUE,
   
   a5_somatic_variants <- bind_rows(a5_somatic_variants, missing_tert)
   
-  a5_somatic_variants_keep <- a5_somatic_variants %>% filter((grepl(keepregx.all,PCGR_CONSEQUENCE) & PCGR_SYMBOL != "TERT") | 
-                                                               (grepl(keepregx.special.atrx,PCGR_CONSEQUENCE) &  PCGR_SYMBOL == "ATRX") | 
-                                                               (grepl(keepregx.special.tert,PCGR_CONSEQUENCE) &  PCGR_SYMBOL == "TERT"))
-  
   if (!is.null(blacklist))
   {
+    message("Adding blacklist annotation...")
     blacklisted_variants <- read.delim(blacklist)
     a5_somatic_variants <- a5_somatic_variants %>% 
-      left_join(blacklisted_variants %>% 
+      left_join(blacklisted_variants %>% dplyr::select(-REF) %>% 
                   dplyr::rename("blacklist_n_normal_observed"=n_above_threshold) %>% 
                   mutate(blacklist=TRUE),
-                by = c("seqnames", "start", "end", "ALT"))
+                by = c("seqnames"="CHROM", "start"="POS", "ALT"))
     
     a5_somatic_variants$blacklist_n_normal_observed[is.na(a5_somatic_variants$blacklist_n_normal_observed)] <- 0
     a5_somatic_variants$blacklist[is.na(a5_somatic_variants$blacklist)] <- F
     
   }
+  
+  
+  a5_somatic_variants_keep <- a5_somatic_variants %>% filter((grepl(keepregx.all,PCGR_CONSEQUENCE) & PCGR_SYMBOL != "TERT") | 
+                                                               (grepl(keepregx.special.atrx,PCGR_CONSEQUENCE) &  PCGR_SYMBOL == "ATRX") | 
+                                                               (grepl(keepregx.special.tert,PCGR_CONSEQUENCE) &  PCGR_SYMBOL == "TERT"),
+                                                             blacklist == FALSE)
   
   a5_somatic_variants_keep_curated <- a5_somatic_variants_keep %>%  
     filter(PCGR_SYMBOL %in% shiva_curated_genes.variant)
@@ -215,12 +218,12 @@ data_loader_somatic_variants <- function(somatic_vcf_dir=NULL, quickload=TRUE,
   assign("a5_somatic_variants_keep_pcawg_brief", a5_somatic_variants_keep_pcawg_brief, envir = globalenv()) 
   assign("a5_somatic_variants_keep_curated", a5_somatic_variants_keep_curated, envir = globalenv()) 
   
-  message("Created objects", 
-          " a5_somatic_variants(all variants), ",
-          "a5_somatic_variants_keep (filtered for consequence), ",
-          "a5_somatic_variants_keep_curated (filtered for consequence and Shiva's curated list), ", 
-          "a5_somatic_variants_keep_pcawg (filtered for consequence and PCAWG CG list), ",
-          "a5_somatic_variants_keep_pcawg_brief (summarised version)")
+  message("Created objects:
+          - a5_somatic_variants(all variants), 
+          - a5_somatic_variants_keep (filtered for deleterious consequence and blacklist),
+          - a5_somatic_variants_keep_curated (filtered for consequence, blacklist, and Shiva's curated list),
+          - a5_somatic_variants_keep_pcawg (filtered for consequence, blacklist, and PCAWG CG list),
+          - a5_somatic_variants_keep_pcawg_brief (summarised version)")
   
 }
 

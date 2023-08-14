@@ -2,6 +2,8 @@ library(Seurat)
 library(ggplot2)
 library(patchwork)
 
+source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
+
 dev_off_safe <- function() { if(names(dev.cur()) != "null device") {dev.off()} }
 
 #Function to generate quality control plots and tables
@@ -561,9 +563,9 @@ data_loader_a5_snrna <- function(quickload=T,
   
   message("Completed A5 snRNA data loader.")
 }
+message("Created data loader function data_loader_a5_snrna()")
 
-
-snrna_annotate_cell_types <- function(snrna_object, output_qc, qc_out_dir)
+snrna_annotate_cell_types <- function(snrna_object, output_qc=FALSE, qc_out_dir=NULL)
 {
   
   ################
@@ -590,7 +592,9 @@ snrna_annotate_cell_types <- function(snrna_object, output_qc, qc_out_dir)
     dev.off()
   }
   
-  snrna_object <- RunUMAP(snrna_object, dims = 1:25)
+  seed = 42
+  set.seed(seed)
+  snrna_object <- RunUMAP(snrna_object, dims = 1:25, seed.use = seed)
   snrna_object <- FindNeighbors(snrna_object, dims = 1:25)
   snrna_object <- FindClusters(snrna_object, resolution = 1) 
   
@@ -687,8 +691,8 @@ snrna_annotate_cell_types <- function(snrna_object, output_qc, qc_out_dir)
     "Tumor", #9
     "Tumor", #10
     "Chromaffin cells", #11 
-    "Myeloid cells", #13
-    "Adrenocortical cells", #12
+    "Myeloid cells", #12
+    "Adrenocortical cells", #13
     "Tumor", #14
     "SCLCs", #15
     "Endothelial cells",#16
@@ -709,7 +713,7 @@ snrna_annotate_cell_types <- function(snrna_object, output_qc, qc_out_dir)
   snrna_object <- RenameIdents(object = snrna_object, new.cluster.ids)
   snrna_object$cell_type <- Idents(snrna_object)
   
-  if(ouput_qc){
+  if(output_qc){
     # clusters labelled according to scMatch results and these marker genes
     
     marker_genes_dp <- DotPlot(

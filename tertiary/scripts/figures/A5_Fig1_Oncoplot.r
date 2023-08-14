@@ -13,8 +13,8 @@ source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_
 data_loader_a5_clinical_anno(google_account = "aidan.flynn@umccr-radio-lab.page", use_cache = T)
 
 source("/g/data/pq08/projects/ppgl/a5/wgs/scripts/data_loaders/wgs_dataloaders.r")
-data_loader_somatic_variants(somatic_vcf_dir = "/g/data/pq08/projects/ppgl/a5/wgs/symlinks/somatic_vcf/")
-data_loader_germline_variants()
+data_loader_somatic_variants(quickload = T)
+# data_loader_germline_variants()
 data_loader_gene_cn()
 data_loader_cna_segs()
 
@@ -23,7 +23,7 @@ data_loader_a5_wts_counts(count_file_dir = "/g/data/pq08/projects/ppgl/a5/wts/an
                           count_file_pattern = ".gene.counts")
 data_loader_arriba(arriba_out_dir = "/g/data/pq08/projects/ppgl/a5/wts/analysis/arriba/truseq/")
 
-wts_log_cpm <- edgeR::cpm(a5_wts_dge_list$All, log=T) %>% 
+wts_log_cpm <- edgeR::cpm(a5_wts_dge_list$qc_ok, log=T) %>% 
   data.frame(check.names = F) %>% 
   tibble::rownames_to_column("ensgid_symbol") %>% 
   separate(ensgid_symbol, into=c("ensgid","symbol"), sep="_", extra = "merge") %>% 
@@ -39,43 +39,77 @@ wts_log_cpm <- edgeR::cpm(a5_wts_dge_list$All, log=T) %>%
 # Themes #
 ##########
 
-ColorPalette <- c(LightBlue1="#cadae8ff",LightBlue2="#abc4e2ff",LightBlue3="#8aa9d6ff",
-DarkBlue1="#7884baff",DarkBlue2="#606d9fff",DarkBlue3="#4c5a88ff",
-Purple1="#765b92ff",Purple2="#9370a5ff",Purple3="#b280a9ff",Purple4="#cc85b1ff",
-LightRed1="#ee7474ff",LightRed2="#e2696aff",LightRed3="#de5353ff",
-DarkRed1="#c25858ff",DarkRed2="#c04241ff",DarkOrange1="#c65a44ff",
-DarkOrange2="#eb7b54ff",LightOrange1="#f18d73ff",LightOrange2="#f5a697ff",
-LightBrown1="#f5b9b0ff",LightBrown2="#d6a097ff",DarkBrown1="#c17963ff",DarkBrown2="#96665aff",
-DarkGreen1="#637b62ff",DarkGreen2="#6ea668ff",LightGreen1="#98ca8cff",LightGreen2="#e2eab5ff",
-Yellow1="#fbf2adff",Yellow2="#fef8c6ff",Yellow3="#f4e764ff",Salmon="#f2c5a7ff",LightSalmon="#f2dec4ff",
-LemonGrey1="#f7f0e2ff",LemonWhite1="#fefbe5ff",LemonWhite2="#f7f4dcff",LemonGrey2="#efecdcff",
-LightGrey1="#e2e0d9ff",LightGrey2="#d6d6d4ff",DarkGrey1="#b4b4b4ff",DarkGrey2="#9a9999ff")
-
 nox <-  theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
 nogrid <- theme(panel.grid = element_blank()) 
 noxgrid <- theme(panel.grid.major.x = element_blank(), panel.grid.minor.x = element_blank())
 noygrid <- theme(panel.grid.major.y = element_blank(), panel.grid.minor.y = element_blank())
 
+no_margin <- theme(plot.margin = margin(0,6,0,6))
+shrink_legend <- theme(legend.key.size = unit(0.5,"cm"), legend.position = "top")
+
+##########
+# Colors #
+##########
+
+source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
+location_cols[["Extraadrenal (abdominal/thoracic)"]] <-  location_cols[["Extraadrenal"]]
+location_cols[["Extraadrenal (aortic)"]] <-  location_cols[["Extraadrenal_aortic"]]
+location_cols[["Extraadrenal (bladder)"]] <-  location_cols[["Extraadrenal_bladder"]]
 
 ###################
 # Sample Ordering #
 ###################
 
-
-a5_anno.use <- a5_anno %>% filter(Exclude != "Y")
+a5_anno.use <- a5_anno %>% filter(Exclude != "Y") %>% 
+  filter(!(A5_ID %in% c("E124-1", "E145-1"))) 
 
 a5_anno.use$is_primary_or_met <- factor(as.character(a5_anno.use$is_primary_or_met), levels=c("Primary","Recurrent","Metastasis"))
 a5_anno.use$tumour_metastasised <- factor(as.character(a5_anno.use$tumour_metastasised), levels=c("Yes","No", "Short follow up", "No Data"))
 a5_anno.use$`Patient ID` <- factor(as.character(a5_anno.use$`Patient ID`), 
-                            levels=unique(as.character(a5_anno.use$`Patient ID`))[order(as.numeric(gsub("E","",unique(as.character(a5_anno.use$`Patient ID`)))))])
+                                   levels=unique(as.character(a5_anno.use$`Patient ID`))[order(as.numeric(gsub("E","",unique(as.character(a5_anno.use$`Patient ID`)))))])
 a5_anno.use$TERT_ATRX_Mutation <- factor(as.character(a5_anno.use$TERT_ATRX_Mutation), levels=c("TERT","ATRX", "Unknown"))
 # a5_anno.use$A5_ID <- factor(as.character(a5_anno.use$A5_ID), 
 #                      levels=unique(as.character(a5_anno.use$`A5_ID`))[order(as.numeric(gsub("E([0-9]{3})-([0-4])","\\1",unique(as.character(a5_anno.use$`A5_ID`)))),
 #                                                                      as.numeric(gsub("E([0-9]{3})-([0-4])","\\2",unique(as.character(a5_anno.use$`A5_ID`)))))])
 
-a5_anno.use <- a5_anno.use %>% arrange(desc(`is_head_and_neck`), tumour_metastasised, TERT_ATRX_Mutation, `Patient ID`, is_primary_or_met)
+a5_anno.use <- a5_anno.use %>% 
+  mutate(Primary_Location_Simplified=dplyr::recode(Primary_Location_Simplified,
+                                                   "Extraadrenal_abdominal"="Extraadrenal (abdominal/thoracic)",
+                                                   "Extraadrenal_thoracic"="Extraadrenal (abdominal/thoracic)",
+                                                   "Extraadrenal_thoracic_cardiac"="Extraadrenal (abdominal/thoracic)",
+                                                   "Extraadrenal_bladder"="Extraadrenal (bladder)",
+                                                   "Extraadrenal_thoracic_aortic"="Extraadrenal (aortic)",
+                                                   "Adrenal_left"="Adrenal",
+                                                   "Adrenal_right"="Adrenal",
+                                                   "Head_neck"="Head and neck"),
+         Primary_Location_Simplified=factor(Primary_Location_Simplified,
+                                            levels=c("Extraadrenal (abdominal/thoracic)",
+                                                     "Extraadrenal (bladder)",
+                                                     "Adrenal",
+                                                     "Unspecified",
+                                                     "Extraadrenal (aortic)",
+                                                     "Head and neck")))
+
+a5_anno.use <- a5_anno.use %>% group_by(`Patient ID`) %>% 
+  mutate(max_clinical=case_when(any(differential_group_sampletype_strict=="Metastasis") ~ "Metastasis",
+                                any(differential_group_sampletype_strict=="Metastatic primary") ~ "Metastatic primary",
+                                any(differential_group_sampletype_strict=="Metastatic local recurrence") ~ "Metastatic local recurrence",
+                                any(differential_group_sampletype_strict=="Primary (metastasis present)") ~ "Primary (metastasis present)",
+                                any(differential_group_sampletype_strict=="Local recurrence (metastasis present)") ~ "Local recurrence (metastasis present)",
+                                any(differential_group_sampletype_strict=="Non-metastatic local recurrence") ~ "Non-metastatic local recurrence",
+                                any(differential_group_sampletype_strict=="Primary (short follow up)") ~ "Primary (short follow up)",
+                                any(differential_group_sampletype_strict=="Non-metastatic primary") ~ "Non-metastatic primary"),
+         max_clinical=factor(max_clinical, levels=c("Metastasis",
+                                                    "Metastatic primary",
+                                                    "Metastatic local recurrence",
+                                                    "Local recurrence (metastasis present)",
+                                                    "Primary (metastasis present)",
+                                                    "Non-metastatic local recurrence",
+                                                    "Non-metastatic primary"))) %>% 
+  arrange(desc(is_head_and_neck), max_clinical, `Patient ID`, differential_group_sampletype_strict)
 SampleOrder.A5_ID <- as.character(a5_anno.use$A5_ID)
 a5_anno.use$A5_ID <- factor(as.character(a5_anno.use$A5_ID), levels = SampleOrder.A5_ID)
+
 
 ##############
 ##############
@@ -88,22 +122,21 @@ a5_anno.use$A5_ID <- factor(as.character(a5_anno.use$A5_ID), levels = SampleOrde
 # Disease Course #
 ##################
 
-plot.data.metastasis <- a5_anno.use %>% dplyr::select(A5_ID, `Patient ID`, tumour_metastasised)
-
-
-ggDiseaseCourse <- ggplot() + 
-  geom_tile(data=plot.data.metastasis, mapping=aes(x=A5_ID, y="Disease Course", fill=tumour_metastasised), width=0.8,height=0.8) +
-  scale_fill_manual(values=c(ColorPalette[["DarkGreen1"]],ColorPalette[["LightGreen1"]],ColorPalette[["LemonGrey1"]],ColorPalette[["LightGrey1"]])) +
-  scale_x_discrete(drop=F) +
-  theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank())
+# plot.data.metastasis <- a5_anno.use %>% dplyr::select(A5_ID, `Patient ID`, tumour_metastasised)
+# 
+# 
+# ggDiseaseCourse <- ggplot() + 
+#   geom_tile(data=plot.data.metastasis, mapping=aes(x=A5_ID, y="Disease Course", fill=tumour_metastasised), width=0.8,height=0.8) +
+#   scale_fill_manual(values=c(ColorPalette[["DarkGreen1"]],ColorPalette[["LightGreen1"]],ColorPalette[["LemonGrey1"]],ColorPalette[["LightGrey1"]])) +
+#   scale_x_discrete(drop=F) +
+#   theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank())
 
 ###############
 # Sample Type #
 ###############
 
-plot.data.sampletype <- a5_anno.use %>% dplyr::select(A5_ID, `Patient ID`, is_primary_or_met) %>% 
-  mutate(SpecimenType=gsub("Metastasis|Recurrent","Recurrent/Metastatic",is_primary_or_met))
-plot.data.linker <- plot.data.sampletype %>% group_by(`Patient ID`) %>% mutate(membercount=n(), idx=as.numeric(A5_ID)) %>%  filter(membercount>1) %>%  group_by(`Patient ID`) %>%  dplyr::slice(which(row_number()==1 | row_number()==n()))
+plot.data.sampletype <- a5_anno.use %>% dplyr::select(A5_ID, `Patient ID`, differential_group_sampletype_strict)
+#plot.data.linker <- plot.data.sampletype %>% group_by(`Patient ID`) %>% mutate(membercount=n(), idx=as.numeric(A5_ID)) %>%  filter(membercount>1) %>%  group_by(`Patient ID`) %>%  dplyr::slice(which(row_number()==1 | row_number()==n()))
 
 plot.data.sampletype <- 
   plot.data.sampletype %>% 
@@ -111,27 +144,35 @@ plot.data.sampletype <-
               group_by(`Patient ID`) %>% 
               filter(n() >1) %>% 
               group_by(`Patient ID`) %>%  
-              mutate(group=group_indices()))
+              mutate(group=cur_group_id()))
 
 ggSampleType <- ggplot() + 
-  geom_tile(data=plot.data.sampletype, mapping=aes(x=A5_ID, y="Specimen Type", fill=is_primary_or_met), width=0.8,height=0.8) +
-  #geom_line(data=plot.data.linker, mapping = aes(x=A5_ID, group=`Patient ID`, y="Specimen Type"), size=0.8) +
+  geom_tile(data=plot.data.sampletype, mapping=aes(x=A5_ID, y="Specimen Type", fill=differential_group_sampletype_strict), width=0.8,height=0.8) +
+  geom_line(data=plot.data.sampletype %>% filter(!is.na(group)), mapping = aes(x=A5_ID, group=`Patient ID`, y="Specimen Type"), linewidth=0.8) +
+  geom_point(data=plot.data.sampletype %>% filter(!is.na(group)), mapping = aes(x=A5_ID, y="Specimen Type"), size=1.2) +
   #geom_point(data=plot.data.linker, mapping = aes(x=A5_ID, y="Specimen Type"), size=1.2) +
-  geom_point(data=plot.data.sampletype, mapping = aes(x=A5_ID, y="Specimen Type", shape=group), size=1.2) +
-  scale_fill_manual(values=c(ColorPalette[["LightBlue2"]],ColorPalette[["LightOrange2"]],ColorPalette[["LightRed1"]])) +
+  #geom_point(data=plot.data.sampletype, mapping = aes(x=A5_ID, y="Specimen Type", shape=group), size=1.2) +
+  #scale_fill_manual(values=c(ColorPalette[["LightBlue2"]],ColorPalette[["LightOrange2"]],ColorPalette[["LightRed1"]])) +
   scale_shape_identity() + 
   scale_x_discrete(drop=F) +
+  scale_fill_manual(name = "Clinical Course", values =sampletype_strict_cols) +
+  # scale_fill_manual(
+  #   name = "Clinical Course",
+  #   values = c("#6ea668", "#6ea6cc", "#d6d6d4", "#f18d73", "#ee7474ff", "#969696", "#c04241ff"),
+  #   labels = c("Non-metastatic primary", "Primary (short follow up)", "Non-metastatic local recurrence",
+  #              "Primary (metastasis present)", "Metastatic primary","Metastatic local recurrence","Metastasis")
+  # ) + 
   theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank())
 
-ggSampleType.boring <- ggplot() + 
-  geom_tile(data=plot.data.sampletype, mapping=aes(x=A5_ID, y="Specimen Type", fill=SpecimenType), width=0.8,height=0.8) +
-  #geom_line(data=plot.data.linker, mapping = aes(x=A5_ID, group=`Patient ID`, y="Specimen Type"), size=0.8) +
-  #geom_point(data=plot.data.linker, mapping = aes(x=A5_ID, y="Specimen Type"), size=1.2) +
-  geom_point(data=plot.data.sampletype, mapping = aes(x=A5_ID, y="Specimen Type", shape=group), size=1.2) +
-  scale_fill_manual(values=c(ColorPalette[["LightGrey1"]],ColorPalette[["DarkGrey2"]])) +
-  scale_shape_identity() + 
-  scale_x_discrete(drop=F) +
-  theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank())
+# ggSampleType.boring <- ggplot() + 
+#   geom_tile(data=plot.data.sampletype, mapping=aes(x=A5_ID, y="Specimen Type", fill=differential_group_sampletype_strict), width=0.8,height=0.8) +
+#   #geom_line(data=plot.data.linker, mapping = aes(x=A5_ID, group=`Patient ID`, y="Specimen Type"), size=0.8) +
+#   #geom_point(data=plot.data.linker, mapping = aes(x=A5_ID, y="Specimen Type"), size=1.2) +
+#   geom_point(data=plot.data.sampletype, mapping = aes(x=A5_ID, y="Specimen Type", shape=group), size=1.2) +
+#   scale_fill_manual(values=c(ColorPalette[["LightGrey1"]],ColorPalette[["DarkGrey2"]])) +
+#   scale_shape_identity() + 
+#   scale_x_discrete(drop=F) +
+#   theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank())
 
 ###############
 # Tumour Size #
@@ -153,38 +194,54 @@ ggSize.boring <- ggplot() +
   scale_x_discrete(drop=F) +
   scale_fill_manual(values=as.character(c(ColorPalette[["DarkGrey1"]],"black", ColorPalette[["LightGrey1"]])))
 
+
+############
+# Location #
+############
+
+plot.data.location <- a5_anno.use %>% dplyr::select(A5_ID, `Patient ID`, Primary_Location_Simplified) 
+
+
+ggLocation <- ggplot() + 
+  geom_tile(data=plot.data.location, mapping=aes(x=A5_ID, y="Tumour Location", fill=Primary_Location_Simplified), width=0.8,height=0.8) +
+  theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank()) + labs(fill="Tumour Location") +
+  scale_x_discrete(drop=F) +
+  scale_fill_manual(
+    name = "Anatomical Location (Primary)",
+    values = location_cols)  
+
 ##################
 # Head And Neck  #
 ##################
-
-plot.data.handn <- a5_anno.use %>% dplyr::select(A5_ID, `Patient ID`, Primary_Location_Simplified) %>%  
-  mutate(TumourLocation=case_when(
-    Primary_Location_Simplified=="Head_neck" ~ "Head and Neck PGL",  
-    Primary_Location_Simplified=="Extraadrenal_thoracic_cardiac" ~ "Cardiac PGL",  
-    Primary_Location_Simplified=="Unspecified" ~ "No Data",  
-    TRUE ~ "PCC/PGL"))
-plot.data.handn$TumourLocation <- factor(plot.data.handn$TumourLocation, 
-                                         levels = c("PCC/PGL", "Head and Neck PGL", 
-                                                    "Cardiac PGL", "No Data"))
-
-
-ggHandN <- ggplot() + 
-  geom_tile(data=plot.data.handn, mapping=aes(x=A5_ID, y="Tumour Location", fill=TumourLocation), width=0.8,height=0.8) +
-  theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank()) + labs(fill="Tumour Location") +
-  scale_x_discrete(drop=F) +
-  scale_fill_manual(values=as.character(c("PCC/PGL"=ColorPalette[["LightBrown2"]], 
-                                          "Head and Neck PGL"=ColorPalette[["DarkBrown2"]],
-                                          "Cardiac PGL"=ColorPalette[["DarkBrown1"]],
-                                          "No Data"=ColorPalette[["DarkGrey2"]])))
-
-ggHandN.boring <- ggplot() + 
-  geom_tile(data=plot.data.handn, mapping=aes(x=A5_ID, y="Tumour Location", fill=TumourLocation), width=0.8,height=0.8) +
-  theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank()) + labs(fill="Tumour Location") +
-  scale_x_discrete(drop=F) +
-  scale_fill_manual(values=as.character(c("PCC/PGL"=ColorPalette[["DarkGrey2"]], 
-                                          "Head and Neck PGL"=ColorPalette[["LightGrey1"]],
-                                          "Cardiac PGL"="black",
-                                          "No Data"=ColorPalette[["LemonWhite2"]])))
+# 
+# plot.data.handn <- a5_anno.use %>% dplyr::select(A5_ID, `Patient ID`, Primary_Location_Simplified) %>%  
+#   mutate(TumourLocation=case_when(
+#     Primary_Location_Simplified=="Head_neck" ~ "Head and Neck PGL",  
+#     Primary_Location_Simplified=="Extraadrenal_thoracic_aortic" ~ "Aortic PGL",  
+#     Primary_Location_Simplified=="Unspecified" ~ "No Data",  
+#     TRUE ~ "PCC/PGL"))
+# plot.data.handn$TumourLocation <- factor(plot.data.handn$TumourLocation, 
+#                                          levels = c("PCC/PGL", "Head and Neck PGL", 
+#                                                     "Aortic PGL", "No Data"))
+# 
+# 
+# ggHandN <- ggplot() + 
+#   geom_tile(data=plot.data.handn, mapping=aes(x=A5_ID, y="Tumour Location", fill=TumourLocation), width=0.8,height=0.8) +
+#   theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank()) + labs(fill="Tumour Location") +
+#   scale_x_discrete(drop=F) +
+#   scale_fill_manual(values=as.character(c("PCC/PGL"=ColorPalette[["LightBrown2"]], 
+#                                           "Head and Neck PGL"=ColorPalette[["DarkBrown2"]],
+#                                           "Aortic PGL"=ColorPalette[["DarkBrown1"]],
+#                                           "No Data"=ColorPalette[["DarkGrey2"]])))
+# 
+# ggHandN.boring <- ggplot() + 
+#   geom_tile(data=plot.data.handn, mapping=aes(x=A5_ID, y="Tumour Location", fill=TumourLocation), width=0.8,height=0.8) +
+#   theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank()) + labs(fill="Tumour Location") +
+#   scale_x_discrete(drop=F) +
+#   scale_fill_manual(values=as.character(c("PCC/PGL"=ColorPalette[["DarkGrey2"]], 
+#                                           "Head and Neck PGL"=ColorPalette[["LightGrey1"]],
+#                                           "Aortic PGL"="black",
+#                                           "No Data"=ColorPalette[["LemonWhite2"]])))
 
 #########################
 # Catecholamine profile #
@@ -192,13 +249,13 @@ ggHandN.boring <- ggplot() +
 
 plot.data.catecholamine <- a5_anno.use %>% dplyr::select(A5_ID, `Patient ID`, `Catecholamine_profile`) %>% 
   mutate(`Catecholamine_profile`=case_when(
-    grepl("Multiple.+", `Catecholamine_profile`) ~"Mixed",
+    grepl("Multiple.+| and ", `Catecholamine_profile`) ~"Mixed",
     `Catecholamine_profile`=="Non secreting" ~ "Non-secreting",
-    `Catecholamine_profile`=="Noradrenaline*" ~ "Noradrenaline",
+    `Catecholamine_profile`=="Norepinephrine*" ~ "Norepinephrine",
     TRUE ~ `Catecholamine_profile`)) %>% 
   mutate(`Catecholamine_profile`=factor(as.character(`Catecholamine_profile`), 
-                                           levels=c("Noradrenaline", "Adrenaline", "Dopamine", "Mixed", "Non-secreting", "Not Available"))) %>% 
-  mutate(code=forcats::fct_recode(`Catecholamine_profile`, N="Noradrenaline", A="Adrenaline", D="Dopamine", M="Mixed", "*"="Non-secreting"))
+                                        levels=c("Norepinephrine", "Epinephrine", "Dopamine", "Mixed", "Non-secreting", "No data"))) %>% 
+  mutate(code=forcats::fct_recode(`Catecholamine_profile`, N="Norepinephrine", E="Epinephrine", D="Dopamine", M="Mixed", "*"="Non-secreting"))
 
 ##Colored Tiles
 ggCatecholamine.color <- ggplot() + 
@@ -213,7 +270,7 @@ ggCatecholamine.color <- ggplot() +
 ##Text
 ggCatecholamine.text <- ggplot() + 
   geom_tile(data=plot.data.catecholamine, mapping=aes(x=A5_ID, y="Catecholamines"), fill=ColorPalette["LightGrey2"], width=0.8,height=0.8) +
-  geom_text(data=plot.data.catecholamine %>% filter(`Catecholamine_profile` != "Not Available"), mapping=aes(x=A5_ID, y="Catecholamines", label=code), size=3)  +
+  geom_text(data=plot.data.catecholamine %>% filter(`Catecholamine_profile` != "No data"), mapping=aes(x=A5_ID, y="Catecholamines", label=code), size=3)  +
   scale_x_discrete(drop=F) +
   theme_bw() + 
   theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank()) + labs(fill="Catecholamines") 
@@ -252,6 +309,14 @@ ggTMB.cutoff <- ggplot() +
   scale_x_discrete(drop=F) +
   theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1)) + ylab("TMB")
 
+##Heatmap
+ggTMB.heatmap <- ggplot() + 
+  geom_tile(data=plot.data.tmb, mapping=aes(x=A5_ID, y="TMB", fill=wgs_tmb)) +
+  scale_x_discrete(drop=F) +
+  scale_fill_gradient(low="white", high="blue", limits=c(0,5), na.value="red") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1))
+
 ############
 # SV count #
 ############
@@ -273,6 +338,14 @@ ggSV.cutoff <- ggplot() +
   scale_x_discrete(drop=F) +
   theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1)) + ylab("nSV")
 
+##Heatmap
+ggSV.heatmap <- ggplot() + 
+  geom_tile(data=plot.data.sv, mapping=aes(x=A5_ID, y="nSV", fill=structural_variant_count)) +
+  scale_x_discrete(drop=F) +
+  scale_fill_gradientn(colours = c("white", "blue", "green", "orange", "red"), values = c(0,0.05,0.1,0.5,1)) +
+  #scale_fill_gradient(low="white", high="blue", limits=c(0,100), na.value="red") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1))
 
 ###################
 # Telomere Length #
@@ -335,9 +408,9 @@ plot.data.chromothripsis <- a5_anno.use %>% dplyr::select(A5_ID, `Patient ID`, `
          `chromothriptic_event`=gsub("chr|p|q","",`chromothriptic_event`),
          `chromothriptic_event`=gsub("[(}]Exchange[)]","",`chromothriptic_event`),
          `chromothriptic_event`=gsub("[&]","\n",`chromothriptic_event`),
-    dummy=T)  
+         dummy=T)  
 
-#Heat Map
+
 ggChromothripsis <- ggplot(data=plot.data.chromothripsis, mapping=aes(x=A5_ID, y="Chromothripsis", fill=dummy, label=`chromothriptic_event`)) + 
   geom_tile(width=0.8, height=0.8, color=as.character(ColorPalette[["LightGrey1"]])) +
   geom_text( size=1.5) +
@@ -350,29 +423,33 @@ ggChromothripsis <- ggplot(data=plot.data.chromothripsis, mapping=aes(x=A5_ID, y
 ############
 # FEATURES #
 ############
-offline = T 
+offline = F 
 if(offline) { 
   features <- read.delim("/g/data/pq08/projects/ppgl/a5/offline_cache/sample_features.tsv")
 } else {
-feature_sheet <- as_sheets_id("1IOczHu91crprHvjxTKDRpqLfpeuYLaGwNXZVsWmXIKY")
-gs4_auth("aidan.flynn@umccr-radio-lab.page")
-features <- read_sheet(ss = feature_sheet,sheet = "SampleFeatures", col_types = "c")
+  feature_sheet <- as_sheets_id("1IOczHu91crprHvjxTKDRpqLfpeuYLaGwNXZVsWmXIKY")
+  gs4_auth("aidan.flynn@umccr-radio-lab.page")
+  features <- read_sheet(ss = feature_sheet,sheet = "SampleFeatures", col_types = "c")
 }
 
-keep_genes <- features  %>% 
-  filter(A5_ID != "E167-1", Include) %>% 
-  mutate(patient_id = gsub("-.","", A5_ID)) %>% 
-  dplyr::select(-A5_ID) %>% 
+keep_genes <- a5_somatic_variants_keep_curated %>% 
+  ungroup() %>%  
+  filter(A5_ID != "E167-1") %>% 
+  left_join(a5_anno %>% dplyr::select(A5_ID,`Patient ID`)) %>% 
+  dplyr::select(`Patient ID`, PCGR_SYMBOL) %>% 
   distinct() %>% 
-  group_by(Gene) %>% 
+  group_by(PCGR_SYMBOL) %>% 
   dplyr::count() %>% 
   filter(n>1) %>% 
-  pull(Gene)
+  arrange(desc(n)) %>%
+  pull(PCGR_SYMBOL)
 
-keep_genes <- unique(c(keep_genes,"VHL", "NF1", "EPAS1", "CDKN2A"))
+#keep_genes <- unique(c(keep_genes,"VHL"))
+
 
 features <- features %>%  filter(as.logical(Include), A5_ID %in% SampleOrder.A5_ID, Gene %in% keep_genes)
-features$Gene <- factor(as.character(features$Gene), features %>% group_by(Gene) %>% dplyr::count() %>% arrange(n) %>% pull(Gene))
+features$Gene <- factor(as.character(features$Gene), rev(keep_genes))
+#features$Gene <- factor(as.character(features$Gene), features %>% group_by(Gene) %>% dplyr::count() %>% arrange(n) %>% pull(Gene))
 features$Event <- factor(as.character(features$Event), levels = c("Missense", "Stop Gained", "Stop Lost", "Frameshift", "In-frame Deletion", "Promotor Mutation", "Structural Variant",
                                                                   "Splice Acceptor", "Splice Donor", "Splice Region", "Homozyg. Del."))
 features$A5_ID <- factor(as.character(features$A5_ID), levels = SampleOrder.A5_ID)
@@ -382,11 +459,11 @@ ggFeatures <- ggplot() +
   theme_bw() + 
   theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_line(colour = "#f7f7f7ff")) + 
   scale_fill_manual(values = c(Missense=ColorPalette[["DarkBlue1"]], `Stop Gained`=ColorPalette[["DarkRed1"]],
-                                `Stop Lost`=ColorPalette[["DarkOrange2"]], Frameshift=ColorPalette[["LightBrown2"]], `Promotor Mutation`=ColorPalette[["Purple3"]],  
-                                 `Structural Variant`=ColorPalette[["LightGreen1"]], 
-                                `Splice Acceptor`=ColorPalette[["DarkGrey2"]], `Splice Donor`=ColorPalette[["DarkGrey1"]], 
+                               `Stop Lost`=ColorPalette[["DarkOrange2"]], Frameshift=ColorPalette[["LightBrown2"]], `Promotor Mutation`=ColorPalette[["Purple3"]],  
+                               `Structural Variant`=ColorPalette[["LightGreen1"]], 
+                               `Splice Acceptor`=ColorPalette[["DarkGrey2"]], `Splice Donor`=ColorPalette[["DarkGrey1"]], 
                                `Splice Region`=ColorPalette[["LightGrey1"]], `Homozyg. Del.`=ColorPalette[["DarkGreen1"]],
-                                `In-frame Deletion`=ColorPalette[["DarkBrown1"]])) +
+                               `In-frame Deletion`=ColorPalette[["DarkBrown1"]])) +
   #scale_alpha_manual(values = c(1,0.4)) +
   scale_x_discrete(drop=F) +
   labs(fill="Mutation Type") 
@@ -415,8 +492,6 @@ ggFeatures.TERTATRX <- ggplot() +
 MarkerGenes <- c("SLC18A1","ARG2","CHGB","CHGA","TRIB3","DBH","DDC","LEF1","CARTPT","SLC18A2","TH","PENK","ALK","ASCL1","ATF3","CDH9","ERBB4","FOS","GATA3","HAND2","ISL1","JUN","JUNB","NPY","NTRK3","PHOX2A","PHOX2B","PNMT","RET","SLC6A2","SOX11","TFAP2B")
 TERT_OverExpr_Genes <- c("FAM83D","ESPL1","UBE2C","KIF18B","DLGAP5","TOP2A","CDCA2","HJURP","AURKB","BIRC5","MKI67","CENPF","NEK2")
 
-
-
 plot.data.markerexp <- wts_log_cpm %>% filter(symbol %in% MarkerGenes)
 plot.data.markerexp <- crossing(A5_ID=SampleOrder.A5_ID, symbol=MarkerGenes) %>%  left_join(plot.data.markerexp)  
 plot.data.markerexp <- plot.data.markerexp %>%  mutate(zExpClamped=case_when(
@@ -444,24 +519,6 @@ ggMarker.exp.clamped <- ggplot() +
   scale_x_discrete(drop=F) +
   scale_fill_gradient2(low = ColorPalette["DarkBlue1"], mid = "white",high = ColorPalette["DarkRed1"], midpoint = 0, na.value = "grey") 
 
-#HERE
-ggHandN + nox + no_margin + shrink_legend + ylab("") + xlab("") +
-  ggDiseaseCourse + nox + no_margin + shrink_legend + ylab("") + xlab("") +
-  ggSampleType.boring + nox + no_margin + shrink_legend + ylab("") + xlab("") +
-  ggFeatures.TERTATRX + nox + no_margin + shrink_legend + ylab("") + 
-  ggTERTCN + nox + no_margin + shrink_legend + ylab("") + 
-  ggTERTATRXExp + nox + no_margin + shrink_legend + ylab("") + xlab("") +
-  ggTelomere.heat + nox +  no_margin + shrink_legend + ylab("") + xlab("") +
-  ggMarker.exp.clamped + shrink_legend +  
-  plot_layout(ncol = 1, heights = c(1, #ggHandN
-                                          1, #ggDiseaseCourse
-                                          1, #ggSampleType
-                                          2, #ggFeatures
-                                          1, #ggTERTCN
-                                          2, #ggTERTATRX.exp
-                                          1, #ggTelomere
-                                          10
-                                     ), guides = "collect")
 
 #################
 # TERT/ATRX Exp #
@@ -492,13 +549,13 @@ ggTERTCN <- ggplot() +
   geom_tile(data=plot.data.tertcn, mapping=aes(x=A5_ID, y="TERT CN", fill=TERT_max_CN), width=0.8,height=0.8) +
   scale_x_discrete(drop=F) +
   scale_fill_manual(values=as.character(c(ColorPalette["LightBlue1"], ColorPalette["DarkBlue1"], 
-                             ColorPalette["Purple1"],ColorPalette["Purple3"],
-                             ColorPalette["DarkRed1"])),
+                                          ColorPalette["Purple1"],ColorPalette["Purple3"],
+                                          ColorPalette["DarkRed1"])),
                     guide = guide_legend(direction = "horizontal", title.position = "right",
-                     label.position="bottom", label.hjust = 0.5, label.vjust = 0.5)) +
-theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank()) + 
+                                         label.position="bottom", label.hjust = 0.5, label.vjust = 0.5)) +
+  theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank()) + 
   labs(fill="TERT Max. CN") 
-  
+
 
 
 
@@ -519,7 +576,7 @@ plot.data.ki67stain <- a5_anno.use %>% dplyr::select(A5_ID, `Patient ID`, Ki67_S
            Ki67_Staining_numeric>=3 ~ ">3%",
            Ki67_Staining_numeric<3 ~ "<3%",
            TRUE ~ "No Data"))
-  
+
 
 #numeric
 ggKi67stain.numeric <- ggplot() + 
@@ -592,8 +649,8 @@ ggchr1ploss <- ggplot() +
   theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank()) + labs(fill="Chr1p36.13 Loss") +
   scale_x_discrete(drop=F) +
   scale_fill_manual(values = c("Loss"=ColorPalette[["LightRed2"]],  
-                                "CNLOH"=ColorPalette[["Purple3"]], 
-                                "Diploid"=ColorPalette[["LightGreen1"]]))
+                               "CNLOH"=ColorPalette[["Purple3"]], 
+                               "Diploid"=ColorPalette[["LightGreen1"]]))
 
 ggchr1ploss.boring <- ggplot() + 
   geom_tile(data=plot.data.chr1ploss, mapping=aes(x=A5_ID, y="Chr1p36.13 Loss", fill=Chr1p36.13_Loss), width=0.8,height=0.8) +
@@ -619,7 +676,7 @@ ggPurity.col <-  ggplot() +
   geom_col(data=plot.data.purity, mapping=aes(x=A5_ID, y=Tumour_Purity), width=0.8) +
   theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank()) + labs(fill="Tumour_Purity") +
   scale_x_discrete(drop=F) + coord_cartesian(ylim=c(0,1)) + scale_y_continuous(labels = c("0","","","","1"))
-  
+
 #STAR Expression
 plot.data.star <- a5_anno.use %>% dplyr::select(A5_ID, `Patient ID`, STAR_log2cpm) %>% 
   dplyr::mutate(STAR_log2cpm=as.numeric(STAR_log2cpm)) 
@@ -632,82 +689,267 @@ ggStar <-  ggplot() +
 
 
 ##Genotypes
-plot.data.genotype <- a5_anno.use %>% dplyr::select(A5_ID, `Patient ID`, `germline_SDHB_mutation`, `germline_SDHB_protein_change`) %>% 
-  dplyr::mutate(`Germline_SDHB_mutation`=case_when(
-    `germline_SDHB_mutation` %in% c("c.418G>T","c.136C>T","c.268C>T","c.380T>G","c.137G>A") ~`germline_SDHB_mutation`,
-    grepl("c.[0-9]+[ATCG]>[ATCG]", `germline_SDHB_mutation`) ~ "Other Misense",
-    grepl("c.[0-9]+[+][0-9]",`germline_SDHB_mutation`) ~ "Splice",
-    grepl("[Dd]el",`germline_SDHB_mutation`)  ~ "Deletion"
-  )) %>% 
-dplyr::mutate(`protein change`=case_when(
-  `germline_SDHB_protein_change` %in% c("p.Val140Phe","p.Arg46*","p.Arg90*","p.Arg46Gln","p.Ile127Ser") ~`germline_SDHB_protein_change`,
-  grepl("p.[A-Za-z]{3}[0-9]+[A-Za-z]{3}", `germline_SDHB_protein_change`) ~ "Other misense",
-  grepl("p.[A-Za-z]{3}[0-9]+(fs)?[*]", `germline_SDHB_protein_change`) ~ "Other frameshift/stop",
-  grepl("Splice",`germline_SDHB_protein_change`) ~ "Splice",
-  grepl("[Dd]el",`germline_SDHB_protein_change`)  ~ "Deletion"
-))
+# plot.data.genotype <- a5_anno.use %>% dplyr::select(A5_ID, `Patient ID`, `germline_SDHB_mutation`, `germline_SDHB_protein_change`) %>% 
+#   dplyr::mutate(`Germline_SDHB_mutation`=case_when(
+#     `germline_SDHB_mutation` %in% c("c.418G>T","c.136C>T","c.268C>T","c.380T>G","c.137G>A") ~`germline_SDHB_mutation`,
+#     grepl("c.[0-9]+[ATCG]>[ATCG]", `germline_SDHB_mutation`) ~ "Other Misense",
+#     grepl("c.[0-9]+[+][0-9]",`germline_SDHB_mutation`) ~ "Splice",
+#     grepl("[Dd]el",`germline_SDHB_mutation`)  ~ "Deletion"
+#   )) %>% 
+# dplyr::mutate(`protein change`=case_when(
+#   `germline_SDHB_protein_change` %in% c("p.Val140Phe","p.Arg46*","p.Arg90*","p.Arg46Gln","p.Ile127Ser") ~`germline_SDHB_protein_change`,
+#   grepl("p.[A-Za-z]{3}[0-9]+[A-Za-z]{3}", `germline_SDHB_protein_change`) ~ "Other misense",
+#   grepl("p.[A-Za-z]{3}[0-9]+(fs)?[*]", `germline_SDHB_protein_change`) ~ "Other frameshift/stop",
+#   grepl("Splice",`germline_SDHB_protein_change`) ~ "Splice",
+#   grepl("[Dd]el",`germline_SDHB_protein_change`)  ~ "Deletion"
+# ))
+# 
+# plot.data.genotype$`protein change` <- factor(as.character(plot.data.genotype$`protein change`), levels= c("p.Val140Phe","p.Arg46Gln","p.Arg46*","p.Arg90*","p.Ile127Ser","Other misense","Deletion","Splice","Other frameshift/stop"))
+# 
+# ggGenotype <- ggplot() + 
+#   geom_tile(data=plot.data.genotype, mapping=aes(x=A5_ID, y="Germline SDHB", fill=`protein change`), width=0.8,height=0.8) +
+#   theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank()) + labs(fill="Germline SDHB") +
+#   scale_x_discrete(drop=F) +
+#   scale_fill_manual(values = c(ColorPalette[["LightBlue1"]], ColorPalette[["DarkBlue1"]], ColorPalette[["DarkGreen1"]], 
+#                                ColorPalette[["LightOrange1"]], ColorPalette[["LightRed1"]], ColorPalette[["LightGreen2"]],
+#                                ColorPalette[["DarkBrown2"]], ColorPalette[["Purple1"]], ColorPalette[["Yellow1"]])) 
 
-plot.data.genotype$`protein change` <- factor(as.character(plot.data.genotype$`protein change`), levels= c("p.Val140Phe","p.Arg46Gln","p.Arg46*","p.Arg90*","p.Ile127Ser","Other misense","Deletion","Splice","Other frameshift/stop"))
-
-ggGenotype <- ggplot() + 
-  geom_tile(data=plot.data.genotype, mapping=aes(x=A5_ID, y="Germline SDHB", fill=`protein change`), width=0.8,height=0.8) +
-  theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank()) + labs(fill="Germline SDHB") +
-  scale_x_discrete(drop=F) +
-  scale_fill_manual(values = c(ColorPalette[["LightBlue1"]], ColorPalette[["DarkBlue1"]], ColorPalette[["DarkGreen1"]], 
-                               ColorPalette[["LightOrange1"]], ColorPalette[["LightRed1"]], ColorPalette[["LightGreen2"]],
-                               ColorPalette[["DarkBrown2"]], ColorPalette[["Purple1"]], ColorPalette[["Yellow1"]])) 
-
-
-#Signatures
-
+##############
+# Signatures #
+##############
 
 #The analysis relies on data previously generated by:
 # "/g/data/pq08/projects/ppgl/a5/wgs/analysis/mutational_patterns/A5_mutational_patterns.r"
 load("/g/data/pq08/projects/ppgl/a5/wgs/analysis/mutational_patterns/A5_mutational_patterns.rworkspace")
 
-plot_data_all <- 
-  data.frame(fit_res$contribution, 
-             check.names = F) %>% 
-  tibble::rownames_to_column("Signature") %>% 
-  tidyr::pivot_longer(cols = -Signature, 
-                      names_to = "Sample",
-                      values_to = "Contribution") %>% 
-  mutate(`Patient ID`=gsub("-.","",Sample)) 
-plot_data_all$Signature=factor(plot_data_all$Signature, 
-                               levels = colnames(signatures))  
 
-
-a5_sbs <- 
-  data.frame(fit_res$contribution, 
-             check.names = F) %>% 
-  tibble::rownames_to_column("Signature") %>% 
+sig_plot_prep = . %>% tibble::rownames_to_column("Signature") %>% 
   tidyr::pivot_longer(cols = -Signature, 
                       names_to = "A5_ID",
                       values_to = "Contribution") %>% 
   mutate(`Patient ID`=gsub("-.","",A5_ID)) %>% 
   mutate(Signature=factor(Signature, 
-                          levels = colnames(signatures)))  %>% 
+                          levels = colnames(current_signature_set)))  %>% 
   group_by(A5_ID) %>% 
-    mutate(Total=sum(Contribution), 
-           Prop_Contribution=Contribution/Total) %>% 
+  mutate(Total=sum(Contribution), 
+         Prop_Contribution=Contribution/Total) %>% 
   dplyr::select(-Total) %>% 
-  mutate(A5_ID=gsub("[.]","-", A5_ID))
+  mutate(A5_ID=gsub("[.]","-", A5_ID)) %>% 
+  group_by(Signature) %>% 
+  mutate(Contribution_z = (Contribution - mean(Contribution))/sd(Contribution),
+         Prop_Contribution_z = (Prop_Contribution - mean(Prop_Contribution))/sd(Prop_Contribution)) %>% 
+  filter(A5_ID %in% SampleOrder.A5_ID)
 
-topsigs <- a5_sbs %>% group_by(Signature) %>% summarise(max_prop=max(Prop_Contribution)) %>% filter(max_prop > 0.15) %>% pull(Signature)
-sig_order <- a5_sbs %>% group_by(Signature) %>% summarise(mean_prop=mean(Prop_Contribution)) %>% arrange(mean_prop) %>% pull(Signature) 
+find_scaled_zero <- function(plot.data.sigs, feature_column) {
+  scaled_zero_value = tibble(raw=plot.data.sigs[[feature_column]],
+                             scaled=scales::rescale(x = plot.data.sigs[[feature_column]], to = c(0, 1))) %>%
+    arrange(abs(raw)) %>%
+    slice_head(n=1) %>%
+    pull(scaled)
+  return(scaled_zero_value)
+}
+
+#######
+# SBS #
+#######
+
+current_signature_set <- signatures
+
+a5_sbs <- 
+  data.frame(fit_res$contribution, 
+             check.names = F) %>% 
+  sig_plot_prep
 
 
 
-plot.data.sigs <- a5_sbs %>% filter(Signature %in% topsigs)
-plot.data.sigs$Signature <- factor(as.character(plot.data.sigs$Signature), levels=sig_order)
+topsigs_sbs <- a5_sbs %>% group_by(Signature) %>% 
+  summarise(max_contrib=max(Contribution), max_prop=max(Prop_Contribution)) %>% 
+  filter(max_prop > 0.15, max_contrib > 500) %>% 
+  pull(Signature)
+sig_order_sbs <- a5_sbs %>% group_by(Signature) %>% summarise(mean_prop=mean(Prop_Contribution)) %>% arrange(mean_prop) %>% pull(Signature) 
 
-plot.data.sigs$A5_ID <- factor(as.character(plot.data.sigs$A5_ID), levels = SampleOrder.A5_ID)
-  
-ggSignatures <- ggplot() + 
-  geom_tile(data=plot.data.sigs, mapping=aes(x=A5_ID, y=Signature, fill=Prop_Contribution), width=0.8,height=0.8) +
-  theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank()) + labs(fill="Signature Proportion") +
+
+
+plot.data.sigs_sbs <- a5_sbs %>% filter(Signature %in% topsigs_sbs)
+plot.data.sigs_sbs$Signature <- factor(as.character(plot.data.sigs_sbs$Signature), levels=sig_order_sbs)
+
+plot.data.sigs_sbs$A5_ID <- factor(as.character(plot.data.sigs_sbs$A5_ID), levels = SampleOrder.A5_ID)
+
+# ggSignatures_sbs <- ggplot() + 
+#   geom_tile(data=plot.data.sigs_sbs, mapping=aes(x=A5_ID, y=Signature, fill=Prop_Contribution), width=0.8,height=0.8) +
+#   theme_bw() + 
+#   theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), 
+#         panel.grid = element_blank()) + 
+#   labs(fill="Signature Proportion") +
+#   scale_x_discrete(drop=F) +
+#   scale_fill_gradient(low = "white", high = ColorPalette[["Purple2"]])
+# 
+# 
+# scaled_zero_value = tibble(raw=plot.data.sigs_sbs$Contribution_z,
+#                            scaled=scales::rescale(x = plot.data.sigs_sbs$Contribution_z, to = c(0, 1))) %>% 
+#   arrange(abs(raw)) %>% 
+#   slice_head(n=1) %>% 
+#   pull(scaled)
+
+
+ggSignatures_sbs_contrib <- ggplot() + 
+  geom_tile(data=plot.data.sigs_sbs, mapping=aes(x=A5_ID, y=Signature, fill=Contribution), width=0.8,height=0.8) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), 
+        panel.grid = element_blank()) + 
+  labs(fill="Signature Proportion") +
   scale_x_discrete(drop=F) +
-  scale_fill_gradient(low = "white", high = ColorPalette[["Purple2"]])
+  scale_fill_gradientn(values= c(0, 0.05, 0.1, 0.2, 0.5, 1), colors = c("white",ColorPalette[["DarkBlue1"]],ColorPalette[["LightGreen1"]],ColorPalette[["LightOrange1"]]), na.value = "red", limits = c(0,2500)) 
+
+ggSignatures_sbs_contrib_z <- ggplot() + 
+  geom_tile(data=plot.data.sigs_sbs, mapping=aes(x=A5_ID, y=Signature, fill=Contribution_z), width=0.8,height=0.8) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), 
+        panel.grid = element_blank()) + 
+  labs(fill="Signature Proportion") +
+  scale_x_discrete(drop=F) +
+  scale_fill_gradientn(values = c(0, find_scaled_zero(plot.data.sigs_sbs, "Contribution_z"), 0.5,1), 
+                       colors = c(ColorPalette[["Purple2"]],
+                                  "white",
+                                  ColorPalette[["LightRed2"]],
+                                  "Red"))
+
+ggSignatures_sbs_contrib_prop_z <- ggplot() + 
+  geom_tile(data=plot.data.sigs_sbs, mapping=aes(x=A5_ID, y=Signature, fill=Prop_Contribution_z), width=0.8,height=0.8) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), 
+        panel.grid = element_blank()) + 
+  labs(fill="Signature Proportion") +
+  scale_x_discrete(drop=F) +
+  scale_fill_gradientn(values = c(0, find_scaled_zero(plot.data.sigs_sbs, "Prop_Contribution_z"), 0.5,1), 
+                       colors = c(ColorPalette[["Purple2"]],
+                                  "white",
+                                  ColorPalette[["LightRed2"]],
+                                  "Red"))
+
+
+#######
+# DBS #
+#######
+
+current_signature_set <- signatures_dbs
+
+a5_dbs <- 
+  data.frame(fit_res_dbs$contribution, 
+             check.names = F) %>% 
+  sig_plot_prep
+
+topsigs_dbs <- a5_dbs %>% group_by(Signature) %>% 
+  summarise(max_contrib=max(Contribution), max_prop=max(Prop_Contribution)) %>% 
+  filter(max_prop > 0.15, max_contrib > 10) %>% 
+  pull(Signature)
+sig_order_dbs <- a5_dbs %>% group_by(Signature) %>% summarise(mean_prop=mean(Prop_Contribution)) %>% arrange(mean_prop) %>% pull(Signature) 
+
+plot.data.sigs_dbs <- a5_dbs %>% filter(Signature %in% topsigs_dbs)
+plot.data.sigs_dbs$Signature <- factor(as.character(plot.data.sigs_dbs$Signature), levels=sig_order_dbs)
+
+plot.data.sigs_dbs$A5_ID <- factor(as.character(plot.data.sigs_dbs$A5_ID), levels = SampleOrder.A5_ID)
+
+
+ggSignatures_dbs_contrib <- ggplot() +
+  geom_tile(data=plot.data.sigs_dbs, mapping=aes(x=A5_ID, y=Signature, fill=Contribution), width=0.8,height=0.8) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1),
+        panel.grid = element_blank()) +
+  labs(fill="Signature Proportion") +
+  scale_x_discrete(drop=F) +
+  scale_fill_gradientn(values= c(0, 0.05, 0.1, 0.2, 0.5, 1), colors = c("white",ColorPalette[["DarkBlue1"]],ColorPalette[["LightGreen1"]],ColorPalette[["LightOrange1"]])) 
+
+ggSignatures_dbs_contrib_z <- ggplot() + 
+  geom_tile(data=plot.data.sigs_dbs, mapping=aes(x=A5_ID, y=Signature, fill=Contribution_z), width=0.8,height=0.8) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), 
+        panel.grid = element_blank()) + 
+  labs(fill="Signature Proportion") +
+  scale_x_discrete(drop=F) + 
+  scale_fill_gradientn(values = c(0, find_scaled_zero(plot.data.sigs_dbs, "Contribution_z"), 0.5,1), 
+                       colors = c(ColorPalette[["Purple2"]],
+                                  "white",
+                                  ColorPalette[["LightRed2"]],
+                                  "Red"))
+
+ggSignatures_dbs_contrib_prop_z <- ggplot() + 
+  geom_tile(data=plot.data.sigs_dbs, mapping=aes(x=A5_ID, y=Signature, fill=Prop_Contribution_z), width=0.8,height=0.8) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), 
+        panel.grid = element_blank()) + 
+  labs(fill="Signature Proportion") +
+  scale_x_discrete(drop=F) + 
+  scale_fill_gradientn(values = c(0, find_scaled_zero(plot.data.sigs_dbs, "Prop_Contribution_z"), 0.5,1), 
+                       colors = c(ColorPalette[["Purple2"]],
+                                  "white",
+                                  ColorPalette[["LightRed2"]],
+                                  "Red"))
+
+#########
+# INDEL #
+#########
+
+current_signature_set <- signatures_indel
+
+a5_indel <- 
+  data.frame(fit_res_indel$contribution, 
+             check.names = F) %>% 
+  sig_plot_prep
+
+topsigs_indel <- a5_indel %>% group_by(Signature) %>% 
+  summarise(max_contrib=max(Contribution), max_prop=max(Prop_Contribution)) %>% 
+  filter(max_prop > 0.15, max_contrib > 50) %>% 
+  pull(Signature)
+
+sig_order_indel <- a5_indel %>% 
+  group_by(Signature) %>% 
+  summarise(mean_prop=mean(Prop_Contribution)) %>% 
+  arrange(mean_prop) %>% 
+  pull(Signature) 
+
+plot.data.sigs_indel <- a5_indel %>% filter(Signature %in% topsigs_indel)
+plot.data.sigs_indel$Signature <- factor(as.character(plot.data.sigs_indel$Signature), levels=sig_order_indel)
+
+plot.data.sigs_indel$A5_ID <- factor(as.character(plot.data.sigs_indel$A5_ID), levels = SampleOrder.A5_ID)
+
+ggSignatures_indel_contrib <- ggplot() +
+  geom_tile(data=plot.data.sigs_indel, mapping=aes(x=A5_ID, y=Signature, fill=Contribution), width=0.8,height=0.8) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1),
+        panel.grid = element_blank()) +
+  labs(fill="Signature Proportion") +
+  scale_x_discrete(drop=F) +
+  scale_fill_gradientn(values= c(0, 0.05, 0.1, 0.2, 0.5, 1), 
+                       colors = c("white",ColorPalette[["DarkBlue1"]],ColorPalette[["LightGreen1"]],
+                                  ColorPalette[["LightOrange1"]])) 
+
+ggSignatures_indel_contrib_z <- ggplot() + 
+  geom_tile(data=plot.data.sigs_indel, mapping=aes(x=A5_ID, y=Signature, fill=Contribution_z), width=0.8,height=0.8) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), 
+        panel.grid = element_blank()) + 
+  labs(fill="Signature Proportion") +
+  scale_x_discrete(drop=F) +
+  scale_fill_gradientn(values = c(0, find_scaled_zero(plot.data.sigs_indel, "Contribution_z"), 0.5,1), 
+                       colors = c(ColorPalette[["Purple2"]],
+                                  "white",
+                                  ColorPalette[["LightRed2"]],
+                                  "Red"))
+
+ggSignatures_indel_contrib_prop_z <- ggplot() + 
+  geom_tile(data=plot.data.sigs_indel, mapping=aes(x=A5_ID, y=Signature, fill=Prop_Contribution_z), width=0.8,height=0.8) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), 
+        panel.grid = element_blank()) + 
+  labs(fill="Signature Proportion") +
+  scale_x_discrete(drop=F) +
+  scale_fill_gradientn(values = c(0, find_scaled_zero(plot.data.sigs_indel, "Prop_Contribution_z"), 0.5,1), 
+                       colors = c(ColorPalette[["Purple2"]],
+                                  "white",
+                                  ColorPalette[["LightRed2"]],
+                                  "Red"))
+
 
 
 ####
@@ -739,60 +981,61 @@ ggCNVSeg.merged <- ggplot(A5_seg_keep.merged %>% filter(A5_ID %in% SampleOrder.A
 ###########
 # COMBINE #
 ###########
-no_margin <- theme(plot.margin = margin(0,6,0,6))
-shrink_legend <- theme(legend.key.size = unit(0.5,"cm"), legend.position = "top")
 
-ggHandN + nox + no_margin + shrink_legend + ylab("") + xlab("") +
-  ggDiseaseCourse + nox + no_margin + shrink_legend + ylab("") + xlab("") +
-  ggSampleType.boring + nox + no_margin + shrink_legend + ylab("") + xlab("") +
+ggLocation + nox + no_margin + shrink_legend + ylab("") + xlab("") +
+  ggSampleType + nox + no_margin + shrink_legend + ylab("") + xlab("") +
   ggSize.boring + nox + no_margin + shrink_legend + ylab("") + xlab("") +
   ggCatecholamine.text + nox + no_margin + shrink_legend + ylab("") + xlab("") +
   ggKi67stain.binary + nox + no_margin + shrink_legend + ylab("") + xlab("") +
   #ggKi67stain.category + nox + no_margin + shrink_legend + ylab("") + xlab("") +
   ggKi67.expr + nox + no_margin + shrink_legend + ylab("") + xlab("") +
-  ggsdhbihc.boring + nox + no_margin + shrink_legend + ylab("") + xlab("") +
-  ggchr1ploss.boring + nox + no_margin + shrink_legend + ylab("") + xlab("") +
+  # ggsdhbihc.boring + nox + no_margin + shrink_legend + ylab("") + xlab("") +
+  # ggchr1ploss.boring + nox + no_margin + shrink_legend + ylab("") + xlab("") +
   #ggGenotype + nox + no_margin + shrink_legend + ylab("") + xlab("") +
   #ggPurity.heat + nox + no_margin + shrink_legend + ylab("") + xlab("") +
-  ggPurity.col + nox + no_margin + shrink_legend  + xlab("") + theme(axis.title.y = element_text(angle = 0)) +
+  # ggPurity.col + nox + no_margin + shrink_legend  + xlab("") + theme(axis.title.y = element_text(angle = 0)) +
   #ggStar + nox + no_margin + shrink_legend + ylab("") + xlab("") +
-  ggTMB.cutoff + nox + no_margin + shrink_legend + xlab("") +
-  ggSV.cutoff + nox + no_margin + shrink_legend + xlab("") +
+  ggTMB.heatmap + nox + no_margin + shrink_legend + xlab("") +
+  ggSV.heatmap + nox + no_margin + shrink_legend + xlab("") +
   ggWGD.boring + nox + no_margin + shrink_legend + ylab("") + xlab("") +
   ggChromothripsis + nox + no_margin + shrink_legend + ylab("") + xlab("") +
-  ggSignatures  + nox  + no_margin + shrink_legend + ylab("") + xlab("") +
-  ggTelomere.boring + nox + no_margin + shrink_legend + ylab("") + xlab("") +
-  ggTERTATRXExp + nox + no_margin + shrink_legend + ylab("") + xlab("") +
-  ggFeatures + no_margin + shrink_legend + ylab("") + 
+  ggSignatures_sbs_contrib  + nox  + no_margin + shrink_legend + ylab("") + xlab("") +
+  ggSignatures_dbs_contrib  + nox  + no_margin + shrink_legend + ylab("") + xlab("") +
+  ggSignatures_indel_contrib  + nox  + no_margin + shrink_legend + ylab("") + xlab("") +
+  # ggTelomere.boring + nox + no_margin + shrink_legend + ylab("") + xlab("") +
+  # ggTERTATRXExp + nox + no_margin + shrink_legend + ylab("") + xlab("") +
+  ggFeatures + nox  + no_margin + shrink_legend + ylab("") + xlab("") +
   ggCNVSeg.merged + no_margin + shrink_legend + ylab("") + 
   plot_layout(ncol = 1, heights = 
-                c(0.1, #ggHandN
+                c(0.1, #ggLocation
                   0.1, #ggDiseaseCourse
-                  0.1, #ggSampleType
+                  # 0.1, #ggSampleType
                   0.1, #ggSize
                   0.1, #ggCatecholamine
                   0.1, #ggKi67stain.numeric
                   #0.1, #ggKi67stain.category
                   0.1, #ggKi67.expr
-                  0.1, #ggsdhbihc
-                  0.1, #ggchr1ploss
+                  # 0.1, #ggsdhbihc
+                  # 0.1, #ggchr1ploss
                   #0.1, #ggGenotype
                   #0.1, #ggPurity.heat
-                  0.1, #ggPurity.col
+                  # 0.1, #ggPurity.col
                   #0.1, #ggStar
-                  0.6, #ggTMB
-                  0.6, #ggSV
+                  0.1, #ggTMB
+                  0.1, #ggSV
                   0.1, #ggWGD
                   0.2, #ggChromothripsis
                   0.8, #ggSignatures
-                  0.1, #ggTelomere
-                  0.2, #ggTERTATRX.exp
+                  0.5, #ggSignatures
+                  0.5, #ggSignatures
+                  # 0.1, #ggTelomere
+                  # 0.2, #ggTERTATRX.exp
                   1, #ggFeatures
-                  1 #ggCNA
-                ), guides = "collect")
+                  1.5 #ggCNA
+                ), guides = "collect") & theme(legend.position = "bottom")
 
 ggMarker.exp +
-ggMarker.exp.clamped +
+  ggMarker.exp.clamped +
   plot_layout(ncol = 1, guides = "collect")
 
 
@@ -816,7 +1059,7 @@ ggHandN + nox + no_margin + shrink_legend + ylab("") + xlab("") +
   #ggPurity.heat + nox + no_margin + shrink_legend + ylab("") + xlab("") +
   ggPurity.col + nox + no_margin + shrink_legend  + xlab("") + theme(axis.title.y = element_text(angle = 0)) +
   ggStar + no_margin + shrink_legend + ylab("") +
-
+  
   plot_layout(ncol = 1, heights = 
                 c(0.1, #ggHandN
                   0.1, #ggDiseaseCourse
@@ -832,9 +1075,51 @@ ggHandN + nox + no_margin + shrink_legend + ylab("") + xlab("") +
                   #0.1, #ggPurity.heat
                   0.1, #ggPurity.col
                   0.1 #ggStar
-
+                  
                 ), guides = "collect")
 
+
+###############
+# Basic
+###############
+
+ggLocation + nox + no_margin + shrink_legend + ylab("") + xlab("") +
+  ggSampleType + nox + no_margin + shrink_legend + ylab("") + xlab("") +
+  ggSize.boring + nox + no_margin + shrink_legend + ylab("") + xlab("") +
+  ggCatecholamine.text + nox + no_margin + shrink_legend + ylab("") + xlab("") +
+  ggKi67stain.numeric + nox + no_margin + shrink_legend + ylab("") + xlab("") +
+  #ggKi67stain.category + nox + no_margin + shrink_legend + ylab("") + xlab("") +
+  ggsdhbihc.boring + nox + no_margin + shrink_legend + ylab("") + xlab("") +
+  ggTMB.cutoff + nox + no_margin + shrink_legend + xlab("") +
+  ggFeatures +
+  plot_layout(ncol = 1, heights = 
+                c(0.1, #ggLocation
+                  0.1, #ggSampleType
+                  0.1, #ggSize
+                  0.1, #ggCatecholamine
+                  0.1, #ggKi67stain.numeric
+                  0.1, #ggsdhbihc
+                  0.5, #ggFeatures
+                  0.3 #ggFeatures
+                ), guides = "collect")
+
+ggLocation + shrink_legend + ylab("") + xlab("") +
+  ggSampleType + shrink_legend + ylab("") + xlab("") +
+  ggSize.boring + shrink_legend + ylab("") + xlab("") +
+  ggCatecholamine.text + shrink_legend + ylab("") + xlab("") +
+  ggKi67stain.numeric + shrink_legend + ylab("") + xlab("") +
+  #ggKi67stain.category + shrink_legend + ylab("") + xlab("") +
+  ggsdhbihc.boring + shrink_legend + ylab("") + xlab("") +
+  ggFeatures +
+  plot_layout(ncol = 1, heights = 
+                c(0.1, #ggLocation
+                  0.1, #ggSampleType
+                  0.1, #ggSize
+                  0.1, #ggCatecholamine
+                  0.1, #ggKi67stain.numeric
+                  0.1, #ggsdhbihc
+                  0.5 #ggFeatures
+                ), guides = "collect")
 
 ## Genomic Features
 ggHandN + nox + no_margin + shrink_legend + ylab("") + xlab("") +
@@ -875,11 +1160,11 @@ SDHB_Changes <- read_sheet("1IOczHu91crprHvjxTKDRpqLfpeuYLaGwNXZVsWmXIKY", sheet
 
 SDHB_Changes <- SDHB_Changes %>%  inner_join(
   a5_anno %>% dplyr::rename(PatientID=`Patient ID`) %>% 
-  dplyr::select(PatientID, tumour_metastasised) %>% distinct()
-  ) %>% 
+    dplyr::select(PatientID, tumour_metastasised) %>% distinct()
+) %>% 
   mutate(tumour_metastasised=factor(ifelse(grepl("Short|Data",tumour_metastasised),
-                                      "Short follow-up/No Data" , 
-                                      tumour_metastasised), levels=c("No", "Short follow-up/No Data", "Yes")))
+                                           "Short follow-up/No Data" , 
+                                           tumour_metastasised), levels=c("No", "Short follow-up/No Data", "Yes")))
 SDHB_Changes <- SDHB_Changes %>% filter(Include)
 
 ####
@@ -893,15 +1178,15 @@ ggSDHB_AA_label <- ggplot(SDHB_Changes.small_variants.clincourse %>% select(AAol
   geom_text(angle=90) + 
   theme_bw() +
   theme(panel.grid = element_blank(), 
-                              panel.border = element_blank(), 
-                              axis.text.y = element_blank(), 
-                              #axis.title.y = element_blank(), 
-                              axis.ticks.y = element_blank(), 
-                              axis.text.x = element_blank(), 
-                              axis.title.x = element_blank(), 
-                              axis.ticks.x = element_blank(),
-                              axis.line.y = element_line(),
-                              plot.margin=ggplot2::margin(1,2,0,2)) + 
+        panel.border = element_blank(), 
+        axis.text.y = element_blank(), 
+        #axis.title.y = element_blank(), 
+        axis.ticks.y = element_blank(), 
+        axis.text.x = element_blank(), 
+        axis.title.x = element_blank(), 
+        axis.ticks.x = element_blank(),
+        axis.line.y = element_line(),
+        plot.margin=ggplot2::margin(1,2,0,2)) + 
   ylab("AA Change") +
   coord_cartesian(xlim = c(0,280)) +
   scale_x_continuous(expand = c(0,0))
@@ -1071,11 +1356,11 @@ ggSDHB_Onset <- ggplot(SDHB_Changes %>%  filter(Type %in% c("Missense","Stop", "
 #############
 # TERT/ATRX #
 #############
-  
+
 
 plot.data.tertatrxexp <- a5_anno.use %>%  select(A5_ID, TERT_ATRX_Mutation, telhunter_log2_telcontentratio, telhunter_RNA_telcontent)  %>% inner_join(
   A5_exp %>% ungroup() %>%  filter(Symbol %in% c("TERT","ATRX")) %>% select(A5_ID, Symbol,log2cpm) %>% 
-  pivot_wider(id_cols=A5_ID, names_from = "Symbol", values_from="log2cpm") ) %>% 
+    pivot_wider(id_cols=A5_ID, names_from = "Symbol", values_from="log2cpm") ) %>% 
   mutate(Mutation_Status=ifelse(TERT_ATRX_Mutation=="Unknown", 
                                 "WT", 
                                 paste(TERT_ATRX_Mutation, "Mutant")),
@@ -1147,7 +1432,7 @@ ggTERTATRXEvents <- ggplot(plot.data.tert_atrx_types, aes(x=Gene, y=nPatients, f
                                `Splice Acceptor`=ColorPalette[["DarkGrey2"]], `Splice Donor`=ColorPalette[["DarkGrey1"]],
                                `Splice Region`=ColorPalette[["LightGrey1"]], `Homozyg. Del.`=ColorPalette[["DarkGreen1"]])) +
   theme_bw() + theme(axis.title.x = element_blank())
-  
+
 
 
 ggHandN + nox + no_margin + shrink_legend + ylab("") + xlab("") +

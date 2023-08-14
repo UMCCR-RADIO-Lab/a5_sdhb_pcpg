@@ -10,9 +10,9 @@ library(tidyr)
 
 swap_position <- function(Sample_ID, position_data, new_x, new_y)
 {
-  swap_reciever_sample_type <- position_data %>% 
+  swap_reciever_differential_group_sampletype_strict <- position_data %>% 
     filter(A5_ID==Sample_ID) %>% 
-    pull(sample_type) %>% 
+    pull(differential_group_sampletype_strict) %>% 
     as.character()
   
   swap_reciever_primarylocation <- position_data %>% 
@@ -22,7 +22,7 @@ swap_position <- function(Sample_ID, position_data, new_x, new_y)
   
   swap_donor_sample_type <- position_data %>% 
     filter(x_pos == new_x, y_pos == new_y) %>% 
-    pull(sample_type) %>% 
+    pull(differential_group_sampletype_strict) %>% 
     as.character()
   
   swap_donor_sampleid <- position_data %>% 
@@ -73,32 +73,7 @@ location_cols[["Extraadrenal (bladder)"]] <-  location_cols[["Extraadrenal_bladd
 # Prepare data for waffle plot #
 ################################
 
-waffle_data <- a5_anno %>% filter(Exclude != "Y") %>% 
-  mutate(
-    sample_type = case_when(
-      A5_ID %in% c("E143-3", "E146-1", "E158-1",  "E159-3", "E225-1") ~ "Metastatic primary",
-      is_primary_or_met == "Primary" &
-        tumour_metastasised == "Yes" ~ paste("Primary (metastasis present)"),
-      is_primary_or_met == "Primary" &
-        tumour_metastasised == "Short follow up" ~ paste("Primary (short follow up)"),
-      is_primary_or_met == "Primary" &
-        tumour_metastasised == "No" ~ "Non-metastatic primary",
-      is_primary_or_met == "Metastasis" &
-        tumour_metastasised == "Yes" ~ "Metastasis",
-      is_primary_or_met == "Recurrent" &
-        tumour_metastasised == "Yes" ~ "Metastatic local recurrance",
-      is_primary_or_met == "Recurrent" &
-        tumour_metastasised == "No" ~ "Non-metastatic local recurrance",
-      TRUE ~ "Other"
-    )
-  ) %>% mutate(sample_type = factor(sample_type, 
-                                    levels=c("Non-metastatic primary",
-                                             "Primary (short follow up)",
-                                             "Non-metastatic local recurrance",
-                                             "Primary (metastasis present)",
-                                             "Metastatic primary",
-                                             "Metastatic local recurrance",
-                                             "Metastasis"))) %>% 
+waffle_data <- a5_anno %>% filter(Exclude != "Y") %>%  
   mutate(Primary_Location_Simplified=dplyr::recode(Primary_Location_Simplified,
                                                    "Extraadrenal_abdominal"="Extraadrenal (abdominal/thoracic)",
                                                    "Extraadrenal_thoracic"="Extraadrenal (abdominal/thoracic)",
@@ -115,7 +90,7 @@ waffle_data <- a5_anno %>% filter(Exclude != "Y") %>%
                                                      "Adrenal",
                                                      "Head and neck",
                                                      "Unspecified"))) %>% 
-  dplyr::select(A5_ID, `Patient ID`, sample_type, Primary_Location_Simplified) %>% 
+  dplyr::select(A5_ID, `Patient ID`, differential_group_sampletype_strict, Primary_Location_Simplified) %>% 
   group_by(`Patient ID`) %>% 
   mutate(group=ifelse(n()>1, `Patient ID`, NA))
 
@@ -123,7 +98,7 @@ waffle_data <- a5_anno %>% filter(Exclude != "Y") %>%
 # Prepare squares for clinical outcome
 ###########
 
-waffle_squares <- waffle_data %>% group_by(sample_type) %>% 
+waffle_squares <- waffle_data %>% group_by(differential_group_sampletype_strict) %>% 
   dplyr::count()
 
 ###########
@@ -133,7 +108,7 @@ waffle_squares <- waffle_data %>% group_by(sample_type) %>%
 n_samples=(a5_anno %>% filter(Exclude=="N") %>% nrow())
 waffle_dots <- waffle_data %>% 
   ungroup() %>% 
-  arrange(sample_type, Primary_Location_Simplified) %>% 
+  arrange(differential_group_sampletype_strict, Primary_Location_Simplified) %>% 
   mutate(y_pos=rep(1:10,10)[1:n_samples], 
          x_pos=rep(1:10,each=10)[1:n_samples]) 
 
@@ -186,7 +161,7 @@ waffle_dots_unpinned_values <-
   waffle_dots %>% 
     filter(is.na(group)) %>% 
     dplyr::select(-x_pos,-y_pos) %>% 
-    arrange(sample_type, Primary_Location_Simplified)
+    arrange(differential_group_sampletype_strict, Primary_Location_Simplified)
 
 #Filter rows without a "required" location, isolate locations and sort  
 waffle_dots_unpinned_locations <- 
@@ -216,7 +191,7 @@ waffle_dots <-
 #################
 
 ggplot( ) +
-  geom_waffle(data = waffle_squares, mapping = aes(fill = sample_type, values = n), n_rows = 10, size = 0.33, colour = "white", flip = FALSE, radius = unit(4, "pt")) +
+  geom_waffle(data = waffle_squares, mapping = aes(fill = differential_group_sampletype_strict, values = n), n_rows = 10, size = 0.33, colour = "white", flip = FALSE, radius = unit(4, "pt")) +
   geom_point(data=waffle_dots, mapping = aes(x=x_pos,y=y_pos), color="black", size=4) +
   geom_point(data=waffle_dots, mapping = aes(x=x_pos,y=y_pos, color=Primary_Location_Simplified), size=3) +
   geom_line(data=waffle_dots %>% filter(A5_ID != "E159-2"), mapping = aes(x=x_pos,y=y_pos, group=`Patient ID`)) +
@@ -226,8 +201,8 @@ ggplot( ) +
   scale_fill_manual(
     name = "Clinical Course",
     values = c("#6ea668", "#6ea6cc", "#d6d6d4", "#f18d73", "#ee7474ff", "#969696", "#c04241ff"),
-    labels = c("Non-metastatic primary", "Primary (short follow up)", "Non-metastatic local recurrance",
-               "Primary (metastasis present)", "Metastatic primary","Metastatic local recurrance","Metastasis")
+    labels = c("Non-metastatic primary", "Primary (short follow up)", "Non-metastatic local recurrence",
+               "Primary (metastasis present)", "Metastatic primary","Metastatic local recurrence","Metastasis")
   ) +
   scale_color_manual(
     name = "Anatomical Location (Primary)",

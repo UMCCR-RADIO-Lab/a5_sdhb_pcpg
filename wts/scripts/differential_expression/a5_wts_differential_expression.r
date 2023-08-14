@@ -134,7 +134,7 @@ if(output_qc)
            A5_ID = colnames(mds$distance.matrix),
            Dim = "1+2") %>% 
       left_join(annotation) %>%
-      mutate(Primary_Location_Simplified=gsub("_abdominal|_thoracic|_bladder|_[Ll]eft|_[Rr]ight",
+      mutate(Primary_Location_Simplified=gsub("_abdominal|_thoracic|_bladder|_cardiac|_[Ll]eft|_[Rr]ight",
                                               "",
                                               Primary_Location_Simplified)) %>% 
       mutate(`sample_purity`=as.numeric(`sample_purity`)) 
@@ -244,7 +244,7 @@ if(output_qc)
              A5_ID = rownames(umap_layout),
              Dim = "1+2") %>% 
         left_join(annotation) %>%
-        mutate(Primary_Location_Simplified=gsub("_abdominal|_thoracic|_bladder|_[Ll]eft|_[Rr]ight",
+        mutate(Primary_Location_Simplified=gsub("_abdominal|_thoracic|_bladder|_cardiac|_[Ll]eft|_[Rr]ight",
                                                 "",
                                                 Primary_Location_Simplified)) %>% 
         mutate(`sample_purity`=as.numeric(`sample_purity`)) 
@@ -388,18 +388,23 @@ plotSA(efit, main="Final model: Mean-variance trend")
 #Store fit
 wts_de_fits[["Parasympathetic_vs_Sympathetic"]] <- efit
 
-# get top genes 
-wts_top_tables[["Parasympathetic_vs_Sympathetic"]] <- 
-  topTable(efit, 
-           coef = "Parasympathetic_vs_Sympathetic", 
-           number = Inf, 
-           sort.by = "P") %>% 
-  rownames_to_column(var = "Gene") %>% 
-  mutate(gene_symbol = if_else(grepl(x = Gene, pattern = "_"), 
-                               str_extract(Gene, pattern = '[^_]*$'),
-                               Gene)) %>% 
-  left_join(ensid_to_biotype) %>% 
-  dplyr::relocate(gene_biotype, .after=Gene)
+# get top tables 
+wts_top_tables[["Parasympathetic_vs_Sympathetic"]] <- list()
+for (contrast in dimnames(contrast_matrix_hn)$Contrasts)
+{
+  wts_top_tables[["Parasympathetic_vs_Sympathetic"]][[contrast]] <- 
+    topTable(efit, 
+             coef = contrast, 
+             number = Inf, 
+             sort.by = "P") %>% 
+    rownames_to_column(var = "Gene") %>% 
+    mutate(gene_symbol = if_else(grepl(x = Gene, pattern = "_"), 
+                                 str_extract(Gene, pattern = '[^_]*$'),
+                                 Gene)) %>% 
+    left_join(ensid_to_biotype %>% dplyr::select(Gene, gene_biotype), by=c("Gene")) %>% 
+    dplyr::relocate(gene_biotype, .after=Gene)
+}
+
 
 
 #+ de_hnabdo_resulttable_header, eval=output_tables, echo=FALSE, results='asis'  
@@ -427,7 +432,7 @@ knitr::knit_expand(text="\n\n# Top 1000 DE genes - HN vs abdo/thoracic\n\n") %>%
 #+ de_hnabdo_summary_print, eval=output_tables, echo=FALSE
 if(output_tables)
 {
-  DT::datatable(data = wts_top_tables[["Parasympathetic_vs_Sympathetic"]] %>% 
+  DT::datatable(data = wts_top_tables[["Parasympathetic_vs_Sympathetic"]][["Parasympathetic_vs_Sympathetic"]] %>% 
                   filter(abs(logFC)>1, 
                          adj.P.Val<0.05) %>% 
                   slice_min(n = 1000, 
@@ -479,7 +484,7 @@ if(output_plots){
     
   }
   
-  plot_volcano(wts_top_tables[["Parasympathetic_vs_Sympathetic"]], 60) + ggtitle("Head and Neck vs Abdo-thoracic")
+  plot_volcano(wts_top_tables[["Parasympathetic_vs_Sympathetic"]][["Parasympathetic_vs_Sympathetic"]], 60) + ggtitle("Head and Neck vs Abdo-thoracic")
   
 }
 
@@ -495,7 +500,7 @@ if(output_plots){
   
 #+ de_hnabdo_boxplots_code, eval=output_plots, echo=FALSE
   if(output_plots){
-  gene_list <- wts_top_tables[["Parasympathetic_vs_Sympathetic"]] %>% 
+  gene_list <- wts_top_tables[["Parasympathetic_vs_Sympathetic"]][["Parasympathetic_vs_Sympathetic"]] %>% 
     filter(Gene %in% (ensid_to_biotype %>% 
                         filter(gene_biotype=="protein_coding") %>% 
                         pull(Gene))) %>% 
@@ -516,7 +521,7 @@ if(output_plots){
     inner_join(a5_anno %>% 
                  dplyr::select(A5_ID, Major_Cluster, 
                                Primary_Location_Simplified)) %>% 
-    mutate(Primary_Location_Simplified=gsub("_abdominal|_thoracic|_bladder|_[Ll]eft|_[Rr]ight",
+    mutate(Primary_Location_Simplified=gsub("_abdominal|_thoracic|_bladder|_cardiac|_[Ll]eft|_[Rr]ight",
                                             "",
                                             Primary_Location_Simplified),
            Major_Cluster_simple=gsub(" [(].+|Parasympathetic/",
@@ -551,7 +556,7 @@ if(output_plots){
 if(output_plots){
   genes_per_group <- 100
   
-  GOI <- wts_top_tables[["Parasympathetic_vs_Sympathetic"]] %>% filter(adj.P.Val < 0.05) %>% arrange(desc(abs(logFC))) %>% slice_head(n = genes_per_group) %>% dplyr::pull(Gene)
+  GOI <- wts_top_tables[["Parasympathetic_vs_Sympathetic"]][["Parasympathetic_vs_Sympathetic"]] %>% filter(adj.P.Val < 0.05) %>% arrange(desc(abs(logFC))) %>% slice_head(n = genes_per_group) %>% dplyr::pull(Gene)
   
   extra_genes <- c(marker_genes$Catecholamin_Biosynth[c(1,4,6,7)], "LEF1", "CHGA")
   
@@ -571,7 +576,7 @@ if(output_plots){
                   TERT_ATRX_Mutation, differential_group_purity, 
                   differential_group_anatomy, Catecholamine_profile, 
                   differential_group_sampletype) %>%
-    mutate(Primary_Location_Simplified=gsub("_abdominal|_thoracic|_bladder|_[Ll]eft|_[Rr]ight",
+    mutate(Primary_Location_Simplified=gsub("_abdominal|_thoracic|_bladder|_cardiac|_[Ll]eft|_[Rr]ight",
                                             "",
                                             Primary_Location_Simplified))
   

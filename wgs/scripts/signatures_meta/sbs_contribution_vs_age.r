@@ -11,15 +11,10 @@ library(ggplot2)
 load("/g/data/pq08/projects/ppgl/a5/wgs/analysis/mutational_patterns/A5_mutational_patterns.rworkspace")
 
 source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r")
-
 data_loader_a5_clinical_anno("aidan.flynn@umccr-radio-lab.page", use_cache = T)
-
-# a5_sbs <- read.delim("/g/data/pq08/projects/ppgl/a5/wgs/analysis/mutational_patterns/A5_sbs_cosmicv3_fitcontribution.tsv",
-#                      check.names = F)
-# sig_levels <- rownames(a5_sbs)
-
 exclude_samples <- a5_anno %>% filter(Exclude=="Y") %>%  pull(A5_ID)
 
+source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
 
 a5_sbs <- 
   data.frame(fit_res$contribution, 
@@ -35,11 +30,14 @@ a5_sbs$Signature=factor(a5_sbs$Signature,
 a5_sbs <- a5_sbs %>% 
   inner_join(a5_anno %>% 
               dplyr::select(A5_ID, `Year of birth`, `Date of resection (DD/MM/YYYY)`, 
-                            is_primary_or_met, Largest_primary_dimensions_cm,
+                            differential_group_sampletype_strict, Largest_primary_dimensions_cm,
                             wgs_tmb) %>% 
-              filter(`Year of birth` != "No data") %>%  
-              separate(`Date of resection (DD/MM/YYYY)`, into=c("Discard1","Discard2", "resection_year"), sep="/") %>% 
-              mutate(Age_at_resection=as.numeric(resection_year)-as.numeric(`Year of birth`))) %>% 
+               mutate(age_at_resection=
+                        floor(lubridate::interval(lubridate::my(paste("01", `Year of birth`,sep="-")),
+                                                  lubridate::dmy(`Date of resection (DD/MM/YYYY)`)) 
+                              / lubridate::years(1)))
+             ) %>% 
+  filter(!is.na(age_at_resection)) %>% 
   mutate(#Signature=factor(Signature, levels=sig_levels),
          Largest_primary_dimensions_cm=as.numeric(Largest_primary_dimensions_cm)) %>% 
   filter(!(A5_ID %in% exclude_samples))
@@ -49,23 +47,26 @@ a5_sbs <- a5_sbs %>%
   mutate(Contribution_tmb_adj=Contribution/wgs_tmb)
 
 #Plot All Sigs
-gg_sbs_all <- ggplot(a5_sbs, aes(x=Age_at_resection, y=Contribution, color=is_primary_or_met)) + 
+gg_sbs_all <- ggplot(a5_sbs, aes(x=age_at_resection, y=Contribution, color=differential_group_sampletype_strict)) + 
+  scale_colour_manual(values=sampletype_strict_cols) +
   geom_point() + 
-  facet_wrap("Signature", scales = "free_y")
+  facet_wrap("Signature", scales = "free_y") +
+  theme_bw()
 
 #Restrict to SBS1/5
 
 plot.data <- a5_sbs %>% filter(Signature %in% c("SBS1", "SBS5")) %>% 
+  #filter(differential_group_sampletype_strict =="Non-metastatic primary") %>% 
   pivot_longer(cols = c(Contribution,Contribution_tmb_adj),
                names_to = "Source", 
                values_to="Contribution") %>% 
   mutate(Source=factor(Source, levels=c("Contribution", "Contribution_tmb_adj")),
          Source=forcats::fct_recode(Source, "Raw"="Contribution", "TMB Adjusted"="Contribution_tmb_adj"))
 
-lm_sbs1 <- summary(lm(formula = Contribution~Age_at_resection, data = a5_sbs %>% filter(Signature=="SBS1")))
-lm_sbs5 <- summary(lm(formula = Contribution~Age_at_resection, data = a5_sbs %>% filter(Signature=="SBS5")))
-lm_sbs1_tmb <- summary(lm(formula = Contribution_tmb_adj~Age_at_resection, data = a5_sbs %>% filter(Signature=="SBS1")))
-lm_sbs5_tmb <- summary(lm(formula = Contribution_tmb_adj~Age_at_resection, data = a5_sbs %>% filter(Signature=="SBS5")))
+lm_sbs1 <- summary(lm(formula = Contribution~age_at_resection, data = plot.data %>% filter(Signature=="SBS1", Source=="Raw")))
+lm_sbs5 <- summary(lm(formula = Contribution~age_at_resection, data = plot.data %>% filter(Signature=="SBS5", Source=="Raw")))
+lm_sbs1_tmb <- summary(lm(formula = Contribution~age_at_resection, data = plot.data %>% filter(Signature=="SBS1", Source=="TMB Adjusted")))
+lm_sbs5_tmb <- summary(lm(formula = Contribution~age_at_resection, data = plot.data %>% filter(Signature=="SBS5", Source=="TMB Adjusted")))
 
 r_squared <- data.frame(x=c(25,25,25,25), y=c(1200, 1200,4000, 4000), 
                         Signature=c("SBS1", "SBS5","SBS1", "SBS5"), 
@@ -77,60 +78,71 @@ r_squared <- data.frame(x=c(25,25,25,25), y=c(1200, 1200,4000, 4000),
                                           round(lm_sbs5_tmb$adj.r.squared,3))))
 
 gg_sbs_5_1_age <- ggplot(plot.data, 
-                     aes(x=Age_at_resection, 
+                     aes(x=age_at_resection, 
                          y=Contribution, 
-                         color=is_primary_or_met)) +
+                         color=differential_group_sampletype_strict)) +
   geom_point() + 
-  geom_smooth(method='lm', aes(color=NULL), color="black") +
+  #geom_smooth(method='lm', aes(color=NULL), color="black") +
   geom_text(data=r_squared, mapping = aes(x = x,y=y, label=r_squared, color=NULL)) +
-  facet_grid(Source~Signature, scales = "free_y")
+  scale_colour_manual(values=sampletype_strict_cols, name="Sample Type") +
+  guides(colour=guide_legend(override.aes = list(label=c("","","","","","","")))) +
+  facet_grid(Source~Signature, scales = "free_y") +
+  theme_bw()
 
-gg_sbs_5_1_age_tmbadj <- ggplot(a5_sbs %>% filter(Signature %in% c("SBS1", "SBS5")), 
-                     aes(x=Age_at_resection, 
-                         y=Contribution_proportion, 
-                         color=is_primary_or_met)) +
-  geom_point() + 
-  geom_smooth(method='lm', aes(color=NULL), color="black") +
-  #geom_text(data=r_squared, mapping = aes(x = x,y=y, label=r_squared, color=NULL)) +
-  facet_wrap("Signature", scales = "free_y")
-
-gg_sbs_5_1_size <- ggplot(a5_sbs %>% filter(Signature %in% c("SBS1", "SBS5"), !is.na(Largest_primary_dimensions_cm)), 
-                     aes(x=Largest_primary_dimensions_cm, 
-                         y=Contribution, 
-                         color=is_primary_or_met)) +
-  geom_point() + 
-  geom_smooth(method='lm', aes(color=NULL), color="black") +
-  #geom_text(data=r_squared, mapping = aes(x = x,y=y, label=r_squared, color=NULL)) +
-  facet_wrap("Signature", scales = "free_y")
-
- ggplot(a5_sbs %>% filter(A5_ID != "E167-1") %>% mutate(label=ifelse(A5_ID %in% c("E169-1","E169-2","E204-1"), A5_ID, NA)), 
-       aes(x=wgs_tmb, 
-           y=Contribution, 
-           color=is_primary_or_met)) +
-  geom_point() + 
-  geom_text(aes(label=label)) +
-  facet_wrap("Signature", scales = "free_y")
-
-ggplot(a5_sbs %>% group_by(Signature) %>% filter(max(Contribution) > 100) %>% group_by(Signature, is_primary_or_met) %>% 
-         mutate(z = (Contribution_tmb_adj-mean(Contribution_tmb_adj, na.rm=T))/sd(Contribution_tmb_adj, na.rm=T)) %>% mutate(label=ifelse(z>2, A5_ID, NA)), 
-       aes(x=is_primary_or_met, 
-           y=Contribution_tmb_adj,
-           label=label,color=z)) +
-  geom_point() + 
-  geom_text() + 
-  #geom_text(data=r_squared, mapping = aes(x = x,y=y, label=r_squared, color=NULL)) +
-  facet_wrap("Signature", scales = "free_y")
-
-
-
-
-ggplot(a5_sbs %>% group_by(Signature, is_primary_or_met) %>% 
-         mutate(z = (Contribution-mean(Contribution))/sd(Contribution)) %>% mutate(label=ifelse(z>2, A5_ID, NA))
-       %>% filter(!is.na(Largest_primary_dimensions_cm)), 
-                          aes(x=Largest_primary_dimensions_cm, 
-                              y=Contribution, 
-                              color=is_primary_or_met)) +
-  geom_point() + 
-  geom_smooth(method='lm', aes(color=NULL), color="black") +
-  #geom_text(data=r_squared, mapping = aes(x = x,y=y, label=r_squared, color=NULL)) +
-  facet_wrap("Signature", scales = "free_y")
+# gg_sbs_5_1_age_tmbadj <- ggplot(a5_sbs %>% filter(Signature %in% c("SBS1", "SBS5")), 
+#                      aes(x=age_at_resection, 
+#                          y=Contribution_tmb_adj, 
+#                          color=differential_group_sampletype_strict)) +
+#   geom_point() + 
+#   geom_smooth(method='lm', aes(color=NULL), color="black") +
+#   geom_text(data=r_squared, mapping = aes(x = x,y=y, label=r_squared, color=NULL)) +
+#   scale_colour_manual(values=sampletype_strict_cols) +
+#   facet_wrap("Signature", scales = "free_y") +
+#   theme_bw()
+# 
+# gg_sbs_5_1_size <- ggplot(a5_sbs %>% filter(Signature %in% c("SBS1", "SBS5"), !is.na(Largest_primary_dimensions_cm)), 
+#                      aes(x=Largest_primary_dimensions_cm, 
+#                          y=Contribution, 
+#                          color=differential_group_sampletype_strict)) +
+#   geom_point() + 
+#   geom_smooth(method='lm', aes(color=NULL), color="black") +
+#   #geom_text(data=r_squared, mapping = aes(x = x,y=y, label=r_squared, color=NULL)) +
+#   scale_colour_manual(values=sampletype_strict_cols) +
+#   facet_wrap("Signature", scales = "free_y")
+# 
+#  ggplot(a5_sbs %>% filter(A5_ID != "E167-1") %>% mutate(label=ifelse(A5_ID %in% c("E169-1","E169-2","E204-1"), A5_ID, NA)), 
+#        aes(x=wgs_tmb, 
+#            y=Contribution, 
+#            color=differential_group_sampletype_strict)) +
+#   geom_point() + 
+#    scale_colour_manual(values=sampletype_strict_cols) +
+#   geom_text(aes(label=label)) +
+#   facet_wrap("Signature", scales = "free_y")
+# 
+# ggplot(a5_sbs %>% 
+#          group_by(Signature) %>% 
+#          filter(max(Contribution) > 100) %>% 
+#          group_by(Signature, differential_group_sampletype_strict) %>% 
+#          mutate(z = (Contribution_tmb_adj-mean(Contribution_tmb_adj, na.rm=T))/sd(Contribution_tmb_adj, na.rm=T)) %>% mutate(label=ifelse(z>2, A5_ID, NA)), 
+#        aes(x=differential_group_sampletype_strict, 
+#            y=Contribution_tmb_adj,
+#            label=label,color=z)) +
+#   geom_point() + 
+#   geom_text() + 
+#   #geom_text(data=r_squared, mapping = aes(x = x,y=y, label=r_squared, color=NULL)) +
+#   facet_wrap("Signature", scales = "free_y")
+# 
+# 
+# 
+# 
+# ggplot(a5_sbs %>% group_by(Signature, differential_group_sampletype_strict) %>% 
+#          mutate(z = (Contribution-mean(Contribution))/sd(Contribution)) %>% mutate(label=ifelse(z>2, A5_ID, NA))
+#        %>% filter(!is.na(Largest_primary_dimensions_cm)), 
+#                           aes(x=Largest_primary_dimensions_cm, 
+#                               y=Contribution, 
+#                               color=differential_group_sampletype_strict)) +
+#   geom_point() + 
+#   geom_smooth(method='lm', aes(color=NULL), color="black") +
+#   #geom_text(data=r_squared, mapping = aes(x = x,y=y, label=r_squared, color=NULL)) +
+#   scale_colour_manual(values=sampletype_strict_cols) +
+#   facet_wrap("Signature", scales = "free_y")

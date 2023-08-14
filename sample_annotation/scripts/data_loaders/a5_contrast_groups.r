@@ -11,19 +11,25 @@
 make_hn_vs_abdominothoracic_contrasts <- function(sample_anno, exclude_samples=NULL)
 {
   differential_group_anatomy <- sample_anno$differential_group_anatomy
+  differential_group_driver <- sample_anno$TERT_ATRX_Mutation
+  
+  differential_group <- paste(differential_group_driver,differential_group_anatomy, sep="_")
+  
   if(!is.null(exclude_samples))
   {
     exclude_idx <- which(as.character(sample_anno$A5_ID) %in% as.character(exclude_samples))
-    differential_group_anatomy[exclude_idx] <- "Exclude"
+    differential_group[exclude_idx] <- "Exclude"
     message("Marked ", toString(exclude_samples), " for exclusion from contrasts")
   }
+  
   sex <- sample_anno$Gender
-  design_mat <- model.matrix(~0 + differential_group_anatomy + sex)
-  colnames(design_mat) <- gsub("differential_group_anatomy","", colnames(design_mat))
+  design_mat <- model.matrix(~0 + differential_group + sex)
+  colnames(design_mat) <- gsub("differential_group","", colnames(design_mat))
   rownames(design_mat) <- sample_anno$A5_ID
     
   contr_matrix <- makeContrasts(
-    Parasympathetic_vs_Sympathetic = (Abdominal_Thoracic) - (Head_Neck),
+    Parasympathetic_vs_Sympathetic = (ATRX_Abdominal_Thoracic + TERT_Abdominal_Thoracic + WT_Abdominal_Thoracic)/3 - (WT_Head_Neck),
+    Parasympathetic_vs_Sympathetic_WT = (WT_Abdominal_Thoracic) - (WT_Head_Neck),
     levels = colnames(design_mat))
   
   assign("contrast_matrix_hn", contr_matrix, globalenv())

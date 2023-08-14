@@ -69,6 +69,12 @@ get_region_probes <- function(gene_symbol=NULL,
   region_probes <- region_probes %>% 
     filter(Name %in% available_probes) 
   
+  if (nrow(region_probes) == 0)
+  {
+    warning("No probes available for gene symbol ", gene_symbol,". Returning NULL")
+    return(NULL)
+  }
+  
   if( !exists("mane_refseqid", envir = globalenv()))
   {
     mane_refseqid <- get_MANE_refseq_ids()

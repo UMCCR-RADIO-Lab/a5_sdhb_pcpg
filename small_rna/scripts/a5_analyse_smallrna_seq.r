@@ -9,97 +9,104 @@ library(egg)
 library(circlize)
 library(umap)
 
-# Blank ggplot themeing 
-blank_theme <- theme_bw(base_size = 20)+
-  theme(panel.grid=element_blank(),
-        strip.background = element_blank())
+setwd("/g/data/pq08/projects/ppgl")
 
-counts_summary <- read.table("/data/cephfs/punim0648/Pattison_projects/A5/A5-paper/Small RNA-Seq/Raw data/A5_subread_counts_miRbase_grch37_ref.tsv.summary", header = T,sep = "\t")
+#######################
+# Import data loaders #
+#######################
 
-# Read in the FC reads
-A5_raw <- read.table("/data/cephfs/punim0648/Pattison_projects/A5/A5-paper/Small RNA-Seq/Raw data/A5_subread_counts_miRbase_grch37_ref.tsv", header = T,sep = "\t")
-A5_raw <- A5_raw[,!grepl("Human.Brain.Total.RNA.subread_results.bam",colnames(A5_raw))]
-colnames(A5_raw) <- gsub("bams\\.|\\.subread_results.bam", "", colnames(A5_raw))
-colnames(A5_raw) <- gsub("\\.T0", "-", colnames(A5_raw))
+source("./a5/sample_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r")
+source("./a5/small_rna/scripts/data_loaders/a5_smallrna_seq_dataloader.r")
 
-# Remove E154-1 (AC contamined) from the UMAP
-A5_raw <- A5_raw[, !colnames(A5_raw) == "E154-1"]
+######################
+# Colours and Themes #
+######################
 
-# Get the batch and clinical data
-A5_clinical <- read_csv("/data/cephfs/punim0648/Pattison_projects/A5/A5-paper/Clinical data/A5 full clinical and genomic version 2 - A5 full clinical and genomic version 2.csv")%>%
-  mutate(is_primary_or_met = replace(is_primary_or_met, is_primary_or_met == "Metastatic", "Metastasis"))%>%
-  # Add in patient info for MDS later on
-  mutate(Patient = gsub("-.*", "", `A5 ID`))%>%
-  mutate(Patient_plot = replace(Patient,!(duplicated(Patient)| duplicated(Patient,fromLast = T)),NA))
+source("./a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
 
-A5_batch_data <- read_csv("/data/cephfs/punim0648/Pattison_projects/A5/A5-paper/Small RNA-Seq/Raw data/Batch_data.csv")%>%
-  mutate(`A5 ID` = gsub("-sR", "", `Identifier-NGS library`))%>%
-  mutate(`A5 ID` = gsub("-T0", "-", `A5 ID`))%>%
-  filter(!is.na(batch))%>%
-  left_join(A5_clinical)%>%
-  mutate(pateint_id = gsub("-.*", "", `A5 ID`))
+#############
+# Load data #
+#############
 
-# Get just the counts and the samples that have matching WGS data
-counts_a5 <- A5_raw[,7:ncol(A5_raw)]
-counts_a5 <- as.matrix(counts_a5)
-counts_a5 <- counts_a5[, colnames(counts_a5) %in% A5_clinical$`A5 ID`]
-rownames(counts_a5) <- A5_raw$Geneid
+data_loader_a5_smallrna(genome_version="hg38")
 
-# Order the annotation by the counts
-# We only end up with 87 samples with usable data here
-annotation <- data.frame(`A5 ID` = colnames(counts_a5),stringsAsFactors = F, check.names = F)%>%
-  left_join(A5_batch_data)%>%
-  mutate(RIN_cat = ifelse(RIN > 7, "Good", "Low"))%>%
-  mutate(low_RIN = ifelse(RIN <7, "RIN <7", "RIN > 7"))
-  
-plot_anno <- annotation %>%
-  arrange(RIN)%>%
-  mutate(`A5 ID`= factor(`A5 ID`, levels = `A5 ID`))
-
-# Plot of RINs
-ggplot(data = plot_anno, aes(x = `A5 ID`, y = RIN, fill = low_RIN))+
-  geom_bar(stat = "identity")+
-  blank_theme+
-  theme(axis.text.x = element_blank(),axis.ticks.x = element_blank())+
-  scale_fill_manual(values = c("Red", "Black"))+
-  labs(x = "Sample", y = "RNA integrity number (RIN)", fill = "Low RIN")+
-  ggsave("/data/cephfs/punim0648/Pattison_projects/A5/A5-paper/Small RNA-Seq/QC/Plots/RIN distribution.pdf")
-
-counts <- DGEList(counts_a5)
-
-# Sanity check for ordering
-colnames(counts_a5) == annotation$`A5 ID`
-
-# Filter lowly expressed genes
-keep.exprs <- filterByExpr(counts,group = annotation$TERT_or_ATRX)
-
-counts.keep <- counts[keep.exprs,, keep.lib.sizes=FALSE]
-
-# Apply TMM normalisation to the DGElist
-rnaseq <- calcNormFactors(counts.keep)
+################
+# Prepare data #
+################
 
 # Convert the TMM counts to log2 CPMs
-lcpm <- cpm(rnaseq, log = T)
+a5_smallrna_lcpm_list <- map(.x = a5_smallrna_dge_list, \(x) cpm(x, log = T))
 
-lcpm_save <- lcpm %>%
-  data.frame(check.names = F)%>%
-  rownames_to_column("miRNA")%>%
-  write_csv("/data/cephfs/punim0648/Pattison_projects/A5/A5-paper/Small RNA-Seq/Outputs/Normalised counts/RNA-Seq genewise log2 CPMs.csv")
+#############
+# UMAP data #
+#############
 
-umap_cpm <- umap(t(lcpm))
+set.seed(10)
+umap_config <- umap.defaults
+umap_config$n_neighbors=10
+#umap_config$spread=3
+umap_list <- lapply(a5_wts_lcpm_list, function (lcpm, umc) { umap(t(lcpm), config = umc) }, umc=umap_config) 
 
-to_plot_umap <- data.frame(umap_cpm$layout)%>%
-  rownames_to_column("A5 ID")%>%
-  left_join(annotation)%>%
-  write_csv("/data/cephfs/punim0648/Pattison_projects/A5/A5-paper/Dataset_integration/UMAP_coordinates/Small_RNA-Seq_log2_CPM_UMAP.csv")
+annotate_umap <- function (umap_result, annotation)
+{
+  umap_layout <- data.frame(umap_result$layout)
+  return(
+    tibble(UMAP1 = umap_layout$X1,
+           UMAP2 = umap_layout$X2,
+           A5_ID = rownames(umap_layout),
+           Dim = "1+2") %>% 
+      left_join(annotation) %>%
+      # Select key columns
+      dplyr::select(A5_ID,
+                    UMAP1,
+                    UMAP2,
+                    Gender,
+                    differential_group,
+                    # chr_14_miRNA_outgroup, 
+                    `is_head_and_neck`,
+                    TERT_ATRX_Mutation,
+                    `sample_purity`,
+                    #Run,
+                    Dim,
+                    `Patient ID`,
+                    `Year of birth`,
+                    Primary_Location_Simplified) %>% 
+      tidyr::separate(differential_group, 
+                      into=c("SampleType"), 
+                      extra="drop", 
+                      sep="_", 
+                      remove=F) %>% 
+      mutate(Primary_Location_Simplified=gsub("_abdominal|_thoracic|_bladder|_[Ll]eft|_[Rr]ight",
+                                              "",
+                                              Primary_Location_Simplified)) %>% 
+      mutate(`sample_purity`=as.numeric(`sample_purity`))
+  )
+}
 
-set.seed(42)
-ggplot(data = to_plot_umap, aes(x = X1, y = X2, colour = `is_head_and_neck`)) + 
-  geom_point()+
-  blank_theme+
-  guides(label= F)+
-  labs(shape ="", x= "UMAP 1", y = "UMAP 2", colour = "Subtype")+
-  theme(aspect.ratio=1)
+
+umap_annotated_list <- lapply(umap_list,annotate_umap, annotation=a5_anno.wts)
+
+colour_by <- c("differential_group", "Primary_Location_Simplified", "SampleType", "sample_purity",
+               "TERT_ATRX_Mutation", "is_head_and_neck", "Gender")
+
+umap_plot_list <- lapply(umap_annotated_list, function (umap_tbl) {
+  umap_ggplot <- ggplot(data = umap_tbl, aes(x = UMAP1, y = UMAP2))
+  
+  plot_list <- lapply(colour_by, function (colour_variable, plot_prototype) { 
+    plot_prototype + 
+      geom_point(aes(colour = !!sym(colour_variable))) +
+      ggtitle(colour_variable)
+  }, 
+  plot_prototype=umap_ggplot )
+  
+  plot_list[[length(plot_list)+1]] <-  umap_ggplot + geom_text(aes(label=A5_ID))
+  
+  return(plot_list)
+} )
+
+#######
+# MDS #
+#######
 
 # Look at various mds plot dims
 mds <- plotMDS(lcpm)
