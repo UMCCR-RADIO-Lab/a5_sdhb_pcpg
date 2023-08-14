@@ -273,7 +273,7 @@ data_loader_ensgid_to_chr <- function(EnsIds,
   message("Loaded EnsemblID to chr mapping table into the global environment as ensgid_to_chr")
 }
 
-#Function to fetch the biotype of a gene from ensembl using biomart
+#Function to fetch the ensembl gene ID from hgnc symbol using biomart
 hgnc_to_ensgid_from_biomart <- function(hgnc_symbols, 
                                         ensembl_mirror="https://asia.ensembl.org",
                                         use_cache=FALSE, 
@@ -309,6 +309,46 @@ hgnc_to_ensgid_from_biomart <- function(hgnc_symbols,
   }
   return_data <- data.frame(hgnc_symbol=hgnc_symbols) %>% 
     left_join(hgnc_to_ensgid, by=c("hgnc_symbol")) 
+  return(return_data)
+}
+
+
+#Function to fetch the ensembl gene ID from hgnc symbol using biomart
+ensgid_to_hgnc_from_biomart <- function(ens_gids, 
+                                        ensembl_mirror="https://asia.ensembl.org",
+                                        use_cache=FALSE, 
+                                        update_cache=TRUE,
+                                        offline_cache="/g/data/pq08/projects/ppgl/a5/offline_cache/ensgid_to_hgnc_from_biomart.tsv")
+{
+  if(use_cache)
+  {
+    message("Loading ensembl_id to HGNC conversion table from offline cache...")
+    ensgid_to_hgnc <- read.delim(offline_cache, sep="\t", header=T, check.names = F)
+    if (any(!(ens_gids %in% ensgid_to_hgnc$ensembl_gene_id))) {
+      message("WARNING: Not all requested gene IDs are present in the offline cache, rerun in online mode to update")
+    }
+    ensgid_to_hgnc <- ensgid_to_hgnc %>% filter(ensembl_gene_id %in% ens_gids)
+  } else {
+    message("Fetching ensembl_ids from biomart")
+    mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl",host = ensembl_mirror))
+    
+    ensgid_to_hgnc <- getBM(filters= "ensembl_gene_id",
+                            attributes= c("ensembl_gene_id",
+                                          "external_gene_name",
+                                          "external_gene_source"),
+                            values=ens_gids,mart= mart)
+    
+    ensgid_to_hgnc <- ensgid_to_hgnc %>% 
+      filter(external_gene_source=="HGNC Symbol") %>% 
+      dplyr::select(-external_gene_source) %>% 
+      dplyr::rename("hgnc_symbol"="external_gene_name")
+    
+    if(update_cache) {
+      write.table(ensgid_to_hgnc, offline_cache, sep="\t", row.names = F)
+    }
+  }
+  return_data <- data.frame(ensembl_gene_id=ens_gids) %>% 
+    left_join(ensgid_to_hgnc) 
   return(return_data)
 }
 
