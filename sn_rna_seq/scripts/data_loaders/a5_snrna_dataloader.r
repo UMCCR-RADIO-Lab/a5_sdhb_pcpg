@@ -690,23 +690,32 @@ snrna_annotate_cell_types <- function(snrna_object, output_qc=FALSE, qc_out_dir=
     "Tumor", #8
     "Tumor", #9
     "Tumor", #10
-    "Chromaffin cells", #11 
-    "Myeloid cells", #12
+    "Tumor", #11
+    "Chromaffin cells", #12 
     "Adrenocortical cells", #13
-    "Tumor", #14
-    "SCLCs", #15
-    "Endothelial cells",#16
-    "Fibroblasts", #17
-    "Adrenocortical cells", #18
-    "Tumor", #19
-    "Endothelial cells", #20
+    "Myeloid cells", #14
+    "Tumor", #15
+    "SCLCs", #16
+    "Endothelial cells",#17
+    "Fibroblasts", #18
+    "Adrenocortical cells", #19
+    "Tumor", #20
     "Lymphocytes", #21
-    "SCLCs", #22
-    "Endothelial cells", #23
-    "SCLCs", #24
-    "Tumor", #25 
-    "Fibroblasts" #26
+    "Tumor", #22
+    "Tumor", #23
+    "Endothelial cells", #24
+    "SCLCs", #25
+    "Tumor", #26 
+    "Fibroblasts", #27
+    "Myeloid cells" #28
   )
+  
+  if (digest::digest(snrna_object$seurat_clusters, algo="md5") != "adb57556ebce53743e33d8404ccd7d92"){
+    if (names(dev.cur()) != "null device") { dev.off() }
+    stop("The checksum for cell to cluster assignment does not match the stored checksum. This may be due to a change in 
+    package versions or input data. The cluster to cell-type assignments hardcoded in this function are only valid when 
+    the checksum is true.  You will need to manually re-assess the cluster assignments and update the checksum")
+  }
   
   Idents(snrna_object) <- snrna_object$seurat_clusters
   names(x = new.cluster.ids) <- levels(x = snrna_object)
