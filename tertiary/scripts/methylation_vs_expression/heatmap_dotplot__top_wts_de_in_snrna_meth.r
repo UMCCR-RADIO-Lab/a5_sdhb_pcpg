@@ -22,9 +22,8 @@ a5_snrna <- snrna_annotate_cell_types(a5_snrna)
 #load methylation array data
 source("./a5/methylation/scripts/a5_methylation_analysis_v2.r")
 
-#Differential Expression
+#Differential Expression - WTS
 source("./a5/wts/scripts/differential_expression/a5_wts_differential_expression.r")
-
 
 
 ##############
@@ -85,52 +84,61 @@ sample.order <- intersect(sample.order, colnames(a5_wts_lcpm_list[["SDHB_abdotho
 
 genes_per_group <- 20
 
+GOI_pipe <- . %>% filter(adj.P.Val < 0.01) %>% 
+  arrange(desc(abs(logFC))) %>% 
+  #slice_head(n = 200) %>% 
+  mutate(Symbol = gsub("ENSG[0-9]+([.][0-9]+)?_(.+)","\\2", Gene)) %>% 
+  filter(Symbol %in% rownames(a5_snrna)) %>% 
+  mutate(rank=row_number()) %>% 
+  dplyr::select(Gene, Symbol, adj.P.Val, logFC, rank)
+
 GOI.met <- 
   wts_top_tables[["genosampletype"]][["Metastasis_All_vs_NonMetPri_WT"]] %>% 
-    filter(adj.P.Val < 0.05) %>% 
-    arrange(desc(abs(logFC))) %>% 
-    slice_head(n = 200) %>% 
-    mutate(source ="Metastasis_All_vs_NonMetPri_WT", 
-           Symbol = gsub("ENSG[0-9]+([.][0-9]+)?_(.+)","\\2", Gene)) %>% 
-  dplyr::select(source, Gene, Symbol) %>% 
-  filter(Symbol %in% rownames(a5_snrna))
+  GOI_pipe %>% 
+  mutate(source ="Metastasis_All_vs_NonMetPri_WT")
+          
 
 GOI.tert <- wts_top_tables[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]] %>% 
-    filter(adj.P.Val < 0.05) %>% 
-    arrange(desc(abs(logFC))) %>%  
-    slice_head(n = 200) %>%  
-    mutate(source="TERT_PriMet_vs_NonMetPri_WT", 
-           Symbol = gsub("ENSG[0-9]+([.][0-9]+)?_(.+)","\\2", Gene)) %>% 
-  dplyr::select(source, Gene, Symbol) %>% 
-  filter(Symbol %in% rownames(a5_snrna))
+  GOI_pipe %>%  
+  mutate(source="TERT_PriMet_vs_NonMetPri_WT")
+          
 
 GOI.atrx <-
   wts_top_tables[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]] %>% 
-    filter(adj.P.Val < 0.05) %>% 
-    arrange(desc(abs(logFC))) %>% 
-    slice_head(n = 200) %>% 
-    mutate(source="ATRX_PriMet_vs_NonMetPri_WT", 
-           Symbol = gsub("ENSG[0-9]+([.][0-9]+)?_(.+)","\\2", Gene)) %>% 
-  dplyr::select(source, Gene, Symbol) %>% 
-  filter(Symbol %in% rownames(a5_snrna))
+  GOI_pipe %>% 
+  mutate(source="ATRX_PriMet_vs_NonMetPri_WT")
+  
 
-GOI.met <- GOI.met %>% filter(!(Gene %in%  c(GOI.tert$Gene, GOI.atrx$Gene)))
-GOI.tert <- GOI.tert %>% filter(!(Gene %in%  c(GOI.met$Gene, GOI.atrx$Gene)))
-GOI.atrx <- GOI.atrx %>% filter(!(Gene %in%  c(GOI.met$Gene, GOI.tert$Gene)))
+GOI <- bind_rows(GOI.met, GOI.tert, GOI.atrx) 
 
-GOI.met <- GOI.met[1:genes_per_group,]
-GOI.tert <- GOI.tert[1:genes_per_group,]
-GOI.atrx <- GOI.atrx[1:genes_per_group,]
+GOI.common <- GOI %>% 
+  group_by(Gene) %>% 
+  summarise(n=n(), rank=mean(rank)) %>% 
+  filter(n==3) %>% 
+  slice_min(n = genes_per_group, order_by = rank) %>% 
+  mutate(source="Common") %>% 
+  dplyr::select(Gene, rank, source)
 
-GOI <- bind_rows(GOI.met, GOI.tert, GOI.atrx)
+GOI.unique <- GOI %>% 
+  group_by(Gene) %>% 
+  mutate(n=n()) %>% 
+  filter(n==1) %>% 
+  group_by(source) %>% 
+  slice_min(n = genes_per_group, order_by = rank) %>% 
+  dplyr::select(Gene, rank, source)
 
-GOI <- GOI %>% 
-  mutate(Symbol_Label=ifelse(grepl("^AC[0-9]", Symbol), 
-                            stringr::str_extract(string = Gene, pattern = "ENSG[0-9]+"), 
-                            Symbol))
 
-GOI$source <- factor(GOI$source, 
-                     levels = c("Metastasis_All_vs_NonMetPri_WT",
+GOI.plot <- bind_rows(GOI.common, GOI.unique) 
+
+GOI.plot <- GOI.plot %>% 
+  mutate(Symbol = gsub("ENSG[0-9]+([.][0-9]+)?_(.+)","\\2", Gene),
+         Symbol_Label=ifelse(grepl("^AC[0-9]", Symbol), 
+                             stringr::str_extract(string = Gene, pattern = "ENSG[0-9]+"), 
+                             Symbol))
+
+GOI.plot$source <- factor(GOI.plot$source, 
+                     levels = c("Common",
+                                "Metastasis_All_vs_NonMetPri_WT",
                                 "TERT_PriMet_vs_NonMetPri_WT",
                                 "ATRX_PriMet_vs_NonMetPri_WT"))
 
@@ -138,24 +146,33 @@ GOI$source <- factor(GOI$source,
 # DMR Membership #
 ##################
 
-GOI$In_DMR <- "No"
-for (i in 1:nrow(GOI))
-{
-  relevant_dmr <- dmr_lists[["genosampletype"]][[GOI$source[i]]] %>% GenomicRanges::as.data.frame() %>% filter(Fisher < 0.05) %>% 
-    separate_rows(overlapping.genes, sep=", ") %>% filter(overlapping.genes == GOI$Symbol[i])
-  
-  if(nrow(relevant_dmr) > 0) { GOI$In_DMR[i] <- "Yes"} 
+dmr_genes <- purrr::map(.x = dmr_lists[["genosampletype"]], 
+           .f =  function (dmrs) {
+             dmrs %>% GenomicRanges::as.data.frame() %>% 
+               filter(Fisher < 0.05) %>% 
+               separate_rows(overlapping.genes, sep=", ") %>% 
+               filter(!is.na(overlapping.genes)) %>% 
+               pull(overlapping.genes) })
 
+GOI.plot$In_DMR <- "No"
+for (i in 1:nrow(GOI.plot))
+{
+  if(GOI.plot$source[[i]] == "Common") {
+   if(GOI.plot$Symbol[i] %in% unlist(dmr_genes)) { GOI.plot$In_DMR[i] <- "Yes"} 
+  } else {
+    if(GOI.plot$Symbol[i] %in% dmr_genes[[GOI.plot$source[[i]]]]) { GOI.plot$In_DMR[i] <- "Yes"} 
+  }
 }
 
 ############
 # WTS Expr #
 ############
 
-plot.data <- GOI %>% 
-  inner_join(a5_wts_lcpm_list[["SDHB_abdothoracic"]][GOI$Gene,sample.order] %>% 
+plot.data <- GOI.plot %>% 
+  inner_join(a5_wts_lcpm_list[["SDHB_abdothoracic"]][GOI.plot$Gene,sample.order] %>% 
                data.frame(check.names = F) %>%  
-               tibble::rownames_to_column("Gene")) %>% inner_join(ensid_to_biotype)
+               tibble::rownames_to_column("Gene")) %>% inner_join(ensid_to_biotype) %>% 
+  data.frame()
 rownames(plot.data) <-plot.data$Symbol_Label
 
 hm.annot.data.col <- a5_anno %>% 
@@ -188,7 +205,7 @@ hm.annot.row = HeatmapAnnotation(df = plot.data[,c("source", "In_DMR","gene_biot
 
 
 
-hm_bulk_gex <- Heatmap(t(scale(t(plot.data %>% dplyr::select(-Gene, -Symbol,-source,-gene_biotype, -In_DMR, -Symbol_Label)))),
+hm_bulk_gex <- Heatmap(t(scale(t(plot.data %>% dplyr::select(-Gene, -Symbol,-source,-gene_biotype, -In_DMR, -Symbol_Label, - rank)))),
         #col = col_fun,
         row_split = plot.data$source,
         #column_split = a5_anno.wts.nohn_noex$genotype_groups,
@@ -219,16 +236,16 @@ hm_bulk_gex <- Heatmap(t(scale(t(plot.data %>% dplyr::select(-Gene, -Symbol,-sou
 #############
 
 hm_snrna_dotplot <- HeatmapDotPlot.Seurat(object = a5_snrna,
-                      features = GOI$Symbol, 
+                      features = GOI.plot$Symbol, 
                       aggr.by = "cell_type",
-                      gene_grouping = GOI$source,
+                      gene_grouping = GOI.plot$source,
                       show_row_names = FALSE
                       )
 
 hm_snrna_dotplot_genotype <- HeatmapDotPlot.Seurat(object = subset(x = a5_snrna, subset = cell_type == "Tumor"),
-                                          features = GOI$Symbol, 
+                                          features = GOI.plot$Symbol, 
                                           aggr.by = "TERT_ATRX_Mutation",
-                                          gene_grouping = GOI$source,
+                                          gene_grouping = GOI.plot$source,
                                           show_row_names = FALSE
 )
 
