@@ -1,21 +1,22 @@
 library(dplyr)
 library(tidyr)
 
-basedir <- "/g/data/pq08/projects/ppgl/"
-setwd(basedir)
+setwd("/g/data/pq08/projects/ppgl/")
 
 ################
 # Data Loaders #
 ################
 
-source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r")
+source("./a5/sample_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r")
 if(!exists("a5_anno")) {
   data_loader_a5_clinical_anno(use_cache = T) }
 
-source("/g/data/pq08/projects/ppgl/a5/wgs/scripts/data_loaders/wgs_dataloaders.r")
+source("./a5/wgs/scripts/data_loaders/wgs_dataloaders.r")
 data_loader_somatic_variants(quickload = T)
 
-source("/g/data/pq08/projects/ppgl/a5/wgs/scripts/paired_sample_analysis/process_paired_pileups.r")
+source("./a5/wgs/scripts/paired_sample_analysis/process_paired_pileups.r")
+
+blacklist <- read.delim("./a5/wgs/analysis/mpileup/blacklist/blacklists/blacklist_readsupport_gteq3_samplesupport_gteq3.tsv")
 
 ###############################
 # Filter deleterious variants #
@@ -32,19 +33,56 @@ deleterious_vars <- a5_somatic_variants_keep %>%
 # Remove unrelated primary #
 ############################
 
-pileup_vafs$E159 <- pileup_vafs$E159 %>%  dplyr::select(-`E159-T02_pileup_vaf`)
+#pileup_vafs$E159 <- pileup_vafs$E159 %>%  dplyr::select(-`E159-T02_pileup_vaf`)
 
 ######################
 # Generate summaries #
 ######################
 
 summaries <- list()
+min_read_support=3
 
 for (patient in names(pileup_vafs)) {
-  vaf_data <- pileup_vafs[[patient]] %>% filter(!!sym(paste0(patient, "-B01_pileup_vaf")) == 0)
+  
+  #Attach alt counts to VAFs and pivot to have one sample per row
+  vaf_data <- pileup_vafs[[patient]] %>% 
+    left_join(
+      pileup_summaries[[patient]] %>% 
+        dplyr::select(c("CHROM", "POS", "REF", "ALT", ends_with("altCount")))) %>% 
+    rename_with(.fn = \(x) gsub("([0-9])_","\\1__", x)) %>% 
+    pivot_longer(cols = -c(CHROM,POS,REF,ALT),  
+                 names_to = c("Sample", "Metric"), 
+                 names_sep = "__", values_to = "value") %>% 
+    pivot_wider(id_cols = c(CHROM, POS, REF, ALT, Sample), 
+                names_from = "Metric", 
+                values_from = "value")
+  
+    
+    #set VAF of variants with support below threshold in tumour to zero
+    vaf_data <- vaf_data %>% 
+      mutate(pileup_vaf=ifelse(!grepl("-B01",Sample) & altCount < min_read_support, 0, pileup_vaf)) 
+    
+    #pivot to one row per variant
+    vaf_data <- vaf_data %>% 
+      mutate(Sample=paste0(Sample, "_pileup_vaf")) %>% 
+    pivot_wider(id_cols = c(CHROM,POS,REF,ALT), 
+                names_from = Sample, 
+                values_from = pileup_vaf)
+    
+  
+    #Annotate and filter blacklist
+    vaf_data <- vaf_data %>%  
+    left_join(blacklist) %>% 
+    filter(is.na(n_above_threshold)) 
+  
+    #Filter 
+      vaf_data <- vaf_data %>%   
+      filter(!!sym(paste0(patient, "-B01_pileup_vaf")) == 0)
+    
   temp_colname <- gsub("T0(.)_pileup_vaf","\\1",colnames(vaf_data))
   pub_ids <- a5_anno %>%  filter(A5_ID %in% intersect(temp_colname,a5_anno$A5_ID)) %>% dplyr::select(A5_ID, PublicationID)
   pub_ids <- set_names(pub_ids$PublicationID, pub_ids$A5_ID)
+  
   temp_colname <- recode(temp_colname, !!!pub_ids)
   colnames(vaf_data) <- temp_colname
   vaf_data <- vaf_data %>%  dplyr::select(-matches("-B01_pileup_vaf"))
@@ -53,7 +91,8 @@ for (patient in names(pileup_vafs)) {
     pivot_longer(cols = starts_with(patient), 
                  names_to = "Sample", values_to = "VAF") %>% 
     filter(VAF > 0) %>% 
-    group_by(CHROM, POS, REF, ALT) %>% summarise(Privacy=paste(Sample, sep="/", collapse="/"))
+    group_by(CHROM, POS, REF, ALT) %>% 
+    summarise(Privacy=paste(Sample, sep="/", collapse="/"))
   
   vaf_data <- vaf_data %>% 
     left_join(deleterious_vars) 
@@ -100,6 +139,12 @@ for (patient in names(pileup_vafs)) {
 
 summaries <- bind_rows(summaries)
 
+
+write.table(x = summaries, 
+            file = "./a5/wgs/results/paired_sample_analysis/variant_overlap_counts.tsv", 
+            sep="\t", 
+            row.names = F, 
+            quote=F)
 
 #LEGACY
 # 
