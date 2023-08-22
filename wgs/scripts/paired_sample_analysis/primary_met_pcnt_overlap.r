@@ -41,6 +41,7 @@ deleterious_vars <- a5_somatic_variants_keep %>%
 
 summaries <- list()
 min_read_support=3
+min_vaf_support=0.1
 
 for (patient in names(pileup_vafs)) {
   
@@ -58,9 +59,13 @@ for (patient in names(pileup_vafs)) {
                 values_from = "value")
   
     
-    #set VAF of variants with support below threshold in tumour to zero
+    #set VAF of variants with support below alt read threshold in tumour to zero
     vaf_data <- vaf_data %>% 
       mutate(pileup_vaf=ifelse(!grepl("-B01",Sample) & altCount < min_read_support, 0, pileup_vaf)) 
+    
+    #set VAF of variants with support below VAF threshold in tumour to zero
+    vaf_data <- vaf_data %>% 
+      mutate(pileup_vaf=ifelse(!grepl("-B01",Sample) & pileup_vaf < min_vaf_support, 0, pileup_vaf)) 
     
     #pivot to one row per variant
     vaf_data <- vaf_data %>% 
@@ -75,8 +80,8 @@ for (patient in names(pileup_vafs)) {
     left_join(blacklist) %>% 
     filter(is.na(n_above_threshold)) 
   
-    #Filter 
-      vaf_data <- vaf_data %>%   
+    #Filter variants with read support in normal
+    vaf_data <- vaf_data %>%   
       filter(!!sym(paste0(patient, "-B01_pileup_vaf")) == 0)
     
   temp_colname <- gsub("T0(.)_pileup_vaf","\\1",colnames(vaf_data))
@@ -116,10 +121,14 @@ for (patient in names(pileup_vafs)) {
   vaf_data <- vaf_data %>% 
     pivot_wider(id_cols = c(Privacy, nVar_Total, nVar_Total_Deleterious, paste0(pub_ids, "_nTotal"), paste0(pub_ids, "_nDel")), 
                 names_from = Deleterious, 
-                values_from = n) %>% 
+                values_from = n) %>%
+    ungroup() %>% 
+    mutate(across(.cols=everything(), 
+           .fns=~replace_na(.x,0))) %>% 
     dplyr::rename("nVar_Deleterious_PrivacyClass"=Deleterious, "nVar_NonDeleterious_PrivacyClass"=`Non-deleterious`) %>% 
     mutate(pcnt_GlobalMut_Deleterious=(nVar_Deleterious_PrivacyClass/nVar_Total_Deleterious)*100, 
-           pcnt_GlobalMut_AllMut=((nVar_Deleterious_PrivacyClass+nVar_NonDeleterious_PrivacyClass)/nVar_Total)*100)
+           pcnt_GlobalMut_AllMut=((nVar_Deleterious_PrivacyClass+nVar_NonDeleterious_PrivacyClass)/nVar_Total)*100) 
+
   
   walk(.x = pub_ids, .f =  function(pub_id) {
     temp <- vaf_data %>%  
