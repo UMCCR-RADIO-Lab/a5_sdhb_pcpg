@@ -1,0 +1,20 @@
+#PBS -N pileup2counts
+#PBS -l ncpus=12
+#PBS -l walltime=4:00:00
+#PBS -l mem=30GB
+#PBS -l storage=scratch/pq08+gdata/pq08
+#PBS -l jobfs=5GB
+#PBS -q normal
+#PBS -m a
+#PBS -M aidan.flynn@unimelb.edu.au
+
+#pileup_to_counts script requires python>3.8
+module load python3/3.11.0 parallel
+
+base_dir="/g/data/pq08/projects/ppgl/a5/wgs/analysis/mpileup"
+pileup2counts_script="${base_dir}/blacklist/scripts/pileup_to_counts.py"
+
+samples=$(find /g/data/pq08/projects/ppgl/a5/wgs/analysis/bcbio/E*/final/E*-B01/ -iname '*-B01-ready.*am' | sort | xargs -I {} basename {} | sed -E 's/-ready.(cr|b)am//' | xargs)
+mapfile chr_pos_files < <(find /g/data/pq08/projects/ppgl/a5/wgs/analysis/mpileup/blacklist/positions -iname "chr*")
+
+parallel -j 12 "python3 ${pileup2counts_script} --pileup ${base_dir}/blacklist/pileups/{/.}.pileup --outputValue AltRefTotal --variantCalls <(cat {} | cut -f1,2,4,5) --pileupSamples ${samples} > ${base_dir}/blacklist/count_summaries/{/.}.txt" ::: ${chr_pos_files[@]}
