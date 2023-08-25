@@ -5,7 +5,10 @@ source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_
 
 
 #Function to read the clinical data from the google sheet or offline-cache
-data_loader_a5_clinical_anno <- function(google_account=NULL, use_cache=FALSE, offline_cache="/g/data/pq08/projects/ppgl/a5/offline_cache/a5_clinical_annotation.tsv")
+data_loader_a5_clinical_anno <- function(google_account=NULL, 
+                                         use_cache=FALSE, 
+                                         offline_cache="/g/data/pq08/projects/ppgl/a5/offline_cache/a5_clinical_annotation.tsv",
+                                         remove_excluded_samples=T)
 {
   if(exists("a5_anno")) {
     message("WARNING: Object a5_anno already exists in the global environment and will be overwritten")
@@ -27,6 +30,10 @@ data_loader_a5_clinical_anno <- function(google_account=NULL, use_cache=FALSE, o
   a5_anno <- a5_anno %>% dplyr::rename(`A5_ID`=`A5 ID`)
   a5_anno <- a5_anno %>% dplyr::filter(!is.na(`A5_ID`))
   a5_anno <- a5_anno %>% mutate(is_primary_or_met = replace(is_primary_or_met, is_primary_or_met == "Metastatic", "Metastasis"))
+  
+  if(remove_excluded_samples == T) {
+    a5_anno <- a5_anno %>% filter(Exclude == "N")
+  }
   
   a5_anno <- add_differential_groups(a5_anno)
  
