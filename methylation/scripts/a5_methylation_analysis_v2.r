@@ -304,7 +304,7 @@ if(quickload_diff_meth)
       
     }
   }
-  saveRDS(gsea_result, "./a5/methylation/quickload_checkpoints/ruv_diffmeth_result.rds")
+  saveRDS(diff_meth_result, "./a5/methylation/quickload_checkpoints/ruv_diffmeth_result.rds")
 }
 
 ########
@@ -582,10 +582,13 @@ entrezid_to_ensgidsymbol <- function(entrez_id)
 goterm_to_ensgidsymbol <- function(go_data,goterm)
 {
   go_id <- go_data$idTable[go_data$idTable$TERM == goterm,]$GOID
-  entrez_id <- go_data$idList[[go_id]]
-  
-  ids <- entrezid_to_ensgidsymbol(entrez_id)
-  return(ids)
+  if(length(go_id) > 0) {
+    entrez_id <- go_data$idList[[go_id]]
+    ids <- entrezid_to_ensgidsymbol(entrez_id)
+    return(ids)  
+  } else {
+    return(NULL)
+  }
 }
 
 go_summary <- NULL
@@ -634,8 +637,12 @@ go_summary.sig$go_genes <- vector(mode = "list", length=nrow(go_summary.sig))
 go_summary.sig$go_intersect <- vector(mode = "list", length=nrow(go_summary.sig))
 for (i in 1:nrow(go_summary.sig))
 {
-  go_summary.sig$go_genes[[i]]=goterm_to_ensgidsymbol(go_data, go_summary.sig$TERM[i])
-  go_summary.sig$go_intersect[[i]] = list(intersect(go_summary.sig$go_genes[[i]],go_summary.sig$contrast_sig_genes[[i]]))
+  ensgids <- goterm_to_ensgidsymbol(go_data, go_summary.sig$TERM[i])
+  if (!is.null(ensgids)) {
+    go_summary.sig$go_genes[[i]] = ensgids
+    go_summary.sig$go_intersect[[i]] = list(intersect(go_summary.sig$go_genes[[i]],
+                                                      go_summary.sig$contrast_sig_genes[[i]]))
+  }
 }
 
 ggplot(go_summary.sig %>% 
