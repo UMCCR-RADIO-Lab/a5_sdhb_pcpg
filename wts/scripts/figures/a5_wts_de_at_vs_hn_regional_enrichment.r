@@ -260,7 +260,7 @@ layout_design <- "AABBB\nCCCCC\nDDDEE"
 gg_expr[["chr7p15.2"]] +  #AA
   gg_expr[["chr12q13.13"]] + ylab("") + #BBB
   gg_manhattan + #CCCC
-  gg_expr[["chr17q12]"]] + #DDD
+  gg_expr[["chr17q12"]] + #DDD
   gg_expr[["chr17q21.32"]]  +  ylab("") + #EE
   plot_layout(guides="collect", 
               design = layout_design, 
