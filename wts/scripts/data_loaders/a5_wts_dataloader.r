@@ -53,12 +53,14 @@ data_loader_a5_wts_counts <- function(count_file_dir=NULL, count_file_pattern=".
   
   #Samples to exclude from core set for quality/purity/genotype reasons
   exclude_global <- a5_anno %>%  filter(Exclude=="Y") %>% pull(A5_ID)
+  exclude_missing_anno <- setdiff(colnames(counts_df), a5_anno$A5_ID)
   exclude_genotype <- a5_anno %>%  filter(Genotype != "SDHB") %>% pull(A5_ID)
   exclude_no_rna_data <- setdiff(a5_anno$A5_ID, colnames(counts_df))
   exclude_no_wgs_data <- c("E181-1", "E191-1")
   exclude_qc <- c("E144-1")
 
-  exclude_base <- c(exclude_no_rna_data, exclude_no_wgs_data, exclude_qc, exclude_global)
+  exclude_base <- c(exclude_no_rna_data, exclude_no_wgs_data, exclude_qc, exclude_global, exclude_missing_anno)
+  
 
   a5_anno <- a5_anno %>% mutate(Exclude_RNA=ifelse(A5_ID %in% exclude_base, T, F))
   
