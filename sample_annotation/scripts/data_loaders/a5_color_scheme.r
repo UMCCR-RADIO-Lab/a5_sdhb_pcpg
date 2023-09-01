@@ -131,3 +131,16 @@ all_cell_types <- c("Tumor",
                     "SCLCs")
 
 cell_type_colours <- setNames(brewer.pal(name = "Set1", n = 8), all_cell_types)
+
+
+genomic_alteration_cols <- c(Missense=ColorPalette[["DarkBlue1"]], 
+                             `Stop gained`=ColorPalette[["DarkRed1"]],
+                             `Stop lost`=ColorPalette[["DarkOrange2"]], 
+                             Frameshift=ColorPalette[["LightBrown2"]], 
+                             `Promoter mutation`=ColorPalette[["Purple3"]],  
+                             `Structural variant`=ColorPalette[["LightGreen1"]], 
+                             `Splice acceptor`=ColorPalette[["DarkGrey2"]], 
+                             `Splice donor`=ColorPalette[["DarkGrey1"]], 
+                             `Splice region`=ColorPalette[["LightGrey1"]], 
+                             `Homozyg. del.`=ColorPalette[["DarkGreen1"]],
+                             `In-frame deletion`=ColorPalette[["DarkBrown1"]])
