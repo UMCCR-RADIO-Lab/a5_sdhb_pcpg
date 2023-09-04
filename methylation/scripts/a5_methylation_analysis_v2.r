@@ -13,10 +13,14 @@ library(patchwork)
 # Config flags #
 ################
 
-save_plots <<- F 
-quickload_diff_meth <<- T
-quickload_gsea <<- T 
-quickload_dmr <<- T 
+save_plots <- F 
+if (!exists("quickload_diff_meth")) { quickload_diff_meth <- F }
+if (!exists("quickload_gsea")) { quickload_gsea <- F }
+if (!exists("quickload_dmr")) { quickload_dmr <- F }
+
+message("quickload_diff_meth: ", quickload_diff_meth)
+message("quickload_gsea: ", quickload_gsea) 
+message("quickload_dmr: ", quickload_dmr)
 
 ###########
 # Imports #
