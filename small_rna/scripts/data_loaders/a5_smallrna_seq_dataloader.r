@@ -62,12 +62,13 @@ data_loader_a5_smallrna <- function(genome_version="hg38", exclude_samples=c(), 
   
   #Samples to exclude from core set for quality/purity/genotype reasons
   exclude_global <- a5_anno %>%  filter(Exclude=="Y") %>% pull(A5_ID)
+  exclude_missing_anno <- setdiff(colnames(smallrna_read_counts_mat), a5_anno$A5_ID)
   exclude_genotype <- a5_anno %>%  filter(Genotype != "SDHB") %>% pull(A5_ID)
   exclude_no_rna_data <- setdiff(a5_anno$A5_ID, colnames(smallrna_read_counts_mat))
   exclude_no_wgs_data <- c("E181-1", "E191-1")
   exclude_qc <- a5_qc %>% filter(smallrna__RIN < minimum_RIN) %>% pull(A5_ID)
   
-  exclude_base <- c(exclude_no_rna_data, exclude_no_wgs_data, exclude_qc, exclude_global)
+  exclude_base <- c(exclude_no_rna_data, exclude_no_wgs_data, exclude_qc, exclude_global, exclude_missing_anno)
   
   a5_anno <- a5_anno %>% mutate(Exclude_smallRNA=ifelse(A5_ID %in% exclude_base, T, F))
   
@@ -156,6 +157,7 @@ data_loader_a5_smallrna <- function(genome_version="hg38", exclude_samples=c(), 
   assign("a5_smallrna_dge_list", counts_dge_list, globalenv())
   if(!exists("smallrna_feature_annotation",envir = globalenv())) {
     assign("smallrna_feature_annotation", smallrna_feature_annotation, globalenv())}
+  assign("a5_anno", a5_anno, globalenv())
   
   message("Loaded objects into global environment: 
           a5_smallrna_read_counts_summary (featureCounts summary table),
