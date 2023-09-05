@@ -75,10 +75,13 @@ a5_to_zethoven_anno_format <- function(a5_anno) {
       new_naming
     )
   
+  if("E124-1" %in% a5_anno_tcga_format$Sample) {
   a5_anno_tcga_format[a5_anno_tcga_format$Sample == "E124-1", c("Genotype", "Cluster", "TCGA_Cluster", "new_naming")] <-
-    c("NF1", "Kinase", "Kinase signaling", "A5 - NF1")
+    c("NF1", "Kinase", "Kinase signaling", "A5 - NF1") }
+  
+  if("E145-1" %in% a5_anno_tcga_format$Sample) {
   a5_anno_tcga_format[a5_anno_tcga_format$Sample == "E145-1", c("Genotype", "Cluster", "TCGA_Cluster", "new_naming")] <-
-    c("VHL", "VHL", "Pseudohypoxia", "A5 - VHL")
+    c("VHL", "VHL", "Pseudohypoxia", "A5 - VHL") }
   
   return(a5_anno_tcga_format)
   
