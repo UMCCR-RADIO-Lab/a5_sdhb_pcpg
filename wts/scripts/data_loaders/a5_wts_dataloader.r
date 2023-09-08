@@ -245,7 +245,8 @@ data_loader_ensgid_to_chr <- function(EnsIds,
     message("Loading ensembl_id to chromosome conversion table from offline cache...")
     ensgid_to_chr <- read.delim(offline_cache, sep="\t", header=T, check.names = F)
     if (any(!(EnsIds %in% ensgid_to_chr$ensembl_gene_id))) {
-      message("WARNING: Not all requested ensemble IDs are present in the offline cache, rerun in online mode to update")
+      message("WARNING: Not all requested gene IDs are present in the offline cache. This may be because the cache was built with a different 
+              query set or because not all IDs return a result. Rerun in online mode to attempt to update.")
     }
     ensgid_to_chr <- data.frame(ensembl_gene_id=EnsIds) %>% left_join(ensgid_to_chr)
   } else {
@@ -287,7 +288,8 @@ hgnc_to_ensgid_from_biomart <- function(hgnc_symbols,
     message("Loading HGNC to ensembl_id conversion table from offline cache...")
     hgnc_to_ensgid <- read.delim(offline_cache, sep="\t", header=T, check.names = F)
     if (any(!(hgnc_symbols %in% hgnc_to_ensgid$hgnc_symbol))) {
-      message("WARNING: Not all requested gene symbols are present in the offline cache, rerun in online mode to update")
+      message("WARNING: Not all requested gene IDs are present in the offline cache. This may be because the cache was built with a different 
+              query set or because not all IDs return a result. Rerun in online mode to attempt to update.")
     }
     hgnc_to_ensgid <- hgnc_to_ensgid %>% filter(hgnc_symbol %in% hgnc_symbols)
   } else {
@@ -327,7 +329,8 @@ ensgid_to_hgnc_from_biomart <- function(ens_gids,
     message("Loading ensembl_id to HGNC conversion table from offline cache...")
     ensgid_to_hgnc <- read.delim(offline_cache, sep="\t", header=T, check.names = F)
     if (any(!(ens_gids %in% ensgid_to_hgnc$ensembl_gene_id))) {
-      message("WARNING: Not all requested gene IDs are present in the offline cache, rerun in online mode to update")
+      message("WARNING: Not all requested gene IDs are present in the offline cache. This may be because the cache was built with a different 
+              query set or because not all IDs return a result. Rerun in online mode to attempt to update.")
     }
     ensgid_to_hgnc <- ensgid_to_hgnc %>% filter(ensembl_gene_id %in% ens_gids)
   } else {
@@ -354,6 +357,61 @@ ensgid_to_hgnc_from_biomart <- function(ens_gids,
   return(return_data)
 }
 
+
+#Function to fetch the gene ontology terms associated with and ensemble gene ID using biomart
+ensgid_to_goterm_from_biomart <- function(ens_gids, 
+                                        ensembl_mirror="https://asia.ensembl.org",
+                                        use_cache=TRUE, 
+                                        update_cache=FALSE,
+                                        offline_cache="/g/data/pq08/projects/ppgl/a5/offline_cache/ensgid_to_gene_ontology_from_biomart.tsv",
+                                        permitted_evidence_codes=c("IEA","HMP","IPI","HDA","IDA","IMP","ND",
+                                                                   "IBA","TAS","ISS","IEP","NAS",
+                                                                   "EXP","IC","IGI","ISA",
+                                                                   "ISO","RCA","HEP","ISM"), #see https://geneontology.org/docs/guide-go-evidence-codes/
+                                        permitted_domains=c("cellular_component","biological_process","molecular_function")
+                                        )
+{
+  if(use_cache)
+  {
+    message("Loading gene ontology table from offline cache...")
+    ensgid_to_go <- read.delim(offline_cache, sep="\t", header=T, check.names = F)
+    if (any(!(ens_gids %in% ensgid_to_go$ensembl_gene_id))) {
+      message("WARNING: Not all requested gene IDs are present in the offline cache. This may be because the cache was built with a different 
+              query set or because not all IDs return a result. Rerun in online mode to attempt to update.")
+    }
+    
+    ensgid_to_go <- ensgid_to_go %>% filter(ensembl_gene_id %in% ens_gids)
+    
+  } else {
+    message("Fetching gene ontology terms from biomart")
+    mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl",host = ensembl_mirror))
+    
+    mart <- useEnsembl(biomart="ensembl", dataset="hsapiens_gene_ensembl", mirror = "asia")
+    
+    ensgid_to_go <- biomaRt::getBM(filters= "ensembl_gene_id",
+                               attributes= c("ensembl_gene_id",
+                                             "go_id", 
+                                             "name_1006",
+                                             "definition_1006",
+                                             "go_linkage_type",
+                                             "namespace_1003"),
+                               values=ens_gids, mart = mart)
+    
+
+    if(update_cache) {
+      write.table(ensgid_to_go, offline_cache, sep="\t", row.names = F)
+    }
+  }
+  
+  ensgid_to_go <- ensgid_to_go %>% 
+    filter(go_linkage_type %in% permitted_evidence_codes, 
+           namespace_1003 %in% permitted_domains)
+  
+  return_data <- data.frame(ensembl_gene_id=ens_gids) %>% 
+    left_join(ensgid_to_go) 
+  
+  return(return_data)
+}
 
 ###############
 # RNA Fusions #
