@@ -12,22 +12,25 @@ threads=3
 
 ## run GISTIC analysis on GADI (modified from Andrew's Spartan scripts)
 
-source /g/data/pq08/projects/flynna/software/miniconda3/etc/profile.d/conda.sh
-conda activate /g/data/pq08/projects/A5/software/gistic2
+conda activate /g/data/pq08/projects/ppgl/a5/software/gistic2
 module load parallel
 
 ref_gene_file="$CONDA_PREFIX/share/gistic2*/refgenefiles/hg38.UCSC.add_miR.160920.refgene.mat"
 
-base_dir="/g/data/pq08/projects/A5"
-output_dir="${base_dir}/WGS/analysis/gistic/output"
-input_dir="${base_dir}/WGS/analysis/gistic/input"
+base_dir="/g/data/pq08/projects/ppgl/a5"
+gistic_dir="${base_dir}/wgs/analysis/gistic"
+input_dir="${gistic_dir}/input"
+output_dir="${gistic_dir}/output"
+
 
 ## input file definitions
 declare -A seg_files
-seg_files['all_samples']="${input_dir}/A5_purple_segs_gistic_format.seg"
-seg_files['non_malignant_primary_nohn']="${input_dir}/A5_purple_segs_gistic_format_non_malignant_primary_nohn.seg"
-seg_files['malignant_all']="${input_dir}/A5_purple_segs_gistic_format_malignant_all_nohn.seg"
-seg_files['malignant_tert_atrx']="${input_dir}/A5_purple_segs_gistic_format_malignant_tert_atrx_nohn.seg"
+seg_files['all']="${input_dir}/a5_purple_segs_gistic_format.seg"
+seg_files['non_metastatic_atpgl']="${input_dir}/a5_purple_segs_gistic_format_non_metastatic_atpgl.seg"
+seg_files['metastatic_atpgl']="${input_dir}/a5_purple_segs_gistic_format_metastatic_atpgl.seg"
+seg_files['tert']="${input_dir}/a5_purple_segs_gistic_format_tert_atpgl.seg"
+seg_files['atrx']="${input_dir}/a5_purple_segs_gistic_format_atrx_atpgl.seg"
+seg_files['hn']="${input_dir}/a5_purple_segs_gistic_format_all_hnpgl.seg"
 
 #runner function for parallel
 run_gistic() { #outdir, seg_group, seg_file
