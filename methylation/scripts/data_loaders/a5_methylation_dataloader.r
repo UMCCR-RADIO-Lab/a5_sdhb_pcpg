@@ -24,9 +24,9 @@ data_loader_a5_methylation_array <- function(quickload=T, quickload_checkpoint_d
   #Helper sub-function to plot mean detection p-values 
   make_mean_detection_pvals_plot <- function(targets, detP, pdf_out){
     pal <- rainbow(12)
-    p_val_df <- data.frame(ID= targets$ID, p_means = colMeans(detP),group =targets$Sample_Group, col=pal[factor(targets$Sample_Group)])
+    p_val_df <- data.frame(Sample_Name = targets$Sample_Name, p_means = colMeans(detP),group =targets$Sample_Group, col=pal[factor(targets$Sample_Group)])
     
-    g1 <- ggplot(data = p_val_df, aes(x = ID, y = p_means, fill = group))+
+    g1 <- ggplot(data = p_val_df, aes(x = Sample_Name, y = p_means, fill = group))+
       geom_bar(stat= "identity")+
       scale_colour_manual(values = col)+
       theme_bw(base_size = 18)+
@@ -115,6 +115,7 @@ data_loader_a5_methylation_array <- function(quickload=T, quickload_checkpoint_d
     annEPIC <- getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b5.hg38)
     
     if(remove_excluded_samples) {
+      excluded_samples <- c(excluded_samples, setdiff(targets$Sample_Name, a5_anno$A5_ID))
       targets <- targets[!(targets$Sample_Name %in% excluded_samples),]
       message("Removed excluded samples:", toString(excluded_samples))
     }
@@ -145,7 +146,7 @@ data_loader_a5_methylation_array <- function(quickload=T, quickload_checkpoint_d
       
       # Make a QC report
       message("Generating QC report PDF...") 
-      qcReport(rg_set, sampNames=targets$ID, sampGroups=targets$Sample_Group, 
+      qcReport(rg_set, sampNames=targets$Sample_Name, sampGroups=targets$Sample_Group, 
                pdf= paste0(base_dir,"/a5/methylation/qc/qc_report.pdf"))
       
     }
