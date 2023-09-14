@@ -15,9 +15,9 @@ knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning = F)
 
 #+ config, echo=FALSE
 #Config flags to control output of plots and tables
-output_qc <<- FALSE
-output_tables <<- FALSE
-output_plots <<- FALSE
+if(!exists("output_qc")) {output_qc <- FALSE}
+if(!exists("output_tables")) {output_tables <- FALSE}
+if(!exists("output_plots")) {output_plots <- FALSE}
 setwd('/g/data/pq08/projects/ppgl/')
 
 #+ dependencies, echo=F
@@ -328,11 +328,17 @@ wts_top_tables <- list()
 
 #Generates contrast_matrix_hn and design_matrix_hn
 make_hn_vs_abdominothoracic_contrasts(sample_anno = a5_anno %>% 
-                                        filter(A5_ID %in% colnames(a5_wts_lcpm_list$SDHB)))
+                                        filter(A5_ID %in% colnames(a5_wts_dge_list$SDHB)) %>% 
+                                        mutate(A5_ID = factor(A5_ID, levels=colnames(a5_wts_dge_list$SDHB))) %>% 
+                                        arrange(A5_ID) %>% 
+                                        mutate(A5_ID = as.character(A5_ID)))
 
 #Generates contrast_matrix_genosampletype and design_matrix_genosampletype
 make_genotype_sampletype_contrasts(sample_anno = a5_anno %>% 
-                                     filter(A5_ID %in% colnames(a5_wts_lcpm_list$SDHB_abdothoracic)))
+                                     filter(A5_ID %in% colnames(a5_wts_dge_list$SDHB_abdothoracic)) %>% 
+                                     mutate(A5_ID = factor(A5_ID, levels=colnames(a5_wts_dge_list$SDHB_abdothoracic))) %>% 
+                                     arrange(A5_ID) %>% 
+                                     mutate(A5_ID = as.character(A5_ID)))
 
 
 #########################
@@ -353,6 +359,10 @@ count_contrast_members(contrast_matrix_hn, design_matrix_hn) %>%
 counts_dge <- a5_wts_dge_list[["SDHB"]]
 counts_anno <- a5_anno %>% filter(A5_ID %in% colnames(a5_wts_dge_list[["SDHB"]]))
 counts_anno <- counts_anno[match(colnames(counts_dge), counts_anno$A5_ID),]
+
+if(!all(counts_anno$A5_ID == rownames(design_matrix_hn) & rownames(design_matrix_hn) == colnames(counts_dge))) {
+  stop("Sanity check failed on annotation, design matrix, and expression matrix row/columns ordering")
+}
 
 #Run voom
 v <- voom(counts_dge, design_matrix_hn, plot=TRUE)
@@ -392,7 +402,9 @@ wts_de_fits[["Parasympathetic_vs_Sympathetic"]] <- efit
 wts_top_tables[["Parasympathetic_vs_Sympathetic"]] <- list()
 for (contrast in dimnames(contrast_matrix_hn)$Contrasts)
 {
-  wts_top_tables[["Parasympathetic_vs_Sympathetic"]][[contrast]] <- 
+  go_pval_cutoff <- 0.05
+  
+  tt <- 
     topTable(efit, 
              coef = contrast, 
              number = Inf, 
@@ -403,6 +415,21 @@ for (contrast in dimnames(contrast_matrix_hn)$Contrasts)
                                  Gene)) %>% 
     left_join(ensid_to_biotype %>% dplyr::select(Gene, gene_biotype), by=c("Gene")) %>% 
     dplyr::relocate(gene_biotype, .after=Gene)
+  
+  goterms <- ensgid_to_goterm_from_biomart(ens_gids = gsub("[.][0-9]{1,2}_.+$","",tt$Gene[tt$adj.P.Val < go_pval_cutoff]), 
+                                permitted_evidence_codes = c("EXP", "IDA", "IPI", "IMP"), 
+                                permitted_domains = "biological_process")
+  
+  tt <- tt %>%  
+    mutate(ensembl_gene_id=gsub("[.][0-9]{1,2}_.+$","",Gene)) %>% 
+    left_join(goterms %>%
+                group_by(ensembl_gene_id) %>% 
+                summarise(GO_id=paste(go_id, collapse = ";"), 
+                          GO_name=paste(name_1006, collapse = ";"))) 
+  tt$GO_id[is.na(tt$GO_id) & tt$adj.P.Val < go_pval_cutoff] <- "None"
+  tt$GO_name[is.na(tt$GO_name) & tt$adj.P.Val < go_pval_cutoff] <- "None"
+  
+  wts_top_tables[["Parasympathetic_vs_Sympathetic"]][[contrast]] <-  tt
 }
 
 
@@ -710,6 +737,10 @@ counts_dge <- a5_wts_dge_list$SDHB_abdothoracic
 counts_anno <- a5_anno %>% filter(A5_ID %in% colnames(a5_wts_dge_list[["SDHB_abdothoracic"]]))
 counts_anno <- counts_anno[match(colnames(counts_dge), counts_anno$A5_ID),]
 
+if(!all(counts_anno$A5_ID == rownames(design_matrix_genosampletype) & rownames(design_matrix_genosampletype) == colnames(counts_dge))) {
+  stop("Sanity check failed on annotation, design matrix, and expression matrix row/columns ordering")
+}
+
 # voom transform
 
 par(mfrow=c(1,2))
@@ -749,7 +780,9 @@ wts_top_tables[["genosampletype"]] <- list()
 for (contrast in dimnames(contrast_matrix_genosampletype)$Contrasts)
 {
   # get top ATRX signature genes 
-  wts_top_tables[["genosampletype"]][[contrast]] <- 
+  go_pval_cutoff <- 0.05
+  
+  tt <- 
     topTable(efit, 
              coef = contrast, 
              number = Inf, 
@@ -760,6 +793,20 @@ for (contrast in dimnames(contrast_matrix_genosampletype)$Contrasts)
                                  Gene)) %>% 
     left_join(ensid_to_biotype %>% dplyr::select(Gene, gene_biotype), by=c("Gene")) %>% 
     dplyr::relocate(gene_biotype, .after=Gene)
+  
+  goterms <- ensgid_to_goterm_from_biomart(ens_gids = gsub("[.][0-9]{1,2}_.+$","",tt$Gene[tt$adj.P.Val < go_pval_cutoff]), 
+                                           permitted_domains = "biological_process")
+  
+  tt <- tt %>%  
+    mutate(ensembl_gene_id=gsub("[.][0-9]{1,2}_.+$","",Gene)) %>% 
+    left_join(goterms %>%
+                group_by(ensembl_gene_id) %>% 
+                summarise(GO_id=paste(go_id, collapse = ";"), 
+                          GO_name=paste(name_1006, collapse = ";"))) 
+  tt$GO_id[is.na(tt$GO_id) & tt$adj.P.Val < go_pval_cutoff] <- "None"
+  tt$GO_name[is.na(tt$GO_name) & tt$adj.P.Val < go_pval_cutoff] <- "None"
+  
+  wts_top_tables[["genosampletype"]][[contrast]] <-  tt
 }
 # Get the top TERT signature genes 
 

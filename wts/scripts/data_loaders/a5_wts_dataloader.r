@@ -364,10 +364,10 @@ ensgid_to_goterm_from_biomart <- function(ens_gids,
                                         use_cache=TRUE, 
                                         update_cache=FALSE,
                                         offline_cache="/g/data/pq08/projects/ppgl/a5/offline_cache/ensgid_to_gene_ontology_from_biomart.tsv",
-                                        permitted_evidence_codes=c("IEA","HMP","IPI","HDA","IDA","IMP","ND",
-                                                                   "IBA","TAS","ISS","IEP","NAS",
-                                                                   "EXP","IC","IGI","ISA",
-                                                                   "ISO","RCA","HEP","ISM"), #see https://geneontology.org/docs/guide-go-evidence-codes/
+                                        permitted_evidence_codes=c("EXP","IDA","IPI","IMP","IGI","IEP",
+                                                                   "HTP","HDA","HMP","HGI","HEP",
+                                                                   "IBA","IBD","IKR","IRD","ISS","ISO","ISA","ISM","IGC",
+                                                                   "RCA","TAS","NAS"), #see https://geneontology.org/docs/guide-go-evidence-codes/
                                         permitted_domains=c("cellular_component","biological_process","molecular_function")
                                         )
 {
