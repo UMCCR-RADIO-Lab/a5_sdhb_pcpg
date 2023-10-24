@@ -50,7 +50,7 @@ cytoband_gr <- GenomicRanges::makeGRangesFromDataFrame(cytoband,
 # Annotate DE TopTable with cytoband data #
 ###########################################
 
-top_table <- wts_top_tables[["Parasympathetic_vs_Sympathetic"]] 
+top_table <- wts_top_tables[["Parasympathetic_vs_Sympathetic"]][["Parasympathetic_vs_Sympathetic"]] 
 
 top_table <- top_table %>% 
   separate(Gene, into=c("ensembl_gene_id", "gene_symbol"), 
@@ -128,7 +128,8 @@ peak_genes <- top_table %>%  filter(abs(logFC) > 1, adj.P.Val < 0.05) %>%
   filter(
     (chromosome_name=="chr7"  & start_position > 2.65*10^7  & start_position < 2.72*10^7) |
       (chromosome_name=="chr12"  & start_position > 5.38*10^7 & start_position < 5.41*10^7) | 
-      (chromosome_name=="chr17" & start_position > 3.355*10^7 & start_position < 3.5*10^7) | 
+      #(chromosome_name=="chr17" & start_position > 3.300*10^7 & start_position < 3.5*10^7) | 
+      (chromosome_name=="chr17" & start_position > 3.250*10^7 & start_position < 3.5*10^7) | 
       (chromosome_name=="chr17" & start_position > 4.82*10^7 & start_position < 4.9*10^7) |
       (chromosome_name=="chr20" & start_position > 6.1*10^7 & start_position < 6.2*10^7))  %>% 
   dplyr::select(Gene, gene_symbol, gene_biotype, chromosome_name, start_position, end_position, cytoband)
@@ -183,7 +184,8 @@ plot_data <- plot_data %>%
 # Create cytoband label
 ########
 
-plot_data <- plot_data %>% mutate(cytoband=paste0(chromosome_name,cytoband))
+plot_data <- plot_data %>% mutate(cytoband=paste0(chromosome_name,cytoband)) %>% 
+  mutate(cytoband = dplyr::recode(cytoband, "chr17q11.2"="chr17q11.2-q12", "chr17q12"="chr17q11.2-q12"))
 
 ########
 # Make Plot friendly names for clinical values
@@ -203,7 +205,7 @@ plot_data <- plot_data %>%
 ########
 
 gg_expr <- list()
-for (current_cytoband in c("chr7p15.2", "chr12q13.13", "chr17q12", "chr17q21.32", "chr20q13.33"))
+for (current_cytoband in c("chr7p15.2", "chr12q13.13", "chr17q11.2-q12", "chr17q21.32", "chr20q13.33"))
 {
   current_plot_data <- plot_data  %>% 
     filter(cytoband == current_cytoband, 

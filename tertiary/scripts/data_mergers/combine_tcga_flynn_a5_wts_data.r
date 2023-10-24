@@ -77,6 +77,18 @@ wts_tcga_flynn_a5_anno <- wts_tcga_flynn_a5_anno %>%
   filter(Sample %in% intersect(colnames(wts_tcga_flynn_a5_counts), 
                                 wts_tcga_flynn_a5_anno$Sample))
 
+wts_tcga_flynn_a5_anno <- wts_tcga_flynn_a5_anno %>%  
+  mutate(ATRX_mutation = ifelse(is.na(ATRX_mutation) | ATRX_mutation == "0", 
+                                FALSE, 
+                                TRUE)) %>% 
+  mutate(ATRX_mutation = ifelse(Sample %in% c("V-PH-22T"," V-PH-23T", a5_anno %>%  filter(TERT_ATRX_Mutation == "ATRX") %>%  pull(A5_ID)), 
+                                TRUE, 
+                                ATRX_mutation)) 
+
+wts_tcga_flynn_a5_anno <- wts_tcga_flynn_a5_anno %>%  
+  mutate(TERT_mutation = ifelse(Sample %in% c("V-PH-03T", "V-PH-04T", a5_anno %>%  filter(TERT_ATRX_Mutation == "TERT") %>%  pull(A5_ID)), 
+                                TRUE, 
+                                FALSE)) 
 
 ####################
 # Batch Correction #

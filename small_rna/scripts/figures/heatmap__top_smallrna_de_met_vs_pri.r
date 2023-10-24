@@ -25,7 +25,7 @@ source("./a5/small_rna/scripts/differential_expression/a5_smallrna_differential_
 ###########
 
 sample.order <- a5_anno %>% filter(Exclude=="N") %>% 
-  arrange(differential_group_genotype, desc(differential_group_sampletype_strict)) %>% pull(A5_ID)
+  arrange(TERT_ATRX_Mutation, desc(differential_group_sampletype_strict)) %>% pull(A5_ID)
 sample.order <- intersect(sample.order, colnames(a5_wts_dge_list[["SDHB_abdothoracic"]]))
 missing <- setdiff(sample.order, colnames(a5_smallrna_lcpm_list[["SDHB_abdothoracic"]]))
 sample.order.complete <- sample.order
@@ -46,34 +46,34 @@ GOI.met <-
 
 
 GOI.tert <- 
-  smallrna_top_tables[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]] %>% 
+  smallrna_top_tables[["genosampletype"]][["TERT_All_vs_NonTERT"]] %>% 
   GOI_pipe %>%  
-  mutate(source="TERT_PriMet_vs_NonMetPri_WT")
+  mutate(source="TERT_All_vs_NonTERT")
 
 
 GOI.atrx <-
-  smallrna_top_tables[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]] %>% 
+  smallrna_top_tables[["genosampletype"]][["ATRX_All_vs_NonATRX"]] %>% 
   GOI_pipe %>% 
-  mutate(source="ATRX_PriMet_vs_NonMetPri_WT")
+  mutate(source="ATRX_All_vs_NonATRX")
 
 
 GOI <- bind_rows(GOI.met, GOI.tert, GOI.atrx) 
 
-GOI.unique <- GOI %>% 
-  group_by(Gene) %>% 
-  mutate(n=n()) %>% 
-  filter(n==1) %>% 
-  group_by(source) %>% 
-  slice_min(n = genes_per_group, order_by = rank) %>% 
-  dplyr::select(Gene, rank, source)
+# GOI.unique <- GOI %>% 
+#   group_by(Gene) %>% 
+#   mutate(n=n()) %>% 
+#   filter(n==1) %>% 
+#   group_by(source) %>% 
+#   slice_min(n = genes_per_group, order_by = rank) %>% 
+#   dplyr::select(Gene, rank, source)
 
 
-GOI.plot <- GOI.unique
+GOI.plot <- GOI
 
 GOI.plot$source <- factor(GOI.plot$source, 
                           levels = c("Metastasis_All_vs_NonMetPri_WT",
-                                     "TERT_PriMet_vs_NonMetPri_WT",
-                                     "ATRX_PriMet_vs_NonMetPri_WT"))
+                                     "TERT_All_vs_NonTERT",
+                                     "ATRX_All_vs_NonATRX"))
 
 ########
 # Expr #
@@ -81,10 +81,10 @@ GOI.plot$source <- factor(GOI.plot$source,
 
 plot.data <- GOI.plot %>% 
   inner_join(a5_smallrna_lcpm_list[["SDHB_abdothoracic"]][GOI.plot$Gene,sample.order] %>% 
-               data.frame(check.names = F) %>%  
-               tibble::rownames_to_column("Gene")) %>% mutate(gene_biotype="miRNA") %>% 
-  data.frame(check.names = F)
-rownames(plot.data) <- plot.data$Gene
+               as_tibble(rownames = "Gene")) %>% mutate(gene_biotype="miRNA") %>% 
+  data.frame(check.names = F) %>% 
+  distinct()
+rownames(plot.data) <- gsub("[.]","-",make.names(plot.data$Gene, unique = T))
 plot.data[,missing] <- NA
 plot.data <- plot.data[,c("source", "gene_biotype", sample.order.complete)]
 
@@ -109,13 +109,13 @@ hm.annot.row = HeatmapAnnotation(df = plot.data[,c("source", "gene_biotype"), dr
                                  which="row", 
                                  show_legend = TRUE,
                                  col=list("source"=setNames(
-                                   RColorBrewer::brewer.pal(n=length(unique(plot.data$source)), name="Set3"),
+                                   RColorBrewer::brewer.pal(n=10, name="Set3")[1:length(unique(plot.data$source))],
                                    unique(plot.data$source)),
                                    gene_biotype=c("miRNA"="#637b62ff")))
 
 
 
-hm_bulk_gex <- Heatmap(t(scale(t(plot.data %>% dplyr::select(-source,-gene_biotype)))),
+hm_bulk_smallrna <- Heatmap(t(scale(t(plot.data %>% dplyr::select(-source,-gene_biotype)))),
                        #col = col_fun,
                        row_split = plot.data$source,
                        #column_split = a5_anno.wts.nohn_noex$genotype_groups,
@@ -141,22 +141,4 @@ hm_bulk_gex <- Heatmap(t(scale(t(plot.data %>% dplyr::select(-source,-gene_bioty
 )
 
 
-#############
-# Dot Plots #
-#############
-
-hm_snrna_dotplot <- HeatmapDotPlot.Seurat(object = a5_snrna,
-                                          features = GOI.plot$Symbol, 
-                                          aggr.by = "cell_type",
-                                          gene_grouping = GOI.plot$source,
-                                          show_row_names = FALSE
-)
-
-hm_snrna_dotplot_genotype <- HeatmapDotPlot.Seurat(object = subset(x = a5_snrna, subset = cell_type == "Tumor"),
-                                                   features = GOI.plot$Symbol, 
-                                                   aggr.by = "TERT_ATRX_Mutation",
-                                                   gene_grouping = GOI.plot$source,
-                                                   show_row_names = FALSE
-)
-
-hm_bulk_gex + hm_snrna_dotplot_genotype + hm_snrna_dotplot
+hm_bulk_smallrna

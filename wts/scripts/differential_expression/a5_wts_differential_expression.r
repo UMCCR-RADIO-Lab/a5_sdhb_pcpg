@@ -15,9 +15,9 @@ knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning = F)
 
 #+ config, echo=FALSE
 #Config flags to control output of plots and tables
-if(!exists("output_qc")) {output_qc <- FALSE}
-if(!exists("output_tables")) {output_tables <- FALSE}
-if(!exists("output_plots")) {output_plots <- FALSE}
+if(!exists("output_qc")) {output_qc <- TRUE}
+if(!exists("output_tables")) {output_tables <- TRUE}
+if(!exists("output_plots")) {output_plots <- TRUE}
 setwd('/g/data/pq08/projects/ppgl/')
 
 #+ dependencies, echo=F
@@ -417,7 +417,7 @@ for (contrast in dimnames(contrast_matrix_hn)$Contrasts)
     dplyr::relocate(gene_biotype, .after=Gene)
   
   goterms <- ensgid_to_goterm_from_biomart(ens_gids = gsub("[.][0-9]{1,2}_.+$","",tt$Gene[tt$adj.P.Val < go_pval_cutoff]), 
-                                permitted_evidence_codes = c("EXP", "IDA", "IPI", "IMP"), 
+                                #permitted_evidence_codes = c("EXP", "IDA", "IPI", "IMP"), 
                                 permitted_domains = "biological_process")
   
   tt <- tt %>%  
@@ -466,7 +466,7 @@ if(output_tables)
                             order_by = adj.P.Val) %>% 
                   mutate(across(.cols = c(logFC, AveExpr, t, 
                                           P.Value, adj.P.Val, B), 
-                                round, 4)), 
+                                .fns = \(x) round(x, digits = 4))), 
                 options = list(pageLength = 20, scrollX = T))
   
 }
@@ -718,8 +718,8 @@ knitr::knit_expand(text="Make a design matrix with biological groups:\n\n* {{pas
 count_contrast_members(contrast_matrix_genosampletype, design_matrix_genosampletype) %>% 
   knitr::kable(caption = "Contrast group member counts")
 
-useful_contrasts <- c("TERT_PriMet_vs_NonMetPri_WT",
-                      "ATRX_PriMet_vs_NonMetPri_WT",
+useful_contrasts <- c("TERT_All_vs_NonTERT",
+                      "ATRX_All_vs_NonATRX",
                       "Metastasis_All_vs_NonMetPri_WT")
 
 #+ AT_DE_contrasts_print, echo=FALSE
@@ -817,7 +817,7 @@ for (contrast in dimnames(contrast_matrix_genosampletype)$Contrasts)
 # {
 #   wts_top_tables[["genosampletype"]][[contrast]] %>%
 #     write_tsv(paste0("./a5/wts/results/differential_gene_expression/",
-#                      contrast, 
+#                      contrast,
 #                      "_tt_dge_nohn_noex_hg38.tsv"))
 # }
 
@@ -839,7 +839,8 @@ if(output_tables)
   contrast = "Metastasis_All_vs_NonMetPri_WT"
   DT::datatable(data = wts_top_tables[["genosampletype"]][[contrast]] %>% filter(abs(logFC)>1, adj.P.Val<0.05) %>% slice_min(n = 1000, order_by = adj.P.Val) %>% 
                   mutate(across(.cols = c(logFC, AveExpr, t, 
-                                          P.Value, adj.P.Val, B), round, 4)), 
+                                          P.Value, adj.P.Val, B), 
+                                .fns = \(x) round(x, digits = 4))), 
                 options = list(pageLength = 20, scrollX = T))
 }
 
@@ -854,35 +855,38 @@ if(output_tables){
   contrast = "ATRX_All_vs_TERT_All"
   DT::datatable(data = wts_top_tables[["genosampletype"]][[contrast]] %>% filter(abs(logFC)>1, adj.P.Val<0.05) %>% slice_min(n = 1000, order_by = adj.P.Val) %>% 
                   mutate(across(.cols = c(logFC, AveExpr, t, 
-                                          P.Value, adj.P.Val, B), round, 4)), 
+                                          P.Value, adj.P.Val, B), 
+                                .fns = \(x) round(x, digits = 4))), 
                 options = list(pageLength = 20, scrollX = T))
 }
 #+ AT_DE_ATRXNonmet_toptables_header, eval=output_tables, echo=FALSE, results='asis'
 
-knitr::knit_expand(text="\n\n### Top 1000 DE - All ATRX vs. All Non-Metastatic Primaries\n\n") %>% cat()
+knitr::knit_expand(text="\n\n### Top 1000 DE - All ATRX vs Rest\n\n") %>% cat()
 
 knitr::knit_expand(text="\nFiltered: Absolute-logFC >1, adj.P.Val < 0.05") %>% cat()
 
-#+ AT_DE_ATRXNonmet_toptables_print, eval=output_tables, echo=FALSE
+#+ AT_DE_ATRXvRest_toptables_print, eval=output_tables, echo=FALSE
 if(output_tables){
-  contrast = "ATRX_PriMet_vs_NonMetPri_WT"
+  contrast = "ATRX_All_vs_NonATRX"
   DT::datatable(data = wts_top_tables[["genosampletype"]][[contrast]] %>% filter(abs(logFC)>1, adj.P.Val<0.05) %>% slice_min(n = 1000, order_by = adj.P.Val) %>% 
                   mutate(across(.cols = c(logFC, AveExpr, t, 
-                                          P.Value, adj.P.Val, B), round, 4)), 
+                                          P.Value, adj.P.Val, B), 
+                                .fns = \(x) round(x, digits = 4))), 
                 options = list(pageLength = 20, scrollX = T))
 }
-#+ AT_DE_TERTNonmet_toptables_header, eval=output_tables, echo=FALSE, results='asis'
+#+ AT_DE_TERTvRest_toptables_header, eval=output_tables, echo=FALSE, results='asis'
 
-knitr::knit_expand(text="\n\n### Top 1000 DE - All TERT mutatants vs. All Non-Metastatic Primaries\n\n") %>% cat()
+knitr::knit_expand(text="\n\n### Top 1000 DE - All TERT mutants vs Rest\n\n") %>% cat()
 
 knitr::knit_expand(text="\nFiltered: Absolute-logFC >1, adj.P.Val < 0.05") %>% cat()
 
-#+ AT_DE_TERTNonmet_toptables_print, eval=output_tables, echo=FALSE
+#+ AT_DE_TERTNonTERT_toptables_print, eval=output_tables, echo=FALSE
 if(output_tables){
-  contrast = "TERT_PriMet_vs_NonMetPri_WT"
+  contrast = "TERT_All_vs_NonTERT"
   DT::datatable(data = wts_top_tables[["genosampletype"]][[contrast]] %>% filter(abs(logFC)>1, adj.P.Val<0.05) %>% slice_min(n = 1000, order_by = adj.P.Val) %>% 
                   mutate(across(.cols = c(logFC, AveExpr, t, 
-                                          P.Value, adj.P.Val, B), round, 4)), 
+                                          P.Value, adj.P.Val, B), 
+                                .fns = \(x) round(x, digits = 4))), 
                 options = list(pageLength = 20, scrollX = T))
 }
 
@@ -892,11 +896,11 @@ if(output_tables){
 # Result Plots 
 #########
 
-knitr::knit_expand(text="\n\n### TERT and ATRX vs Non-Metastatic Primaries significant gene overlap\n\n") %>% cat()
+knitr::knit_expand(text="\n\n### 'TERT vs Rest' and 'ATRX vs Rest' significant gene overlap\n\n") %>% cat()
 
 #+ AT_DE_TERTATRX_venn_print_header, eval=output_plots, echo=FALSE
 if(output_plots) {
-  vennDiagram(sum.fit[,c("ATRX_PriMet_vs_NonMetPri_WT","TERT_PriMet_vs_NonMetPri_WT")], circle.col=c("turquoise", "salmon"))
+  vennDiagram(sum.fit[,c("ATRX_All_vs_NonATRX","TERT_All_vs_NonTERT")], circle.col=c("turquoise", "salmon"))
 }
 #+ AT_DE_volcano_header, eval=output_plots, echo=FALSE, results='asis'
 
@@ -932,8 +936,8 @@ if(output_plots){
     
   }
   
-  tert <- plot_volcano(wts_top_tables[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]], 20) + ggtitle("TERT Pri/Met Vs WT Non-metastatic primaries")
-  atrx <- plot_volcano(wts_top_tables[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]], 20) + ggtitle("ATRX Pri/Met Vs WT Non-metastatic primaries")
+  tert <- plot_volcano(wts_top_tables[["genosampletype"]][["TERT_All_vs_NonTERT"]], 20) + ggtitle("TERT Pri/Met Vs Rest")
+  atrx <- plot_volcano(wts_top_tables[["genosampletype"]][["ATRX_All_vs_NonATRX"]], 20) + ggtitle("ATRX Pri/Met Vs Rest")
   tert_vs_atrx <- plot_volcano(wts_top_tables[["genosampletype"]][["ATRX_All_vs_TERT_All"]], 20) + ggtitle("TERT Vs ATRX")
   met_vs_nonmet <- plot_volcano(wts_top_tables[["genosampletype"]][["Metastasis_All_vs_NonMetPri_WT"]], 20) + ggtitle("All metastases vs non-metastatic primaries")
   
@@ -948,12 +952,12 @@ knitr::knit_expand(text="\nGenes filtered for 'adj.P.Val < 0.05' and sorted by A
 
 #+ AT_DE_BoxPlots_print, eval=output_plots, echo=FALSE, fig.height=21, fig.width=18
 if(output_plots){
-  tert_top <- wts_top_tables[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]] %>% 
+  tert_top <- wts_top_tables[["genosampletype"]][["TERT_All_vs_NonTERT"]] %>% 
     filter(adj.P.Val < 0.05) %>% 
     arrange(desc(abs(logFC))) %>%  
     slice_head(n = 50) %>% pull(Gene)
   
-  atrx_top <- wts_top_tables[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]] %>% 
+  atrx_top <- wts_top_tables[["genosampletype"]][["ATRX_All_vs_NonATRX"]] %>% 
     filter(adj.P.Val < 0.05) %>% 
     arrange(desc(abs(logFC))) %>%  
     slice_head(n = 50) %>% 
@@ -977,21 +981,21 @@ if(output_plots){
     left_join(a5_anno %>% 
                 dplyr::select(A5_ID, is_primary_or_met,
                               TERT_ATRX_Mutation, differential_group_purity, 
-                              differential_group_sampletype, differential_group))
+                              differential_group_sampletype, differential_group_sampletype_strict, differential_group))
   
   top_logcpm$differential_group <- factor(top_logcpm$differential_group, levels=differential_group_levels)
   
-  plot.data <- top_logcpm %>% filter(gene_biotype=="protein_coding") 
+  plot.data <- top_logcpm# %>% filter(gene_biotype=="protein_coding") 
   
-  ggplot(mapping=aes(x=paste(TERT_ATRX_Mutation, differential_group_sampletype, sep="_"), 
+  ggplot(mapping=aes(x=TERT_ATRX_Mutation, 
                      y=log2cpm)) + 
     geom_boxplot(data=plot.data %>% filter(differential_group_purity=="PurityOK")) + 
     geom_jitter(data=plot.data, 
-                mapping = aes(color=differential_group,
+                mapping = aes(color=differential_group_sampletype_strict,
                               alpha=differential_group_purity), 
                 width=0.2)  + 
     theme(axis.text.x = element_text(angle=90, vjust=0.5, hjust=1)) + 
-    scale_color_manual(values = differential_group_colors) +
+    scale_color_manual(values = sampletype_strict_cols) +
     scale_alpha_manual(values = c(0.2,1)) + 
     facet_wrap("Gene", scale="free_y")
 }
@@ -1007,17 +1011,17 @@ if(output_plots){
   genes_per_group <- 50
   
   GOI <- bind_rows(
-    wts_top_tables[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]] %>% 
+    wts_top_tables[["genosampletype"]][["TERT_All_vs_NonTERT"]] %>% 
       filter(adj.P.Val < 0.05) %>% 
       arrange(desc(abs(logFC))) %>%  
       slice_head(n = genes_per_group) %>%  
-      mutate(source="TERTvsNonMet") %>% 
+      mutate(source="TERTvsNonTERT") %>% 
       dplyr::select(source, Gene),
-    wts_top_tables[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]] %>% 
+    wts_top_tables[["genosampletype"]][["ATRX_All_vs_NonATRX"]] %>% 
       filter(adj.P.Val < 0.05) %>% 
       arrange(desc(abs(logFC))) %>% 
       slice_head(n = genes_per_group) %>% 
-      mutate(source="ATRXvsNonMet") %>% 
+      mutate(source="ATRXvsNonATRX") %>% 
       dplyr::select(source, Gene),
     wts_top_tables[["genosampletype"]][["Metastasis_All_vs_NonMetPri_WT"]] %>% 
       filter(adj.P.Val < 0.05) %>% 
@@ -1069,7 +1073,7 @@ if(output_plots){
                                    col=list("source"=setNames(
                                      RColorBrewer::brewer.pal(n=length(unique(plot.data$source)), name="Set3"),
                                      unique(plot.data$source)), "gene_biotype"=setNames(
-                                       RColorBrewer::brewer.pal(n=length(unique(plot.data$gene_biotype)), name="Set1"),
+                                       RColorBrewer::brewer.pal(n=length(unique(plot.data$gene_biotype)), name="Set3"),
                                        unique(plot.data$gene_biotype)),
                                      "chromosome_name"=setNames(
                                        chrom_cols,

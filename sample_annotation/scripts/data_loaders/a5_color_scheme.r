@@ -144,3 +144,18 @@ genomic_alteration_cols <- c(Missense=ColorPalette[["DarkBlue1"]],
                              `Splice region`=ColorPalette[["LightGrey1"]], 
                              `Homozyg. del.`=ColorPalette[["DarkGreen1"]],
                              `In-frame deletion`=ColorPalette[["DarkBrown1"]])
+
+cna_palette <- c(`None`=ColorPalette[["LightGrey1"]],
+                 Loss=ColorPalette[["DarkRed1"]],
+                 `Subclonal Loss`="#fdadadff",
+                 `Hom. Del.`=ColorPalette[["Yellow1"]], CNLOH="#f97344ff", 
+                 Gain=ColorPalette[["DarkBlue3"]],
+                 `Subclonal Gain`=ColorPalette[["LightBlue1"]],
+                 WGD=ColorPalette[["Purple2"]],
+                 Chromothripsis=ColorPalette[["LightGreen1"]],
+                 Other=ColorPalette[["DarkGrey2"]],
+                 `Gain+LOH`=ColorPalette[["LightBlue2"]],
+                 `WGD+Gain`=ColorPalette[["DarkBlue1"]], 
+                 `Loss + Subclonal CNLOH`=ColorPalette[["LightOrange2"]],
+                 `Diploid/Haploid-X`=ColorPalette[["LightGrey1"]],
+                 `Minor Subclonal Loss`= ColorPalette[["Salmon"]])

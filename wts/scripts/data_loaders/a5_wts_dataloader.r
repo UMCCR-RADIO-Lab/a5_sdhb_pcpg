@@ -171,6 +171,16 @@ biotype_from_biomart <- function(EnsIds,
   {
     message("Loading biotype data from offline cache...")
     return_data <- read.delim(offline_cache, sep="\t", header=T, check.names = F)
+    if (any(!(as.character(na.omit(EnsIds)) %in% as.character(na.omit(return_data$ensembl_gene_id))))) {
+      missing_genes <- setdiff(EnsIds, return_data$ensembl_gene_id)
+      message_genes <- missing_genes
+      if (length(missing_genes) > 200) { message_genes <- message_genes[1:200]; message_genes[201] <- paste("+", length(missing_genes)-200, "genes")}
+      message("WARNING: Not all requested gene IDs are present in the offline cache. This may be because the cache was built with a different 
+              query set or because not all IDs return a result. Rerun in online mode to attempt to update. Missing genes:", toString(message_genes))
+    }
+    return_data <- data.frame(ensembl_gene_id=EnsIds) %>% left_join(return_data)
+    return(return_data)
+    
   } else {
   message("Fetching biotypes from biomart")
   mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl",host = ensembl_mirror))
@@ -192,6 +202,7 @@ biotype_from_biomart <- function(EnsIds,
   
   return(return_data)
 }
+message("Created helper function biotype_from_biomart()")
 
 #Function to fetch the biotype of a gene from org.Hs.eg.db
 biotype_from_orghs <- function(EnsIds)
@@ -210,6 +221,7 @@ biotype_from_orghs <- function(EnsIds)
   
   return(ens_genetype)
 }
+message("Created helper function biotype_from_orghs()")
 
 #Function to fetch the biotype of a gene from ensembl, falling back to org.Hs.eg.db if using biomart fails
 data_loader_get_biotypes <- function(EnsIds, use_cache=FALSE)
@@ -233,6 +245,7 @@ tryCatch(
 assign(x = "ensid_to_biotype", value = ensid_to_biotype, envir = globalenv())
 message("Loaded EnsemblID to gene-biotype mapping table into the global environment as ensid_to_biotype")
 }
+message("Created helper function data_loader_get_biotypes()")
 
 data_loader_ensgid_to_chr <- function(EnsIds, 
                                       use_cache=FALSE, 
@@ -244,9 +257,12 @@ data_loader_ensgid_to_chr <- function(EnsIds,
   {
     message("Loading ensembl_id to chromosome conversion table from offline cache...")
     ensgid_to_chr <- read.delim(offline_cache, sep="\t", header=T, check.names = F)
-    if (any(!(EnsIds %in% ensgid_to_chr$ensembl_gene_id))) {
+    if (any(!(as.character(na.omit(EnsIds)) %in% as.character(na.omit(ensgid_to_chr$ensembl_gene_id))))) {
+      missing_genes <- setdiff(EnsIds, ensgid_to_chr$ensembl_gene_id)
+      message_genes <- missing_genes
+      if (length(missing_genes) > 200) { message_genes <- message_genes[1:200]; message_genes[201] <- paste("+", length(missing_genes)-200, "genes")}
       message("WARNING: Not all requested gene IDs are present in the offline cache. This may be because the cache was built with a different 
-              query set or because not all IDs return a result. Rerun in online mode to attempt to update.")
+              query set or because not all IDs return a result. Rerun in online mode to attempt to update. Missing genes:", toString(message_genes))
     }
     ensgid_to_chr <- data.frame(ensembl_gene_id=EnsIds) %>% left_join(ensgid_to_chr)
   } else {
@@ -275,6 +291,7 @@ data_loader_ensgid_to_chr <- function(EnsIds,
   assign(x = "ensgid_to_chr", value = ensgid_to_chr, envir = globalenv())
   message("Loaded EnsemblID to chr mapping table into the global environment as ensgid_to_chr")
 }
+message("Created helper function data_loader_ensgid_to_chr()")
 
 #Function to fetch the ensembl gene ID from hgnc symbol using biomart
 hgnc_to_ensgid_from_biomart <- function(hgnc_symbols, 
@@ -287,9 +304,12 @@ hgnc_to_ensgid_from_biomart <- function(hgnc_symbols,
   {
     message("Loading HGNC to ensembl_id conversion table from offline cache...")
     hgnc_to_ensgid <- read.delim(offline_cache, sep="\t", header=T, check.names = F)
-    if (any(!(hgnc_symbols %in% hgnc_to_ensgid$hgnc_symbol))) {
+    if (any(!(as.character(na.omit(hgnc_symbols)) %in% as.character(na.omit(hgnc_to_ensgid$hgnc_symbol))))) {
+      missing_genes <- setdiff(hgnc_symbols, hgnc_to_ensgid$hgnc_symbol)
+      message_genes <- missing_genes
+      if (length(missing_genes) > 200) { message_genes <- message_genes[1:200]; message_genes[201] <- paste("+", length(missing_genes)-200, "genes")}
       message("WARNING: Not all requested gene IDs are present in the offline cache. This may be because the cache was built with a different 
-              query set or because not all IDs return a result. Rerun in online mode to attempt to update.")
+              query set or because not all IDs return a result. Rerun in online mode to attempt to update. Missing genes:", toString(message_genes))
     }
     hgnc_to_ensgid <- hgnc_to_ensgid %>% filter(hgnc_symbol %in% hgnc_symbols)
   } else {
@@ -315,7 +335,7 @@ hgnc_to_ensgid_from_biomart <- function(hgnc_symbols,
     left_join(hgnc_to_ensgid, by=c("hgnc_symbol")) 
   return(return_data)
 }
-
+message("Created helper function hgnc_to_ensgid_from_biomart()")
 
 #Function to fetch the ensembl gene ID from hgnc symbol using biomart
 ensgid_to_hgnc_from_biomart <- function(ens_gids, 
@@ -328,9 +348,12 @@ ensgid_to_hgnc_from_biomart <- function(ens_gids,
   {
     message("Loading ensembl_id to HGNC conversion table from offline cache...")
     ensgid_to_hgnc <- read.delim(offline_cache, sep="\t", header=T, check.names = F)
-    if (any(!(ens_gids %in% ensgid_to_hgnc$ensembl_gene_id))) {
+    if (any(!(as.character(na.omit(ens_gids)) %in% as.character(na.omit(ensgid_to_hgnc$ensembl_gene_id))))) {
+      missing_genes <- setdiff(ens_gids, ensgid_to_hgnc$ensembl_gene_id)
+      message_genes <- missing_genes
+      if (length(missing_genes) > 200) { message_genes <- message_genes[1:200]; message_genes[201] <- paste("+", length(missing_genes)-200, "genes")}
       message("WARNING: Not all requested gene IDs are present in the offline cache. This may be because the cache was built with a different 
-              query set or because not all IDs return a result. Rerun in online mode to attempt to update.")
+              query set or because not all IDs return a result. Rerun in online mode to attempt to update. Missing genes:", toString(message_genes))
     }
     ensgid_to_hgnc <- ensgid_to_hgnc %>% filter(ensembl_gene_id %in% ens_gids)
   } else {
@@ -356,6 +379,7 @@ ensgid_to_hgnc_from_biomart <- function(ens_gids,
     left_join(ensgid_to_hgnc) 
   return(return_data)
 }
+message("Created helper function ensgid_to_hgnc_from_biomart()")
 
 
 #Function to fetch the gene ontology terms associated with and ensemble gene ID using biomart
@@ -375,9 +399,12 @@ ensgid_to_goterm_from_biomart <- function(ens_gids,
   {
     message("Loading gene ontology table from offline cache...")
     ensgid_to_go <- read.delim(offline_cache, sep="\t", header=T, check.names = F)
-    if (any(!(ens_gids %in% ensgid_to_go$ensembl_gene_id))) {
+    if (any(!(as.character(na.omit(ens_gids)) %in% as.character(na.omit(ensgid_to_go$ensembl_gene_id))))) {
+      missing_genes <- setdiff(ens_gids, ensgid_to_go$ensembl_gene_id)
+      message_genes <- missing_genes
+      if (length(missing_genes) > 200) { message_genes <- message_genes[1:200]; message_genes[201] <- paste("+", length(missing_genes)-200, "genes")}
       message("WARNING: Not all requested gene IDs are present in the offline cache. This may be because the cache was built with a different 
-              query set or because not all IDs return a result. Rerun in online mode to attempt to update.")
+              query set or because not all IDs return a result. Rerun in online mode to attempt to update. Missing genes:", toString(message_genes))
     }
     
     ensgid_to_go <- ensgid_to_go %>% filter(ensembl_gene_id %in% ens_gids)
@@ -412,6 +439,7 @@ ensgid_to_goterm_from_biomart <- function(ens_gids,
   
   return(return_data)
 }
+message("Created helper function ensgid_to_goterm_from_biomart()")
 
 ###############
 # RNA Fusions #
@@ -451,3 +479,4 @@ data_loader_arriba <- function(arriba_out_dir=NULL, sample_to_exclude=vector(mod
   message("Created objects a5_arriba, a5_arriba_keep_pcawg (filtered to PCAWG CG list), a5_arriba_keep_pcawg_brief (summarised version)")
   
 }
+message("Created data loader function data_loader_arriba()")

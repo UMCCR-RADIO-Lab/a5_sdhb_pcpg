@@ -5,9 +5,9 @@ setwd("/g/data/pq08/projects/ppgl")
 # Data Loaders #
 ################
 
+quickload_diff_meth = T; quickload_gsea <- T; quickload_dmr <- T;
 source("./a5/methylation/scripts/a5_methylation_analysis_v2.r")
 
-quickload_diff_meth = T; quickload_gsea <- T; quickload_dmr <- T;
 source("./a5/wts/scripts/differential_expression/a5_wts_differential_expression.r")
 
 ######################
@@ -22,7 +22,10 @@ plot_volcano_expr<- function(tt, n_label) {
   
   tt_plot <- tt %>% 
     mutate(significant = if_else(adj.P.Val < 0.05, "Adj. P Value < 0.05", "Not significant")) %>% 
-    mutate(label = if_else(Gene %in% genes_to_label, TRUE, FALSE))
+    mutate(label = if_else(Gene %in% genes_to_label, TRUE, FALSE)) %>% 
+    mutate(gene_symbol = ifelse(grepl("^A[CL][0-9]", gene_symbol), 
+                                stringr::str_extract(string = Gene, pattern = "ENSG[0-9]+"), 
+                                gene_symbol))
   
   volcano <- ggplot(tt_plot, aes(logFC, -log10(adj.P.Val))) +
     geom_point(aes(col=significant)) +

@@ -16,7 +16,19 @@ library(furrr)
 
 setwd("/g/data/pq08/projects/ppgl")
 
+checkpoint_rds_cor_mat_rho <- "./a5/wts/quickload_checkpoints/wts_de_toptable_cor_mat_rho.rds"
+checkpoint_rds_cor_mat_pval <- "./a5/wts/quickload_checkpoints/wts_de_toptable_cor_mat_pval.rds"
 
+if (!exists("quickload_correlation_matrix")) { quickload_correlation_matrix <- FALSE }
+
+if(quickload_correlation_matrix)
+{
+  message("Quickloading DE gene correlations")
+  cor_mat_rho <- readRDS(checkpoint_rds_cor_mat_rho)
+  cor_mat_pval <- readRDS(checkpoint_rds_cor_mat_pval)
+} else
+{
+  message("Computing DE gene correlations")
 #################
 # Run DE script #
 #################
@@ -34,70 +46,71 @@ if(!exists("wts_top_tables")) {
 # TopTable gene correlation #
 #############################
 
-a5_wts_lcpm_long <- a5_wts_lcpm_list[["SDHB_abdothoracic"]] %>%
-  as_tibble(rownames="ensgid_symbol") %>% 
-  pivot_longer(cols = -ensgid_symbol, names_to = "A5_ID", values_to = "log2cpm") %>% 
-  arrange(ensgid_symbol, A5_ID) %>% 
-  mutate(ensgid_symbol = factor(ensgid_symbol),
-         A5_ID = factor(A5_ID))
-
-
 cor_mat_rho <- list()
 cor_mat_pval <- list()
 
-checkpoint_rds_cor_mat_rho <- "/g/data/pq08/projects/ppgl/a5/wts/quickload_checkpoints/wts_de_toptable_cor_mat_rho.rds"
-checkpoint_rds_cor_mat_pval <- "/g/data/pq08/projects/ppgl/a5/wts/quickload_checkpoints/wts_de_toptable_cor_mat_pval.rds"
-if(quickload_correlation_matrix)
-{
-  cor_mat_rho <- readRDS(checkpoint_rds_cor_mat_rho)
-  cor_mat_pval <- readRDS(checkpoint_rds_cor_mat_pval)
-} else
-{
+adj_pval_cutoff <- 0.05
   
-  threads=27
-  options(future.debug = TRUE)
+  if(!exists("threads")) { threads <- 6 }
+  options(future.debug = FALSE)
   plan(strategy="multisession", workers=threads)
 
-  for (contrast in c("TERT_PriMet_vs_NonMetPri_WT", "ATRX_PriMet_vs_NonMetPri_WT", "Metastasis_All_vs_NonMetPri_WT"))
+  for (contrast in c("ATRX_All_vs_NonATRX","TERT_All_vs_NonTERT", "TERT_PriMet_vs_NonMetPri_WT", "ATRX_PriMet_vs_NonMetPri_WT", "Metastasis_All_vs_NonMetPri_WT"))
   {
     
     tt_sig <- wts_top_tables[["genosampletype"]][[contrast]] %>%
-      filter(adj.P.Val < 0.01)
+      filter(adj.P.Val < adj_pval_cutoff)
     
     gene_list <- unique(c(tt_sig$Gene, "ENSG00000148773.14_MKI67"))
     
-    cor_mat_rho[[contrast]] <- cor(t(a5_wts_lcpm_list[["SDHB_abdothoracic"]][gene_list,]), use = "pairwise.complete.obs", method = "spearman")
-    
-    cor_mat_pval[[contrast]] <- matrix(nrow = length(gene_list), ncol = length(gene_list), dimnames = list(gene_list,gene_list))
+    gene_list_expr <- a5_wts_lcpm_list[["SDHB_abdothoracic"]][gene_list,]
 
+    #Create list of non-redundant comparisons
+    comp_list <- 
+        data.frame(
+          t(combn(x = gene_list, 
+                m = 2, 
+                repl=FALSE)))
+    colnames(comp_list) <- c("goi1","goi2")
+    
+    
+    #Threaded iteration over gene list returning list of lists
     cor_list_i <- furrr::future_map(set_names(gene_list,gene_list),
                                     .f = \(goi1) {
+                                      gene_list_j <- comp_list$goi2[comp_list$goi1 == goi1]
                                       cor_list_j <- list()
-                                      goi1_expr <- a5_wts_lcpm_long %>%
-                                        filter(ensgid_symbol==goi1) %>% pull(log2cpm)
 
-                                      for (goi2 in gene_list)
+                                      for (goi2 in gene_list_j)
                                       {
-                                        goi2_expr <- a5_wts_lcpm_long %>%
-                                          filter(ensgid_symbol==goi2) %>% pull(log2cpm)
+                                        cor_list_j[[goi2]] <- list()
+                                        corr_test_result <- cor.test(x = gene_list_expr[goi1,],y = gene_list_expr[goi2,], method=c("spearman"))
 
-                                        corr_test_result <- cor.test(x = goi1_expr,y = goi2_expr, method=c("spearman"))
-
-                                        cor_list_j[[goi2]] <- corr_test_result$p.value
+                                        cor_list_j[[goi2]]$pval <- corr_test_result$p.value
+                                        cor_list_j[[goi2]]$rho <- corr_test_result$estimate
                                       }
 
                                       return(cor_list_j)
                                     })
 
-
+    cor_mat_rho[[contrast]] <-  matrix(nrow = length(gene_list), ncol = length(gene_list), dimnames = list(gene_list,gene_list))
+    cor_mat_pval[[contrast]] <- matrix(nrow = length(gene_list), ncol = length(gene_list), dimnames = list(gene_list,gene_list))
+    
+    #Convert list of lists into matrix
     for(i in names(cor_list_i)){
       for (j in names(cor_list_i[[i]]))
       {
-        cor_mat_pval[[contrast]][i,j] <- cor_list_i[[i]][[j]]
+        cor_mat_rho[[contrast]][i,j] <- cor_list_i[[i]][[j]][["rho"]]
+        cor_mat_rho[[contrast]][j,i] <- cor_list_i[[i]][[j]][["rho"]]
+        cor_mat_pval[[contrast]][i,j] <- cor_list_i[[i]][[j]][["pval"]]
+        cor_mat_pval[[contrast]][j,i] <- cor_list_i[[i]][[j]][["pval"]]
       }
     }
     
-   
+    #fill in self_comps (skipped for efficiency)
+    for(i in 1:ncol(cor_mat_rho[[contrast]])){
+      cor_mat_rho[[contrast]][i,i] <- 1
+      cor_mat_pval[[contrast]][i,i] <- 0
+      }
     
   } 
   saveRDS(cor_mat_rho, checkpoint_rds_cor_mat_rho)

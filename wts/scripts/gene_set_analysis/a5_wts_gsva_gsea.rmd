@@ -1,0 +1,623 @@
+---
+title: "A5 GSVA"
+author: "Aidan Flynn"
+date: "02/08/2022"
+output: 
+  html_document:
+    code_folding: show
+    fig_crop: false
+editor_options: 
+  chunk_output_type: console
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = '/g/data/pq08/projects/ppgl/',cache = TRUE,cache.lazy = FALSE)
+
+```
+
+```{r libs, include=FALSE}
+library(tidyverse)
+library(limma)
+library(edgeR)
+library(patchwork)
+library(googlesheets4)
+library(GSVA)
+library(GSA)
+
+theme_set(theme_bw())
+
+c26 = c("dodgerblue2",
+        "green4", 
+        "#E31A1C", #red
+        "#6A3D9A", # purple
+        "#FF7F00", # orange
+        "gold1",
+        "skyblue2",
+        "#FB9A99", # lt pink
+        "palegreen2",
+        "#CAB2D6", # lt purple
+        "#FDBF6F", # lt orange
+        "khaki2",
+        "grey40",
+        "grey70",
+        "maroon",
+        "orchid1",
+        "deeppink1",
+        "blue1",
+        "steelblue4",
+        "darkturquoise",
+        "green1",
+        "yellow4",
+        "yellow3",
+        "darkorange4",
+        "brown",
+        "black",
+        "aquamarine1",
+        "darkslategrey")
+
+```
+
+```{r gene_sets}
+Hs.H <- msigdbr::msigdbr(species = "Homo sapiens", category = "H")
+Hs.C8 <- msigdbr::msigdbr(species = "Homo sapiens", category = "C8")
+
+# put the genesets into list form
+Hs.H.list <- lapply(split(Hs.H, f = Hs.H$gs_name), function(w) { unique(w$gene_symbol) })
+
+#Janskey
+
+signature_genes_jansky <- read_csv("./a5/sn_rna_seq/reference/published_datasets/jansky_2021/jansky_sympathoadrenal_genes.csv", skip = 1)
+
+jansky.genesets.list <- list(
+  JANSKY_late_chromaffin_genes = signature_genes_jansky %>% dplyr::filter(cluster == "late Chromaffin cells") %>% pull(gene),
+  JANSKY_early_chromaffin_genes = signature_genes_jansky %>% dplyr::filter(cluster == "Chromaffin cells") %>% pull(gene),
+  JANSKY_connecting_chromaffin_genes = signature_genes_jansky %>% dplyr::filter(cluster == "connecting Progenitor cells")  %>% pull(gene),
+  JANSKY_bridge_genes = signature_genes_jansky %>% dplyr::filter(cluster == "Bridge") %>% pull(gene),
+  JANSKY_early_neuroblast_genes = signature_genes_jansky %>% dplyr::filter(cluster == "Neuroblasts") %>% pull(gene),
+  JANSKY_late_neuroblast_genes = signature_genes_jansky %>% dplyr::filter(cluster == "late Neuroblasts") %>% pull(gene),
+  JANSKY_cycling_SCP_genes = signature_genes_jansky %>% dplyr::filter(cluster == "cycling SCPs") %>% pull(gene),
+  JANSKY_cycling_neuroblast_genes = signature_genes_jansky %>% dplyr::filter(cluster == "cycling Neuroblasts") %>% pull(gene),
+  JANSKY_early_SCP_genes = signature_genes_jansky %>% dplyr::filter(cluster == "SCPs") %>% pull(gene),
+  JANSKY_late_SCP_genes = signature_genes_jansky %>% dplyr::filter(cluster == "late SCPs") %>% pull(gene))
+
+zethovan_pseudobulk_de <- read_csv("./a5/sn_rna_seq/reference/published_datasets/zethoven_2022/zethoven_suppdata_6.csv")
+
+# filter out genes below significance threshold cutoff of 0.05 adj p value
+# filter out genes with log fold change below 3 
+zethovan_pseudobulk_de <- zethovan_pseudobulk_de %>% 
+  dplyr::filter(grepl("_normal" , Contrast)) %>%
+  mutate(Contrast = Contrast %>% str_replace_all("\\.", "_") %>%
+           str_replace("Sustentacular_cells", "SCLCs") %>% 
+           str_remove("_normal")) %>% 
+  dplyr::filter(adj.P.Val < 0.05) %>% 
+  dplyr::filter(logFC > 3)
+
+# chose logFC cutoff to have a good number of genes in each set (200-400 genes)
+# this can be tweaked further if necessary
+zethoven.celltypes.list <- lapply(split(zethovan_pseudobulk_de,
+                                        f = zethovan_pseudobulk_de$Contrast),
+                                  function(y) y$Gene)
+names(zethoven.celltypes.list) <- paste0("ZETHOVEN_", names(zethoven.celltypes.list))
+
+
+zethoven_ben_met_input <- read_tsv("./a5/reference/gene_lists/zethoven_2022_suppdata12_metastatic_vs_benign_topgenes.txt")
+zethoven_ben_met_up <- zethoven_ben_met_input %>% filter(!is.na(`logFC_metastatic_vs_non-metastatic_in_C1A`), `logFC_metastatic_vs_non-metastatic_in_C1A` > 0) %>% pull(Gene)
+zethoven_ben_met_down <- zethoven_ben_met_input %>% filter(!is.na(`logFC_metastatic_vs_non-metastatic_in_C1A`), `logFC_metastatic_vs_non-metastatic_in_C1A` < 0) %>% pull(Gene)
+zethoven_ben_met <- list(ZETHOVEN_ben_met_up=zethoven_ben_met_up, ZETHOVEN_ben_met_down=zethoven_ben_met_down)
+
+all_genesets <- c(Hs.H.list, jansky.genesets.list, zethoven.celltypes.list, zethoven_ben_met)
+
+```
+
+```{r load-data, include=FALSE, message=FALSE}
+
+output_qc <- FALSE; output_tables <- FALSE; output_plots <- FALSE
+source("./a5/wts/scripts/differential_expression/a5_wts_differential_expression.r")
+
+```
+
+
+
+```{r gsva, message=FALSE, warning=FALSE, include=TRUE}
+
+gsva_res_list <- list()
+
+gsva_res_list <- lapply(a5_wts_lcpm_list, function (lcpm_df) {
+  #strip ENGID to keep only HGNC symbol
+  rownames(lcpm_df) <- make.unique(gsub("ENSG[0-9.]+?_","", rownames(lcpm_df), perl = T))
+  gsva(lcpm_df, all_genesets, min.sz=10, max.sz=500, method="gsva", kcdf="Gaussian", verbose=F)})
+
+
+```
+
+# GSVA Scores
+
+```{r gene_set_score_plots, fig.height=25, fig.width=15}
+plot.data <- gsva_res_list$SDHB %>% as_tibble(rownames = "GeneSet") 
+
+plot.data <- plot.data %>% 
+  pivot_longer(cols = -GeneSet, names_to = "A5_ID", values_to = "GeneSet_score") %>% 
+  left_join(a5_anno %>%  dplyr::select(A5_ID, `Patient ID`, 
+                                       Primary_Location_Simplified, differential_group_anatomy, 
+                                       differential_group_sampletype_strict, differential_group_sampletype,
+                                       TERT_ATRX_Mutation, telhunter_log2_telcontentratio)) %>% 
+  mutate(Primary_Location_Simplified = gsub("_abdominal|_thoracic|_bladder|_cardiac|_[Ll]eft|_[Rr]ight", 
+                                            "", 
+                                            Primary_Location_Simplified))
+
+
+
+#pdf(file = "./a5/wts/results/plots/gsva/gsva_geneset_scores.pdf", width = 25, height=35, onefile = T)
+
+pre_jitter <- position_jitter(width = 0.2, height = 0, seed=10)
+ggplot(plot.data, aes(x=Primary_Location_Simplified, y=GeneSet_score,  group=`Patient ID`)) + 
+  geom_boxplot(aes(group=NULL), outlier.alpha = 0) + 
+  geom_point(aes(color = differential_group_sampletype_strict, 
+                 shape=TERT_ATRX_Mutation),
+             alpha=0.7, 
+             position = pre_jitter) + 
+  geom_path(position = pre_jitter, 
+            linetype=2, 
+            alpha=0.2) +
+  facet_wrap("GeneSet", ncol = 6) + 
+  theme(axis.text.x = element_text(angle=90, vjust = 0.5, hjust = 1)) + 
+  scale_color_manual(values=sampletype_strict_cols) +  ggtitle("All tumours - Score vs Anatomical Location")
+
+ggplot(plot.data, aes(x=differential_group_sampletype_strict, y=GeneSet_score,  group=`Patient ID`)) + 
+  geom_boxplot(aes(group=NULL), outlier.alpha = 0) + 
+  geom_point(aes(color = Primary_Location_Simplified, 
+                 shape=TERT_ATRX_Mutation),alpha=0.7, position = pre_jitter) + 
+  geom_path(position = pre_jitter, linetype=2, alpha=0.2) +
+  facet_wrap("GeneSet", ncol = 6) + 
+  theme(axis.text.x = element_text(angle=90, vjust = 0.5, hjust = 1)) + 
+  scale_color_manual(values=location_cols) +  ggtitle("All tumours - Score vs Clinical Behaviour")
+
+ggplot(plot.data %>%  filter(differential_group_anatomy == "Abdominal_Thoracic"), 
+       aes(x=differential_group_sampletype_strict, y=GeneSet_score,  group=`Patient ID`)) + 
+  geom_boxplot(aes(group=NULL), outlier.alpha = 0) + 
+  geom_point(aes(color = Primary_Location_Simplified, 
+                 shape=TERT_ATRX_Mutation),alpha=0.7, position = pre_jitter) + 
+  geom_path(position = pre_jitter, linetype=2, alpha=0.2) +
+  facet_wrap("GeneSet", ncol = 6) + 
+  theme(axis.text.x = element_text(angle=90, vjust = 0.5, hjust = 1)) + 
+  scale_color_manual(values=location_cols) +  ggtitle("AT-PGL Only - Score vs Clinical Behaviour")
+
+ggplot(plot.data %>%  filter(differential_group_anatomy == "Abdominal_Thoracic"), 
+       aes(x=TERT_ATRX_Mutation, y = GeneSet_score,  group = `Patient ID`)) + 
+  geom_boxplot(aes(group = NULL), outlier.alpha = 0) + 
+  geom_point(aes(color = differential_group_sampletype_strict),
+                 alpha = 0.7, position = pre_jitter) + 
+  geom_path(position = pre_jitter, linetype=2, alpha=0.2) +
+  facet_wrap("GeneSet", ncol = 6) + 
+  theme(axis.text.x = element_text(angle=90, vjust = 0.5, hjust = 1)) + 
+  scale_color_manual(values=sampletype_strict_cols) +  ggtitle("AT-PGL Only - Score vs TERT/ATRX")
+
+ggplot(plot.data %>%  
+         mutate(Mutant=ifelse(TERT_ATRX_Mutation != "WT", "TERT/ATRX", "WT")) %>% 
+         filter(GeneSet %in% c("HALLMARK_GLYCOLYSIS","HALLMARK_MITOTIC_SPINDLE","HALLMARK_E2F_TARGETS",
+                               "HALLMARK_G2M_CHECKPOINT","JANSKY_cycling_neuroblast_genes","JANSKY_early_SCP_genes",
+                               "JANSKY_late_SCP_genes","ZETHOVEN_SCLCs", "ZETHOVEN_ben_met_up", 
+                               "ZETHOVEN_ben_met_down")) %>% 
+         mutate(color_code = case_when(
+           TERT_ATRX_Mutation != "WT" ~ TERT_ATRX_Mutation,
+           telhunter_log2_telcontentratio > 0.5 ~ "Long telomeres",
+           A5_ID == "E171-1" ~ "TERT over-expression",
+           TRUE ~ "WT"
+         )) %>% 
+         mutate(differential_group_sampletype = recode(differential_group_sampletype, "Other"="SFU/Local-Recurrance")), 
+       aes(x=paste(differential_group_sampletype, Mutant), y = GeneSet_score,  group = `Patient ID`)) + 
+  geom_boxplot(aes(group = NULL), outlier.alpha = 0) + 
+  geom_point(aes(color = color_code),
+                 alpha = 0.7, position = pre_jitter) + 
+  geom_path(position = pre_jitter, linetype=2, alpha=0.2) +
+  facet_wrap("GeneSet", ncol = 6) + 
+  theme(axis.text.x = element_text(angle=90, vjust = 0.5, hjust = 1)) + 
+  scale_color_manual(values=c(driver_cols, `Long telomeres`=ColorPalette[["Yellow3"]], `TERT over-expression`=ColorPalette[["DarkRed1"]])) 
+#+  ggtitle("AT-PGL Only - Score vs TERT/ATRX")
+
+#dev.off()
+```
+
+# Differential Expression of Gene Sets
+
+```{r limma_de_genesets }
+
+gsva_de_fits <- list()
+gsva_top_tables <- list()
+
+#########################
+# Head/Neck Vs AdboThor #
+#########################
+
+
+#Create working verson of counts and sample annotation
+expr_gsva <- gsva_res_list[["SDHB"]]
+counts_anno <- a5_anno %>% dplyr::filter(A5_ID %in% colnames(expr_gsva))
+counts_anno <- counts_anno[match(colnames(expr_gsva), counts_anno$A5_ID),]
+
+dupcor <- duplicateCorrelation(expr_gsva, 
+                                 design_matrix_hn, 
+                                 block=counts_anno$`Patient ID`)
+
+# differential expression analysis, keeping track of samples that are correlated as they come from the same patient
+vfit <- lmFit(expr_gsva, design_matrix_hn, block=counts_anno$`Patient ID`, correlation=dupcor$consensus)
+vfit <- contrasts.fit(vfit, contrasts=contrast_matrix_hn)
+efit <- eBayes(vfit)
+
+
+#Store fit
+gsva_de_fits[["Parasympathetic_vs_Sympathetic"]] <- efit
+
+# get top tables 
+gsva_top_tables[["Parasympathetic_vs_Sympathetic"]] <- list()
+for (contrast in dimnames(contrast_matrix_hn)$Contrasts)
+{
+  gsva_top_tables[["Parasympathetic_vs_Sympathetic"]][[contrast]] <- 
+    topTable(efit, 
+             coef = contrast, 
+             number = Inf, 
+             sort.by = "P") %>% 
+    rownames_to_column(var = "Gene_set") %>% 
+    mutate(Comparison="Parasympathetic_vs_Sympathetic",Contrast=contrast)
+}
+ 
+
+###########################
+# Genotype/Sample-type DE #
+###########################
+
+expr_gsva <- gsva_res_list[["SDHB_abdothoracic"]]
+
+counts_anno <- a5_anno %>% dplyr::filter(A5_ID %in% colnames(gsva_res_list[["SDHB_abdothoracic"]]))
+counts_anno <- counts_anno[match(colnames(expr_gsva), counts_anno$A5_ID),]
+
+dupcor <- duplicateCorrelation(expr_gsva, design_matrix_genosampletype, block=counts_anno$`Patient ID`)
+
+# differential expression analysis with duplicate correlation
+vfit <- lmFit(expr_gsva, 
+              design_matrix_genosampletype, 
+              block=counts_anno$`Patient ID`, 
+              correlation=dupcor$consensus)
+vfit <- contrasts.fit(vfit, contrasts=contrast_matrix_genosampletype)
+efit <- eBayes(vfit)
+
+gsva_de_fits[["genosampletype"]] <- efit
+
+sum.fit <- decideTests(efit, lfc = 0.5, adjust.method = "BH", p.value = 0.05)
+summary(sum.fit) %>% knitr::kable(caption = "DE gene counts at adj.p<0.05 and LFC>0.5")
+
+gsva_top_tables[["genosampletype"]] <- list()
+for (contrast in dimnames(contrast_matrix_genosampletype)$Contrasts)
+{
+  
+  gsva_top_tables[["genosampletype"]][[contrast]] <- 
+    topTable(efit, 
+             coef = contrast, 
+             number = Inf, 
+             sort.by = "P") %>% 
+    rownames_to_column(var = "Gene_set") %>% 
+    mutate(Comparison="genosampletype",Contrast=contrast)
+}
+  
+sig_gsva <- bind_rows(
+  bind_rows(gsva_top_tables[["Parasympathetic_vs_Sympathetic"]]), 
+  bind_rows(gsva_top_tables[["genosampletype"]])) %>% 
+  filter(adj.P.Val < 0.05, abs(logFC) > 0.5)
+
+sig_gsva %>% 
+    knitr::kable(caption = "Significant DE genesets at adj.p<0.05 and LFC>0.5")
+
+```
+```{r gsva_score_plots}
+
+useful_contrasts <- c("Parasympathetic_vs_Sympathetic", "TERT_All_vs_NonTERT", "ATRX_All_vs_NonATRX", "Metastasis_All_vs_NonMetPri_WT")
+
+gg_gsva_scatter_box <- list()
+purrr::pwalk(.l = sig_gsva %>% filter(Contrast %in% useful_contrasts) %>% dplyr::select(comparison=Comparison, contrast=Contrast) %>% distinct(), 
+            .f = function(comparison, contrast) {
+              
+  if (comparison=="Parasympathetic_vs_Sympathetic") { 
+    exprs_set = "SDHB"
+    plot_x = c("differential_group_anatomy")
+  } else {
+    exprs_set = "SDHB_abdothoracic"
+    plot_x = c("differential_group_sampletype_strict", "TERT_ATRX_Mutation")
+  }
+
+  gsoi <- sig_gsva %>% 
+    filter(Comparison==comparison, Contrast==contrast) %>% 
+    pull(Gene_set) %>%  unique()
+
+
+  plot.data <- gsva_res_list[[exprs_set]][gsoi,, drop=F] %>% 
+    as_tibble(rownames = "Gene_set") %>% 
+    pivot_longer(cols=-Gene_set, 
+                 names_to = "A5_ID", 
+                 values_to = "log2cpm") %>% 
+    left_join(a5_anno %>% 
+                dplyr::select(A5_ID, is_primary_or_met,
+                              TERT_ATRX_Mutation, differential_group_purity, differential_group_anatomy,
+                              differential_group_sampletype_strict, differential_group))
+  
+  plot.data$differential_group <- factor(plot.data$differential_group, levels=differential_group_levels)
+  
+  gg_list <- list()
+  for (x_name in plot_x) {
+   gg_list[[x_name]] <- ggplot(mapping=aes(x=!!sym(x_name), 
+                     y=log2cpm)) + 
+    geom_boxplot(data=plot.data %>% filter(differential_group_purity=="PurityOK")) + 
+    geom_jitter(data=plot.data, 
+                mapping = aes(shape=TERT_ATRX_Mutation,
+                              color=differential_group_sampletype_strict,
+                              alpha=differential_group_purity), 
+                width=0.2)  + 
+    # geom_text(data=plot.data, mapping = aes(label=A5_ID)) +
+     theme_bw() +
+    theme(axis.text.x = element_text(angle=90, vjust=0.5, hjust=1)) + 
+    scale_color_manual(values = sampletype_strict_cols) +
+    scale_shape_manual(values = c("ATRX"=4, TERT=8, WT=20)) +
+    scale_alpha_manual(values = c(0.2,1)) + 
+    facet_wrap("Gene_set", scale="free_y", ncol=6) + ggtitle(paste(contrast, sep = "-"))
+   }
+   
+   gg_gsva_scatter_box[[paste(comparison, contrast, sep="_")]] <<- purrr::reduce(.x =  gg_list, .f = \(x,y) "/"(x,y)) + plot_layout(guides="collect")
+})
+
+```
+```{r gsva_score_plots_output, fig.height=10, fig.width=10}
+purrr::walk(.x =  gg_gsva_scatter_box, .f = print)
+```
+```{r gsva_volcano_plots, fig.height=10, fig.width=10}
+plot_volcano <- function(tt, n_label, lfc_cutoff=1.5, padj_cutoff=0.05, color_feature, color_scale){
+  
+  genes_to_label <- tt %>% filter(adj.P.Val < padj_cutoff & abs(logFC) > lfc_cutoff) %>% 
+    slice_min(adj.P.Val, n = n_label) %>% 
+    pull(Gene_set)
+  
+  tt_plot <- tt %>% #flag the most significant genes to label
+    mutate(color_feature = if_else(adj.P.Val < padj_cutoff & abs(logFC) > lfc_cutoff , !!sym(color_feature), "Not significant"),
+           color_feature = factor(as.character(color_feature), levels=levels(!!sym(color_feature)))) %>% 
+    mutate(label = if_else(Gene_set %in% genes_to_label, TRUE, FALSE)) 
+  
+  color_scale[["Not significant"]] <- "black"
+  
+  volcano <- ggplot(tt_plot, aes(logFC, -log10(adj.P.Val))) +
+    geom_point(aes(col=color_feature)) +
+    scale_color_manual(values=color_scale) +
+    geom_text_repel(
+      data = . %>% filter(label == TRUE),
+      box.padding = unit(0.5, "lines"),
+      point.padding = unit(0.1, "lines"),
+      segment.color = "grey",
+      max.overlaps = Inf,
+      size = 3,
+      aes(label=Gene_set)) +
+    geom_hline(yintercept=-log10(padj_cutoff), linetype=2,color="red")+
+    geom_vline(xintercept=c(lfc_cutoff, -1 * lfc_cutoff), linetype=2,color="red")+
+    theme_bw()
+  
+  return(volcano)
+  
+}
+
+
+lfc_cutoff = 0.25
+padj_cutoff = 0.05
+gsva_volcanos <- list()
+for (comparison in names(gsva_top_tables))
+{
+  gsva_volcanos[[comparison]] <- list()
+  
+  for (contrast in names(gsva_top_tables[[comparison]]))
+  {
+    
+    plot_data <- gsva_top_tables[[comparison]][[contrast]] %>% 
+      mutate(Gene_set_label = ifelse(abs(logFC) > lfc_cutoff & adj.P.Val < padj_cutoff, Gene_set, "Not significant"),
+             Gene_set_label = factor(as.character(Gene_set_label), levels=unique(Gene_set_label)))
+    col_set = setNames(c26[1:length(unique(plot_data$Gene_set_label))], unique(plot_data$Gene_set_label))
+    gsva_volcanos[[comparison]][[contrast]] <- plot_volcano(tt = plot_data, n_label = 5, lfc_cutoff = lfc_cutoff, padj_cutoff = padj_cutoff, color_feature = "Gene_set_label", color_scale = col_set) + ggtitle(contrast)
+    
+  }
+}
+```
+```{r gsva_volcano_plots_output, fig.height=10, fig.width=10}
+purrr::walk(.x =  gsva_volcanos, .f = print)
+```
+
+
+
+# Individual gene boxplots
+
+```{r gsva_gene_plots, fig.height=30, fig.width=20}
+
+gsva_plots <- 
+  purrr::pmap(.l = sig_gsva %>% dplyr::select(Gene_set, Comparison) %>% distinct(), 
+            .f = function(Gene_set, Comparison) {
+
+              if (Comparison=="Parasympathetic_vs_Sympathetic") { 
+                exprs_set = "SDHB"
+                plot_x = "differential_group_anatomy"
+              } else {
+                exprs_set = "SDHB_abdothoracic"
+                plot_x = "differential_group_sampletype_strict"
+              }
+              
+              GOI <- all_genesets[[Gene_set]]
+              
+              GOI <- symbol_lookup[intersect(GOI, names(symbol_lookup))]
+              
+              plot.data <- a5_wts_lcpm_list[[exprs_set]][GOI,, drop=F] %>% 
+                as_tibble(rownames = "Gene") %>% 
+                pivot_longer(cols=-Gene, 
+                             names_to = "A5_ID", 
+                             values_to = "log2cpm") %>% 
+                left_join(ensid_to_biotype) %>% 
+                mutate(Gene = gsub("ENSG[0-9]+.[0-9]{1,2}_","",Gene))
+              
+              plot.data <- plot.data %>% 
+                left_join(a5_anno %>% 
+                            dplyr::select(A5_ID, is_primary_or_met,
+                                          TERT_ATRX_Mutation, differential_group_purity, differential_group_anatomy,
+                                          differential_group_sampletype_strict, differential_group))
+              
+              plot.data$differential_group <- factor(plot.data$differential_group, levels=differential_group_levels)
+              
+              # paste(TERT_ATRX_Mutation, differential_group_sampletype_strict, sep="_")
+              gg_scatter_box <- ggplot(mapping=aes(x=!!sym(plot_x), 
+                                 y=log2cpm)) + 
+                geom_boxplot(data=plot.data %>% filter(differential_group_purity=="PurityOK")) + 
+                geom_jitter(data=plot.data, 
+                            mapping = aes(color=TERT_ATRX_Mutation,
+                                          alpha=differential_group_purity), 
+                            width=0.2)  + 
+                theme(axis.text.x = element_text(angle=90, vjust=0.5, hjust=1)) + 
+                scale_color_manual(values = driver_cols) +
+                scale_alpha_manual(values = c(0.2,1)) + 
+                facet_wrap("Gene", scale="free_y", ncol=6) + ggtitle(paste(Comparison, Gene_set, sep = "-"))
+              
+              return(gg_scatter_box)
+  
+})
+```
+```{r gsva_gene_plots_output, fig.height=30, fig.width=20}
+purrr::walk(.x =  gsva_plots, .f = print)
+```
+
+# GSEA with CAMERA
+
+```{r gsea}
+
+Hs.H <- msigdbr::msigdbr(species = "Homo sapiens", category = "H")
+Hs.C8 <- msigdbr::msigdbr(species = "Homo sapiens", category = "C8")
+Hs.C6 <- msigdbr::msigdbr(species = "Homo sapiens", category = "C6")
+
+collections <- list("H"=Hs.H, "C6"=Hs.C6, "C8"=Hs.C8)
+
+camera_results <- list()
+
+# Save each toptable and run GSEA analysis on each contrast
+for (comp in names(wts_top_tables))
+{
+  camera_results[[comp]] <- list()
+  
+  if (comp == "Parasympathetic_vs_Sympathetic") {
+    lcpm <- a5_wts_lcpm_list[["SDHB"]]
+    design.matrix <- design_matrix_hn
+    contr.matrix <- contrast_matrix_hn
+  } else {
+    lcpm <- a5_wts_lcpm_list[["SDHB_abdothoracic"]]
+    design.matrix <- design_matrix_genosampletype
+    contr.matrix <- contrast_matrix_genosampletype
+  }
+  
+  for (contr in colnames(contr.matrix)) {
+    camera_results[[comp]][[contr]] <- list()
+    
+    # Get the top 20 symbols to plot
+    top <- wts_top_tables[[comp]][[contr]] %>%
+      dplyr::filter(adj.P.Val < 0.05, abs(logFC) > 1) %>%
+      dplyr::filter(!is.na(gene_symbol)) %>%
+      arrange(-abs(logFC))
+    
+    
+    for (collection in names(collections)) {
+      camera_results[[comp]][[contr]][[collection]] <- list()
+      
+      collection.list <- lapply(X = split(collections[[collection]],
+                                      f = collections[[collection]]$gs_name),
+                                FUN = function(w) w$gene_symbol)
+      
+      indexed <- ids2indices(
+        gene.sets = collection.list,
+        identifiers = top$gene_symbol,
+        remove.empty = TRUE)
+      
+      camera_results[[comp]][[contr]][[collection]] <-
+        camera(y = lcpm, index = indexed, design = design.matrix, contrast = contr.matrix[, contr]) %>%
+        rownames_to_column(var = "Gene_set") %>%
+        dplyr::select(Gene_set, NGenes, Direction, PValue, FDR) %>%
+        mutate(Comparison=comp, Contrast = contr, Collection = collection) %>% 
+        dplyr::filter(FDR <= 0.05) 
+        
+    }
+    camera_results[[comp]][[contr]] <- bind_rows(camera_results[[comp]][[contr]])
+  }
+  camera_results[[comp]] <- bind_rows(camera_results[[comp]])
+  
+}
+
+camera_results <- bind_rows(camera_results)
+
+camera_results
+```
+```{r camera_result_plots}
+
+camera_plots <- 
+  purrr::pmap(.l = camera_results %>% dplyr::select(Gene_set, Comparison, Contrast, Collection), 
+            .f = function(Gene_set, Comparison, Contrast, Collection) {
+
+              if (Comparison=="Parasympathetic_vs_Sympathetic") { 
+                exprs_set = "SDHB"
+                plot_x = "differential_group_anatomy"
+              } else {
+                exprs_set = "SDHB_abdothoracic"
+                plot_x = "differential_group_sampletype_strict"
+              }
+              
+              GOI <- msigdbr::msigdbr(species = "Homo sapiens", 
+                                      category = Collection) %>% 
+                            filter(gs_name == Gene_set) %>% 
+                            pull(gene_symbol)
+              
+              GOI <- symbol_lookup[intersect(GOI, names(symbol_lookup))]
+              
+              GOI <- wts_top_tables[[Comparison]][[Contrast]] %>% 
+                filter(Gene %in% GOI, adj.P.Val < 0.05, abs(logFC) > 1) %>% 
+                pull(Gene)
+                           
+              plot.data <- a5_wts_lcpm_list[[exprs_set]][GOI,, drop=F] %>% 
+                as_tibble(rownames = "Gene") %>% 
+                pivot_longer(cols=-Gene, 
+                             names_to = "A5_ID", 
+                             values_to = "log2cpm") %>% 
+                left_join(ensid_to_biotype) %>% 
+                mutate(Gene = gsub("ENSG[0-9]+.[0-9]{1,2}_","",Gene))
+              
+              plot.data <- plot.data %>% 
+                left_join(a5_anno %>% 
+                            dplyr::select(A5_ID, is_primary_or_met,
+                                          TERT_ATRX_Mutation, differential_group_purity, differential_group_anatomy,
+                                          differential_group_sampletype_strict, differential_group))
+              
+              plot.data$differential_group <- factor(plot.data$differential_group, levels=differential_group_levels)
+              
+              # paste(TERT_ATRX_Mutation, differential_group_sampletype_strict, sep="_")
+              gg_scatter_box <- ggplot(mapping=aes(x=!!sym(plot_x), 
+                                 y=log2cpm)) + 
+                geom_boxplot(data=plot.data %>% filter(differential_group_purity=="PurityOK")) + 
+                geom_jitter(data=plot.data, 
+                            mapping = aes(color=TERT_ATRX_Mutation,
+                                          alpha=differential_group_purity), 
+                            width=0.2)  + 
+                theme(axis.text.x = element_text(angle=90, vjust=0.5, hjust=1)) + 
+                scale_color_manual(values = driver_cols) +
+                scale_alpha_manual(values = c(0.2,1)) + 
+                facet_wrap("Gene", scale="free_y", ncol=6) + ggtitle(paste(Contrast, Gene_set, sep = "-"))
+              
+              return(gg_scatter_box)
+  
+})
+```
+```{r gsva_result_plots_output, fig.height=30, fig.width=20}
+purrr::walk(.x =  camera_plots, .f = print)
+```
+
+
+
+
+
+```{r environment}
+sessionInfo()
+```

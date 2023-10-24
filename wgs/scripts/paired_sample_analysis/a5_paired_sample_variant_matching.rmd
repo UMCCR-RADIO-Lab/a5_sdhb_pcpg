@@ -79,6 +79,7 @@ Samples <- list(
   E122=c("E122-T01","E122-T02"),
   E128=c("E128-T01","E128-T02"),
   E132=c("E132-T01","E132-T02"),
+  E136=c("E136-T01","E136-T02"),
   E143=c("E143-T01","E143-T02","E143-T03"),
   E146=c("E146-T01","E146-T02"),
   E158=c("E158-T01","E158-T02"),
@@ -93,7 +94,7 @@ Samples <- list(
 ```
 ## Match Variants between VCFs
 ```{r vcf_matching, eval=TRUE, message=FALSE, warning=FALSE, include=TRUE, cache=TRUE, cache.path="/g/data/pq08/projects/ppgl/a5/wgs/scripts/paired_sample_analysis/markdown_caches/"}
-threads=6
+threads=5
 plan(strategy = "multisession", workers=threads)
 
 #Pairwise matching of VCFs - returns a list of dataframes with variant calls marked present/absent for each sample from each patient
@@ -169,7 +170,7 @@ blacklisted_variants <- read.delim(blacklist)
 matched_variant_tables <-
   lapply(matched_variant_tables, function (table, black_list = blacklisted_variants) {
         table <- table %>% 
-      left_join(black_list %>% 
+      left_join(black_list %>% dplyr::select(-REF) %>% 
                   dplyr::rename("blacklist_n_normal_observed"=n_above_threshold) %>% 
                   mutate(blacklist=TRUE),
                 by = c("seqnames"="CHROM", "start"="POS", "ALT"="ALT"))
@@ -247,7 +248,14 @@ vcf_files <- paste0(basedir, "/wgs/analysis/bcbio/",
   
 ```
 
-```{r annotate_pileups, eval=TRUE, include=TRUE}
+```{r annotate_pileups, eval=FALSE, include=TRUE}
+
+use_pileups=FALSE
+
+if(use_pileups)
+  {
+#VAF of variants required for variant to be considered detected in mpileup
+pileup_vaf_threshold=0.1
 
 source(file.path(basedir,"wgs/scripts/paired_sample_analysis/process_paired_pileups.r"))
 
@@ -277,21 +285,21 @@ matched_variant_tables <- map(.x = matched_variant_tables,
        for (tumour in tumour_samples){
          match_table <- match_table %>% 
            mutate("{tumour}_Called" := ifelse(!is.na(!!sym(paste0(tumour,"_pileup_vaf"))) &
-                                                !!sym(paste0(tumour,"_pileup_vaf")) > 0, 
+                                                !!sym(paste0(tumour,"_pileup_vaf")) > pileup_vaf_threshold, 
                                                             yes="Y", 
                                                             no= !!sym(paste0(tumour,"_Called")))) %>%
            #update VAF from pileup if variant missed
            mutate("{tumour}_VAF" := ifelse(!!sym(paste0(tumour,"_Called")) == "Y" &
                                              !!sym(paste0(tumour,"_VAF")) == 0 &
-                                              !is.na(!!sym(paste0(tumour,"_pileup_vaf"))), 
-                                                            yes=!!sym(paste0(tumour,"_pileup_vaf")), 
-                                                            no= !!sym(paste0(tumour,"_VAF"))))
+                                              !is.na(!!sym(paste0(tumour,"_pileup_vaf"))),
+                                           yes = !!sym(paste0(tumour,"_pileup_vaf")), 
+                                           no = !!sym(paste0(tumour,"_VAF"))))
        }
        
        return(match_table)
        
      })
-
+}
 ```
 ## Preprocess data for input to ggplots
 ```{r figure_input_preprocessing, eval=TRUE, include=TRUE}
@@ -925,7 +933,7 @@ for (patient in names(Samples))
 
   sv_dotplot_data[[patient]] <- sv_comparison[[patient]] %>% 
     group_by(across(matches("_Called"))) %>% 
-    count() %>%
+    dplyr::count() %>%
     unite(col="Combo", matches("_Called"), sep="/", remove=F) %>% 
     mutate(Annotation=paste0("SV (n=",n,")")) %>% 
     dplyr::select(-n) %>% 
@@ -1006,7 +1014,7 @@ for (patient in names(Samples))
 
 
 ```
-```{r write_composed_plots, eval=FALSE, include=FALSE}
+```{r write_composed_plots, eval=TRUE, include=FALSE}
 
 plot_config <- 
   as_tibble(
@@ -1014,7 +1022,8 @@ plot_config <-
       c(
         "E122", 7,5,
         "E128", 6,5,
-        "E132", 6,5,
+        "E132", 5,5,
+        "E136", 5,5,
         "E143", 8,5.5,
         "E146", 5,5,
         "E158", 6,5,

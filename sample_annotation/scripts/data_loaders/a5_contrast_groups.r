@@ -26,7 +26,7 @@ make_hn_vs_abdominothoracic_contrasts <- function(sample_anno, exclude_samples=N
   design_mat <- model.matrix(~0 + differential_group + sex)
   colnames(design_mat) <- gsub("differential_group","", colnames(design_mat))
   rownames(design_mat) <- sample_anno$A5_ID
-    
+  
   contr_matrix <- makeContrasts(
     Parasympathetic_vs_Sympathetic = (ATRX_Abdominal_Thoracic + TERT_Abdominal_Thoracic + WT_Abdominal_Thoracic)/3 - (WT_Head_Neck),
     Parasympathetic_vs_Sympathetic_WT = (WT_Abdominal_Thoracic) - (WT_Head_Neck),
@@ -69,12 +69,25 @@ make_genotype_sampletype_contrasts <- function(sample_anno, exclude_samples=NULL
     TERT_PriMet_vs_NonMetPri_WT = (Metastasis_TERT_VAFOK_PurityOK + MetastaticPrimary_TERT_VAFOK_PurityOK)/2 - NonMetastaticPrimary_WT_VAFOK_PurityOK,
     ATRX_PriMet_vs_NonMetPri_WT = (Metastasis_ATRX_VAFOK_PurityOK + MetastaticPrimary_ATRX_VAFOK_PurityOK)/2 - NonMetastaticPrimary_WT_VAFOK_PurityOK,
     #All-TERT vs Non-TERT
-    TERT_All_vs_NonTERT = (Metastasis_TERT_VAFOK_PurityOK + MetastaticPrimary_TERT_VAFOK_PurityOK)/2 - (Metastasis_ATRX_VAFOK_PurityOK + MetastaticPrimary_ATRX_VAFOK_PurityOK + Metastasis_WT_VAFOK_PurityOK + NonMetastaticPrimary_WT_VAFOK_PurityOK)/4,
+    TERT_All_vs_NonTERT = 
+      (Metastasis_TERT_VAFOK_PurityOK + 
+         MetastaticPrimary_TERT_VAFOK_PurityOK)/2 - 
+      (Metastasis_ATRX_VAFOK_PurityOK + 
+         MetastaticPrimary_ATRX_VAFOK_PurityOK + 
+         Metastasis_WT_VAFOK_PurityOK + 
+         NonMetastaticPrimary_WT_VAFOK_PurityOK +
+         MetastaticPrimary_WT_VAFOK_PurityOK +
+         Other_WT_VAFOK_PurityOK)/6,
     #All-ATRX vs Non-ATRX
-    ATRX_All_vs_NonATRX = (Metastasis_ATRX_VAFOK_PurityOK + MetastaticPrimary_ATRX_VAFOK_PurityOK)/2 - 
-      (NonMetastaticPrimary_WT_VAFOK_PurityOK + MetastaticPrimary_WT_VAFOK_PurityOK + 
-         Metastasis_WT_VAFOK_PurityOK + MetastaticPrimary_TERT_VAFLow_PurityOK + 
-         MetastaticPrimary_TERT_VAFOK_PurityOK + Metastasis_TERT_VAFOK_PurityOK + 
+    ATRX_All_vs_NonATRX = 
+      (Metastasis_ATRX_VAFOK_PurityOK + 
+         MetastaticPrimary_ATRX_VAFOK_PurityOK)/2 - 
+      (NonMetastaticPrimary_WT_VAFOK_PurityOK + 
+         MetastaticPrimary_WT_VAFOK_PurityOK + 
+         Metastasis_WT_VAFOK_PurityOK + 
+         MetastaticPrimary_TERT_VAFLow_PurityOK + 
+         MetastaticPrimary_TERT_VAFOK_PurityOK + 
+         Metastasis_TERT_VAFOK_PurityOK + 
          Other_WT_VAFOK_PurityOK)/7,
     #All-TERT vs All-ATRX
     ATRX_All_vs_TERT_All = (Metastasis_ATRX_VAFOK_PurityOK + MetastaticPrimary_ATRX_VAFOK_PurityOK)/2 - (Metastasis_TERT_VAFOK_PurityOK + MetastaticPrimary_TERT_VAFOK_PurityOK)/2,
@@ -82,7 +95,7 @@ make_genotype_sampletype_contrasts <- function(sample_anno, exclude_samples=NULL
     Metastasis_All_vs_NonMetPri_WT = (Metastasis_ATRX_VAFOK_PurityOK + Metastasis_TERT_VAFOK_PurityOK + Metastasis_WT_VAFOK_PurityOK)/3 - NonMetastaticPrimary_WT_VAFOK_PurityOK,
     levels = colnames(design_mat))
   
-   assign("contrast_matrix_genosampletype", contr_matrix, globalenv())
+  assign("contrast_matrix_genosampletype", contr_matrix, globalenv())
   assign("design_matrix_genosampletype", design_mat, globalenv())
   
   message("Added contrast matrix 'contrast_matrix_genosampletype' to the global environment")
@@ -94,29 +107,29 @@ message("Created contrast function make_genotype_sampletype_contrasts()")
 #This function produces a table of how many samples participate in each contrast group
 count_contrast_members <- function(contr_matrix, design.matrix)
 {
-
-#Check number of samples participating in each contrast
-nContrasts = dim(contr_matrix)[2]
-
-contrast_member_table <- data.frame(contrast=vector(mode="character"), 
-                                    groupA_count=vector(mode="integer"), 
-                                    groupB_count=vector(mode="integer"))
-for (i in 1:nContrasts)
-{
-  groupA.idx <- which(contr_matrix[,dimnames(contr_matrix)$Contrasts[i]] > 0)
-  groupB.idx <- which(contr_matrix[,dimnames(contr_matrix)$Contrasts[i]] < 0)
-  groupA.levels <- dimnames(contr_matrix)$Levels[groupA.idx]
-  groupB.levels <- dimnames(contr_matrix)$Levels[groupB.idx]
   
-  groupA.count <- sum(rowSums(design.matrix[,groupA.levels,drop=F]) > 0)
-  groupB.count <- sum(rowSums(design.matrix[,groupB.levels,drop=F]) > 0)
+  #Check number of samples participating in each contrast
+  nContrasts = dim(contr_matrix)[2]
   
-  contrast_member_table <- rbind(contrast_member_table, data.frame(contrast=dimnames(contr_matrix)$Contrasts[i], 
-                                                                   groupA_count=groupA.count, 
-                                                                   groupB_count=groupB.count))
-}
-
-return(contrast_member_table)
+  contrast_member_table <- data.frame(contrast=vector(mode="character"), 
+                                      groupA_count=vector(mode="integer"), 
+                                      groupB_count=vector(mode="integer"))
+  for (i in 1:nContrasts)
+  {
+    groupA.idx <- which(contr_matrix[,dimnames(contr_matrix)$Contrasts[i]] > 0)
+    groupB.idx <- which(contr_matrix[,dimnames(contr_matrix)$Contrasts[i]] < 0)
+    groupA.levels <- dimnames(contr_matrix)$Levels[groupA.idx]
+    groupB.levels <- dimnames(contr_matrix)$Levels[groupB.idx]
+    
+    groupA.count <- sum(rowSums(design.matrix[,groupA.levels,drop=F]) > 0)
+    groupB.count <- sum(rowSums(design.matrix[,groupB.levels,drop=F]) > 0)
+    
+    contrast_member_table <- rbind(contrast_member_table, data.frame(contrast=dimnames(contr_matrix)$Contrasts[i], 
+                                                                     groupA_count=groupA.count, 
+                                                                     groupB_count=groupB.count))
+  }
+  
+  return(contrast_member_table)
 }
 message("Created contrast function count_contrast_members()")
 

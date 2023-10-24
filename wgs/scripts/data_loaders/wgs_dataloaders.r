@@ -82,6 +82,8 @@ data_loader_germline_variants <- function(threads = 1)
   assign("A5_germline_cpsr_keep_pcawg", A5_germline_cpsr_keep_pcawg, envir = globalenv())
   assign("A5_germline_cpsr_keep_pcawg_brief", A5_germline_cpsr_keep_pcawg_brief, envir = globalenv())
 }
+message("Created data loader function data_loader_germline_variants()")
+
 ####################
 # Somatic Variants #
 ####################
@@ -106,16 +108,15 @@ data_loader_somatic_variants <- function(somatic_vcf_dir=NULL, quickload=TRUE,
   
   message("Loading Somatic Mutation Data...")
   
-  CGI <- read.delim("/g/data/pq08/reference/gene_lists/cgi/catalog_of_validated_oncogenic_mutations.tsv")
-  CGI <- CGI %>%
-    separate_rows(gdna, sep="__") %>%
-    mutate(gtemp=gsub("(chr[0-9XY]{1,2}):g.([0-9]+)([ATCG]+)>([ATCG]+)", "\\1-\\2-\\2-\\3-\\4",gdna),
-           gtemp=gsub("(chr[0-9XY]{1,2}):g.([0-9]+)_([0-9]+)(.+)", "\\1-\\2-\\3--\\4",gtemp),
-           gtemp=gsub("(chr[0-9XY]{1,2}):g.([0-9]+)(.+)", "\\1-\\2---\\3",gtemp)) %>%
-    separate(gtemp, into=c("seqnames","start", "end", "REF", "ALT"), sep="-", remove=T) %>%
-    mutate(start=as.numeric(start), end=as.numeric(end)) %>%
-    dplyr::rename(CGI_context=context, CGI_source=source, CGI_info=info)
-  
+  # CGI <- read.delim("/g/data/pq08/reference/gene_lists/cgi/catalog_of_validated_oncogenic_mutations.tsv")
+  # CGI <- CGI %>%
+  #   separate_rows(gdna, sep="__") %>%
+  #   mutate(gtemp=gsub("(chr[0-9XY]{1,2}):g.([0-9]+)([ATCG]+)>([ATCG]+)", "\\1-\\2-\\2-\\3-\\4",gdna),
+  #          gtemp=gsub("(chr[0-9XY]{1,2}):g.([0-9]+)_([0-9]+)(.+)", "\\1-\\2-\\3--\\4",gtemp),
+  #          gtemp=gsub("(chr[0-9XY]{1,2}):g.([0-9]+)(.+)", "\\1-\\2---\\3",gtemp)) %>%
+  #   separate(gtemp, into=c("seqnames","start", "end", "REF", "ALT"), sep="-", remove=T) %>%
+  #   mutate(start=as.numeric(start), end=as.numeric(end)) %>%
+  #   dplyr::rename(CGI_context=context, CGI_source=source, CGI_info=info)
   
   keepregx.all <- "inframe_insertion|missense_variant|inframe_deletion|splice_acceptor_variant|stop_lost|stop_gained|splice_donor_variant|frameshift_variant|start_lost"
   keepregx.special.tert <- "upstream_gene_variant"
@@ -150,6 +151,11 @@ data_loader_somatic_variants <- function(somatic_vcf_dir=NULL, quickload=TRUE,
   
   a5_somatic_variants <- a5_somatic_variants %>% filter(!(A5_ID %in% exclude_samples))
   
+  #failed validation
+  a5_somatic_variants <- a5_somatic_variants %>% 
+    filter(!(A5_ID=="E227-1" && PCGR_SYMBOL=="KRAS"), 
+           !(A5_ID=="E122-1" && PCGR_SYMBOL=="NF1"))
+  
   #Append TERT mutation incorrectly filtered by UMMCRise bug due to high mutation load
   missing_tert <- a5_somatic_variants %>% 
     filter(A5_ID=="E167-2", PCGR_SYMBOL=="TERT") %>% 
@@ -173,6 +179,25 @@ data_loader_somatic_variants <- function(somatic_vcf_dir=NULL, quickload=TRUE,
   }
   
   
+  #Annotate with Cancer Genome interpreter output
+  cgi_output <- read.delim("/g/data/pq08/projects/ppgl/a5/wgs/analysis/cgi/alterations.tsv") %>% 
+    mutate(CHR=paste0("chr",CHR)) %>%
+    dplyr::select(CHR, POS, REF, ALT, CGI.Oncogenic.Summary, CGI.Oncogenic.Prediction) %>% 
+    group_by(CHR, POS, REF, ALT) %>% 
+    summarise(CGI.Oncogenic.Summary=paste(CGI.Oncogenic.Summary, collapse = "/"), 
+              CGI.Oncogenic.Prediction=paste(CGI.Oncogenic.Prediction, collapse="/"))
+  a5_somatic_variants <- a5_somatic_variants %>% 
+    mutate(cgi_alt = ifelse(nchar(REF) > 1,"-", ALT),
+           cgi_ref = ifelse(nchar(ALT) > 1,"-", REF),
+           cgi_ref = ifelse(cgi_alt == "-",stringr::str_sub(cgi_ref, start=2), cgi_ref),
+           cgi_alt = ifelse(cgi_ref == "-",stringr::str_sub(cgi_alt, start=2), cgi_alt)) %>% 
+    left_join(cgi_output, by=c("seqnames"="CHR", "start"="POS", "cgi_alt"="ALT", "cgi_ref"="REF"), relationship="many-to-one") %>% 
+    dplyr::select(-cgi_alt,-cgi_ref)
+  a5_somatic_variants$CGI.Oncogenic.Summary[is.na(a5_somatic_variants$CGI.Oncogenic.Summary)] <- "Not annotated"
+  a5_somatic_variants$CGI.Oncogenic.Summary[a5_somatic_variants$CGI.Oncogenic.Summary == ""] <- "Not annotated"
+  a5_somatic_variants$CGI.Oncogenic.Prediction[is.na(a5_somatic_variants$CGI.Oncogenic.Prediction)] <- "Not annotated"
+  a5_somatic_variants$CGI.Oncogenic.Prediction[a5_somatic_variants$CGI.Oncogenic.Prediction == ""] <- "Not annotated"
+  
   a5_somatic_variants_keep <- a5_somatic_variants %>% filter((grepl(keepregx.all,PCGR_CONSEQUENCE) & PCGR_SYMBOL != "TERT") | 
                                                                (grepl(keepregx.special.atrx,PCGR_CONSEQUENCE) &  PCGR_SYMBOL == "ATRX") | 
                                                                (grepl(keepregx.special.tert,PCGR_CONSEQUENCE) &  PCGR_SYMBOL == "TERT"),
@@ -181,16 +206,11 @@ data_loader_somatic_variants <- function(somatic_vcf_dir=NULL, quickload=TRUE,
   a5_somatic_variants_keep_curated <- a5_somatic_variants_keep %>%  
     filter(PCGR_SYMBOL %in% shiva_curated_genes.variant)
   
-  #failed validation
-  a5_somatic_variants_keep_curated <- a5_somatic_variants_keep_curated %>% 
-    filter(!(A5_ID=="E227-T01" && PCGR_SYMBOL=="KRAS"), 
-           !(A5_ID=="E122-T01" && PCGR_SYMBOL=="NF1"))
-  
   #Remove all E167-T01 variants except KRAS
   a5_somatic_variants_keep_curated <- a5_somatic_variants_keep_curated %>% 
-    filter(A5_ID != "E167-T01" || 
-             (A5_ID != "E167-T01" & PCGR_SYMBOL=="KRAS") || 
-             (A5_ID != "E167-T01" & PCGR_SYMBOL=="TERT" & PCGR_SYMBOL=="TERT" & start == 1295113))
+    filter(A5_ID != "E167-1" || 
+             (A5_ID != "E167-1" & PCGR_SYMBOL=="KRAS") || 
+             (A5_ID != "E167-1" & PCGR_SYMBOL=="TERT" & PCGR_SYMBOL=="TERT" & start == 1295113))
   
   a5_somatic_variants_keep_pcawg <- a5_somatic_variants_keep %>% filter(PCGR_SYMBOL %in% pcawg_drivers$Gene)
   
@@ -226,6 +246,7 @@ data_loader_somatic_variants <- function(somatic_vcf_dir=NULL, quickload=TRUE,
           - a5_somatic_variants_keep_pcawg_brief (summarised version)")
   
 }
+message("Created data loader function data_loader_somatic_variants()")
 
 ######################
 # Structral Variants #
@@ -292,8 +313,10 @@ data_loader_sv_manta <- function()
   message("Created objects A5_manta.df_keep (filtered to BND/INV and focal DEL/DUP <1MB), A5_manta.df_keep_pcawg (further filtered to PCAWG CG list), A5_manta.df_keep_pcawg_brief  (summarised version)")
   
 }
+message("Created data loader function data_loader_sv_manta()")
 
 ## GRIDSS
+
 data_loader_sv_gridsslinx <- function(quickload=TRUE, threads=1)
 {
   linx_quickloadRDS=paste0(basedir, "/wgs/quickload_checkpoints/linx_sv_quickload.rdata")
@@ -388,6 +411,7 @@ data_loader_sv_gridsslinx <- function(quickload=TRUE, threads=1)
           A5_gridss_keep_curated (keep filtered to Shiva's curation list)")
   
 }
+message("Created data loader function data_loader_sv_gridsslinx()")
 
 ####################
 # Gene Copy Number #
@@ -437,7 +461,7 @@ data_loader_gene_cn <- function()
   message("Created objects A5_gene_cn, A5_gene_cn_keep_pcawg (filtered to PCAWG CG list and non-diploid), A5_gene_cn_keep_pcawg_brief (summarised version)")
   
 }
-
+message("Created data loader function data_loader_gene_cn()")
 
 ################
 # CNA segments #
@@ -558,7 +582,7 @@ data_loader_cna_segs <- function()
     group_by(A5_ID,chromosome,Gender,Class, new_seg_start, new_seg_end, offset) %>% slice_head(n=1) %>% ungroup() %>% 
     arrange(A5_ID,chromosome, new_seg_start, new_seg_end)
   
-  #Annotate merged segments with median of values from constituant segments
+  #Annotate merged segments with median of values from constituent segments
   A5_seg_keep.merged$observedBAF <- NA
   A5_seg_keep.merged$minorAlleleCopyNumber <- NA
   A5_seg_keep.merged$majorAlleleCopyNumber <- NA
@@ -598,6 +622,7 @@ data_loader_cna_segs <- function()
   
   
 }
+message("Created data loader function data_loader_cna_segs()")
 
 ###########
 # Cleanup #

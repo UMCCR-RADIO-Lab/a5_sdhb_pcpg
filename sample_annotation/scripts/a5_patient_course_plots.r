@@ -1,5 +1,7 @@
 library(tidyverse)
-library(swimplot)
+library(lubridate)
+library(ggrepel)
+library(patchwork)
 
 setwd("/g/data/pq08/projects/ppgl")
 
@@ -88,19 +90,6 @@ translate_dates_to_days <- function(swimmer_events)
       as.numeric(difftime(time1 = swimmer_events[["death_timepoint"]], 
                           time2 = zero_reference, 
                           units = "days"))
-  }
-  
-  if("metastasis_free_duration" %in% names(swimmer_events)) {
-    if (!is.na(swimmer_events[["metastasis_free_duration"]] ))
-    {
-      swimmer_events[["metastasis_free_duration"]] <- swimmer_events[["metastasis_free_duration"]] * 30.4 #Average month
-      #Handle margin of error in conversion of follow up time and metastasis free survival
-      if(swimmer_events[["metastasis_free_duration"]] > 0  & swimmer_events[["followup_end_date"]] > 0){
-        ratio <- swimmer_events[["metastasis_free_duration"]] /  swimmer_events[["followup_end_date"]]
-        if (ratio > 0.98 & ratio < 1.03) { 
-          swimmer_events[["metastasis_free_duration"]] <-  swimmer_events[["followup_end_date"]] }
-      }
-    }
   }
   
   swimmer_events[["sample_timepoint"]][["sx_date"]] <- 
@@ -212,35 +201,11 @@ anno_to_swimmer <- function(patient_anno)
                         date_accuracy(swimmer_events[["presentation_timepoint"]]))
   
   followup_duration <- patient_anno %>% pull(Post_diagnosis_follow_up_months) %>% unique()
-  if(is.na(followup_duration) | followup_duration == "No data")
-  {
-    followup_duration <- 0
-  } else {
-    followup_duration <- as.numeric(followup_duration)
-  }
+  vital_duration <- patient_anno %>% pull(Time_to_death_months) %>% unique() %>% as.numeric()
   
-  vital_duration <- patient_anno %>% pull(Time_to_death_months) %>% unique() 
-  if(is.na(vital_duration) | vital_duration == "Not applicable")
-  {
-    vital_duration <- followup_duration 
-  } else 
-  {
-    vital_duration <- as.numeric(vital_duration)
-  }
+  swimmer_events[["followup_end_date"]] <- swimmer_events[["presentation_timepoint"]] + months(as.numeric(followup_duration))
   
-  
-  swimmer_events[["followup_end_date"]] <- swimmer_events[["presentation_timepoint"]] + months(floor(as.numeric(followup_duration)))
-  
-  swimmer_events[["metastasis_free_duration"]] <- patient_anno %>% pull(Metastasis_free_survival_months) %>% unique()
-  if(is.na(swimmer_events[["metastasis_free_duration"]]) | swimmer_events[["metastasis_free_duration"]]  == "No data")
-  {
-    swimmer_events[["metastasis_free_duration"]]  <- followup_duration 
-  } else 
-  {
-    swimmer_events[["metastasis_free_duration"]]  <- as.numeric(swimmer_events[["metastasis_free_duration"]])
-  }
-  
-  if (!is.na(vital_duration) & is.numeric(vital_duration) & unique(patient_anno$`Patient is alive`) == "No") {
+  if (!is.na(vital_duration) & is.numeric(vital_duration)) {
     swimmer_events[["death_timepoint"]] <- swimmer_events[["presentation_timepoint"]] + months(as.numeric(vital_duration))
   }
   
@@ -324,12 +289,12 @@ event_to_plottable <- function(patient_swimmer_events)
   
   if ("treament_timepoint" %in% names(patient_swimmer_events))
   {
-    plot_table <- add_row(plot_table, 
-                          event_start=patient_swimmer_events[["treament_timepoint"]][["start_date"]],
-                          event_end=patient_swimmer_events[["treament_timepoint"]][["end_date"]],
-                          event_class="Treatment",
-                          event_name=patient_swimmer_events[["treament_timepoint"]][["treatment_type"]],
-                          event_annotation=patient_swimmer_events[["treament_timepoint"]][["start_date_accuracy"]])
+      plot_table <- add_row(plot_table, 
+                            event_start=patient_swimmer_events[["treament_timepoint"]][["start_date"]],
+                            event_end=patient_swimmer_events[["treament_timepoint"]][["end_date"]],
+                            event_class="Treatment",
+                            event_name=patient_swimmer_events[["treament_timepoint"]][["treatment_type"]],
+                            event_annotation=patient_swimmer_events[["treament_timepoint"]][["start_date_accuracy"]])
   }
   
   if ("additional_surgical_events" %in% names(patient_swimmer_events))
@@ -352,25 +317,10 @@ event_to_plottable <- function(patient_swimmer_events)
 
 a5_anno_use <- a5_anno %>% 
   group_by(`Patient ID`) %>% 
-  filter(Exclude == "N") %>% 
-  #mutate(multisample=n()>1) %>% 
-  #filter(multisample | !is.na(non_surgical_therapy)) %>% 
-  #filter(!(non_surgical_therapy %in% c("Interferon","SSA"))) %>% 
-  #filter(A5_ID != "E168-1") %>% #Unreliable information 
-  mutate(tumour_metastasised = ifelse(A5_ID == "E159-2", "Yes", tumour_metastasised)) %>% 
-  mutate(Metastasis_free_survival_months=case_when(
-    tumour_metastasised=="No" ~ Overall_Survival, 
-    tumour_metastasised == "Short follow up" ~ Post_diagnosis_follow_up_months, 
-    Metastasis_free_survival_months == "No Data" ~ NA,
-    TRUE ~ Metastasis_free_survival_months)) %>% 
-  mutate(tumour_metastasised = ifelse(A5_ID == "E159-2", "No", tumour_metastasised)) %>% 
-  mutate(`Date of resection (DD/MM/YYYY)` = ifelse(`Date of resection (DD/MM/YYYY)` == "NA" | is.na(`Date of resection (DD/MM/YYYY)`), 
-                                                   `Date of first pathologic diagnosis of PPGL (MM/YYYY)`, 
-                                                   `Date of resection (DD/MM/YYYY)`)) %>% 
-  mutate(Post_diagnosis_follow_up_months = gsub("<","",Post_diagnosis_follow_up_months)) %>% 
-  mutate(Overall_Survival = gsub("<","",Overall_Survival))
-
-
+  mutate(multisample=n()>1) %>% 
+  filter(multisample | !is.na(non_surgical_therapy)) %>% 
+  filter(!(non_surgical_therapy %in% c("Interferon","SSA"))) %>% 
+  filter(A5_ID != "E168-1") #Unreliable information
 
 a5_anno_use <- a5_anno_use %>% 
   filter(Exclude != "Y") %>% 
@@ -386,107 +336,156 @@ swimmer_events <- map(.x = a5_anno_use, .f = anno_to_swimmer)
 swimmer_events <- map(.x = swimmer_events, .f=translate_dates_to_days)
 
 
-swimmer_base <- purrr::map2(
-  .x = swimmer_events, 
-  .y = names(swimmer_events), 
-  .f = function(patient_anno, patient_id) {
-    
-    if(is.na(patient_anno$metastasis_free_duration)) { 
-      return(data.frame(patient_id=patient_id, clinical_behaviour="Short follow up", end=1))
-    } 
-    
-    if(patient_anno$metastasis_free_duration == 0) { 
-      return(data.frame(patient_id=patient_id, clinical_behaviour="Metastatic Disease", end=patient_anno$followup_end_date))
-    } 
-    
-    if (patient_anno$metastasis_free_duration > patient_anno$followup_end_date){
-      return(data.frame(patient_id=patient_id, 
-                        clinical_behaviour=c("No Metastatic Disease", "Metastatic Disease"), 
-                        end=c(patient_anno$followup_end_date)))
-    }
-    
-    return(data.frame(patient_id=patient_id, 
-                      clinical_behaviour=c("No Metastatic Disease", "Metastatic Disease"), 
-                      end=c(patient_anno$metastasis_free_duration, patient_anno$followup_end_date)))
-    }) %>%  bind_rows()
-
-swimmer_sx <- purrr::map2(
-  .x = swimmer_events, 
-  .y = names(swimmer_events), 
-  .f = function(patient_anno, patient_id) {
-    
-    return_table <- tibble(patient_id = vector(mode = "character"), 
-                           event = vector(mode = "character"),
-                           time = vector(mode = "numeric"))
-    
-    if ("death_timepoint" %in% names(patient_anno))
-    {
-      return_table <- return_table %>% add_row(tibble(patient_id = patient_id, event = "Death", time = patient_anno$death_timepoint))
-    }
-    
-    if ("sample_timepoint" %in% names(patient_anno)) {
-      if (nrow(patient_anno[["sample_timepoint"]] > 0))
-      {
-        return_table <- return_table %>% 
-          add_row(tibble(patient_id = patient_id, 
-                         event = paste("Surgery -", patient_anno[["sample_timepoint"]][["is_primary_or_met"]]), 
-                         time = patient_anno[["sample_timepoint"]][["sx_date"]]))
-      }}
-    
-    
-  }) %>%  bind_rows() %>% as.data.frame()
-
-
-swimmer_tx <- purrr::map2(
-  .x = swimmer_events, 
-  .y = names(swimmer_events), 
-  .f = function(patient_anno, patient_id) {
-    
-    return_table <- tibble(patient_id = vector(mode = "character"), 
-                           treatment = vector(mode = "character"),
-                           quantity = vector(mode = "character"),
-                           time_start = vector(mode = "numeric"),
-                           time_end = vector(mode = "numeric"))
-    
-    if ("treament_timepoint" %in% names(patient_anno)) {
-      if (nrow(patient_anno[["treament_timepoint"]] > 0)){
-        TOI <- patient_anno[["treament_timepoint"]] %>% filter(grepl("MIBG|CVD|TMZ|Luta",treatment_type)) %>% 
-          separate(col = treatment_type, into = c("treatment","quantity"), sep=" - ")
-        if (nrow(TOI) > 0) {
-          return_table <- return_table %>% 
-            add_row(tibble(patient_id = patient_id, 
-                           treatment = TOI$treatment, 
-                           quantity = TOI[["quantity"]],
-                           time_start = TOI[["start_date"]],
-                           time_end = TOI[["end_date"]]))
-        }
-      }
-    }
-    
-    
-  }) %>%  bind_rows() %>% as.data.frame()
-
 ##################
 # Generate Plots #
 ##################
 
-swimmer_plot <- swimmer_plot(df=swimmer_base,id='patient_id',end='end',name_fill='clinical_behaviour', width=.8)
+plot_tables <- map(.x = swimmer_events, .f = event_to_plottable)
 
 
-swimmer_plot <- swimmer_plot +
-  swimmer_lines(df_lines=swimmer_tx,id='patient_id',start =
-                  'time_start',end='time_end',name_col='treatment',size=1.5)
+swimmer_plots <- list()
+for (patient in names(plot_tables))
+{
+  
+  plot_data <- plot_tables[[patient]]
+  
+  plot_data <- plot_data %>% 
+    mutate(event_class = factor(event_class, 
+                                levels = intersect(c("Treatment","Surgery","Observation"), plot_data$event_class)))
+  
+  #remove end_observation timepoint if the same as death timepoint
+  if("Death" %in% plot_data$event_name)
+  {
+    death_time = plot_data %>% filter(event_name=="Death") %>% pull(event_end)
+    obs_end_time = plot_data %>% filter(event_name=="End Follow-up") %>% pull(event_end)
+    if(obs_end_time==death_time) {
+      plot_data <- plot_data %>% filter(event_name != "End Follow-up")
+    }
+  }
+  
+  #Add offsets for overlapping events
+  # plot_data <- plot_data %>% 
+  #   arrange(event_class, event_start, event_end) %>% 
+  #   mutate(offset=ifelse(lag(event_class)==event_class & event_start-lag(event_end, default = 0) <= (max(event_end)*0.1), 0.3,0)) %>% 
+  #   mutate(offset=ifelse(lead(offset, default = 0) != 0, -0.3, offset))
+  # plot_data$offset <- plot_data$offset * rep(c(-1,1), ceiling(length(plot_data$offset)/2))[1:length(plot_data$offset)]
+  # 
+  plot_data <- plot_data %>% 
+    arrange(event_class, event_start, event_end) %>% 
+    mutate(overlap=ifelse(lag(event_class)==event_class & event_start-lag(event_end, default = 0) <= (max(event_end)*0.1) |
+                           lead(event_class)==event_class & event_end-lead(event_start, default = 0) <= (max(event_end)*0.1), "overlap","no_overlap")) %>%
+    mutate(overlap=replace_na(overlap, "no_overlap")) %>% 
+   group_by(event_class) %>% 
+    mutate(offset=rep(c(-0.3,0.3), ceiling(n()/2))[1:n()],
+           offset=ifelse(overlap=="overlap", offset,0))
 
-swimmer_plot <- swimmer_plot + swimmer_points(df_points= swimmer_sx,
-                                              id='patient_id',
-                                              time='time',
-                                              name_shape ='event',
-                                              size=1.5,
-                                              fill='white',
-                                              col='black')
+  swim <- ggplot()  
+  
+  
+  #Observations
+  swim <- swim +  geom_point(data=plot_data %>% filter(event_class=="Observation"),
+                             mapping=aes(x=event_start, 
+                                         y=event_class, 
+                                         shape=event_name), size=2) 
+  
+  swim <- swim +  geom_segment(data=plot_data %>% filter(event_class=="Observation") %>% 
+                                 mutate(event_start=min(event_start), event_end=max(event_end)) %>% 
+                                 slice_head(n=1),
+                               mapping=aes(x=event_start, 
+                                           xend=event_end, 
+                                           y=event_class, 
+                                           yend=event_class)) 
+  
+  #Surgery
+  swim <- swim + geom_point(data=plot_data %>% filter(event_class=="Surgery"),
+                            mapping=aes(x=event_start, 
+                                        y=as.numeric(event_class)+offset)) 
+  
+  swim <- swim + ggrepel::geom_text_repel(data=plot_data %>% filter(event_class=="Surgery") %>% 
+                             mutate(event_name=gsub("E...-","",event_name),
+                                    event_name=gsub(" - ","\n",event_name)),
+                           mapping=aes(x=event_start, 
+                                       y=as.numeric(event_class)+offset, 
+                                       label=event_name),
+                           nudge_y=-0.2) 
+    
+  if("Treatment" %in% plot_data$event_class)
+  {
+  #Treatment(Date imprecise)
+  swim <- swim + geom_point(data=plot_data %>% 
+                              filter(event_class=="Treatment", 
+                                     event_annotation=="Year"),
+                            mapping=aes(x=(event_end-((event_end-event_start)/2)), 
+                                        y=as.numeric(event_class) + offset)) 
+  
+  swim <- swim + geom_segment(data=plot_data %>% 
+                                filter(event_class=="Treatment", 
+                                       event_annotation=="Year"),
+                              mapping=aes(x=event_start, 
+                                          xend=event_end, 
+                                          y=as.numeric(event_class) + offset,
+                                          yend=as.numeric(event_class) + offset), 
+                              linetype="21") 
 
-swimmer_plot <- swimmer_plot + 
-  scale_fill_manual(name="Clinical behaviour", values=c(`No Metastatic Disease`="#98ca8cff", `Metastatic Disease`="#de5353ff")) +
-  scale_color_manual(name="Treatment", values=c(CVD="#f4e764ff", `I131-MIBG`="#cadae8ff", `CAPE/TMZ`="#d6a097ff", Lutate="#efecdcff")) +
-  scale_shape_manual(name="Event", values=c("Death"=4,"Surgery - Metastasis"=8,"Surgery - Primary"=1, "Surgery - Recurrent"=3))
+  #Treatment(Date precise)
+  swim <- swim + geom_point(data=plot_data %>% 
+                              filter(event_class=="Treatment", 
+                                     event_annotation != "Year") %>% 
+                              pivot_longer(cols = c(event_start, event_end), 
+                                           names_to = "timepoint", 
+                                           values_to = "event_start"),
+                            mapping=aes(x=event_start , y=as.numeric(event_class)+offset)) 
+  
+  swim <- swim + 
+    geom_segment(data=plot_data %>% filter(event_class=="Treatment", 
+                                           event_annotation != "Year"),
+                       mapping=aes(x=event_start, 
+                                   xend=event_end, 
+                                   y=as.numeric(event_class)+offset,
+                                   yend=as.numeric(event_class)+offset))
+  
+  
+  #Treatment label 
+  swim <- swim + 
+    ggrepel::geom_text_repel(data=plot_data %>% filter(event_class=="Treatment") %>% 
+                     mutate(event_name=gsub("[(].+[)]","", event_name)),
+                   mapping=aes(x=(event_end-((event_end-event_start)/2)), 
+                               y=as.numeric(event_class)+offset,
+                               label=event_name),
+                   nudge_y=-0.2)   
+  }
+  
+  swim <- swim + 
+    geom_rect(data=plot_data %>% 
+                group_by(event_class) %>% 
+                     mutate(max_offset=max(offset)) %>%  
+                     ungroup() %>% 
+                     transmute(event_class=event_class,
+                               max_offset=max_offset,
+                               event_start=min(event_start)-(0.05 * max(event_end)), 
+                               event_end=max(event_end)+(0.05 * max(event_end))) %>% 
+                     distinct() %>% 
+                     mutate(ymin=seq(0.5, nlevels(event_class) - 0.5),
+                            ymin=dplyr::if_else("Treatment" %in% plot_data$event_class & event_class=="Treatment", ymin-max_offset, ymin),
+                            ymax=seq(1.5, nlevels(event_class) + 0.5)),
+                   aes(xmin=event_start, xmax=event_end, ymin=ymin, ymax=ymax), 
+              alpha=c(0.3,0.1,0.3)[1:nlevels(plot_data$event_class)])
+  
+  swimmer_plots[[patient]] <- 
+    swim + theme_bw() + 
+    theme(rect=element_blank(), 
+          axis.ticks.y = element_blank(),
+          axis.title.y = element_blank()) +
+    theme(panel.grid = element_blank(), 
+          axis.line.x.bottom = element_line()) + 
+    scale_y_discrete(drop=F) +
+    xlab("Days") + ggtitle(patient)
+}
 
+# all_plots <- Reduce(x=swimmer_plots, f="/")
+# ggsave(plot = all_plots, filename = "./a5/sample_annotation/figures/swimmer_plots.pdf", 
+#        width = 12, 
+#        height = 
+#          60,
+#        units = "in",
+#        limitsize = F)

@@ -20,6 +20,7 @@ data_loader_a5_snrna()
 a5_snrna <- snrna_annotate_cell_types(a5_snrna)
 
 #load methylation array data
+quickload_diff_meth = T; quickload_gsea <- T; quickload_dmr <- T;
 source("./a5/methylation/scripts/a5_methylation_analysis_v2.r")
 
 #Differential Expression - WTS
@@ -28,7 +29,10 @@ source("./a5/wts/scripts/differential_expression/a5_wts_differential_expression.
 #Differential Expression - top de gene correlations
 quickload_correlation_matrix = T
 source("./a5/wts/scripts/differential_expression/wts_de_toptable_correlation_matrix.r")
-
+mki67_cor <- c(cor_mat_rho$TERT_PriMet_vs_NonMetPri_WT["ENSG00000148773.14_MKI67",],
+               cor_mat_rho$ATRX_PriMet_vs_NonMetPri_WT["ENSG00000148773.14_MKI67",],
+               cor_mat_rho$Metastasis_All_vs_NonMetPri_WT["ENSG00000148773.14_MKI67",])
+mki67_cor <- mki67_cor[!duplicated(names(mki67_cor))]
 
 ##############
 # Annotation #
@@ -79,82 +83,98 @@ rownames(md)  <- rownames(a5_snrna@meta.data)
 a5_snrna@meta.data <- md
 
 
-###########
-# Heatmap #
-###########
-
-sample.order <- a5_anno %>%  arrange(differential_group_genotype, desc(differential_group_sampletype_strict)) %>% pull(A5_ID)
-sample.order <- intersect(sample.order, colnames(a5_wts_lcpm_list[["SDHB_abdothoracic"]]))
+#################
+# Heatmap Genes #
+#################
 
 genes_per_group <- 30
+gene_select <- "topbottom_logfc" #"top_abslogfc"
+adj_pval_cutoff <- 0.01
+mki67_correlation_cutoff <- 0.3
 
-GOI_pipe_abslfc <- . %>% filter(adj.P.Val < 0.01) %>% 
+GOI_lfc_pipe <- . %>% filter(adj.P.Val < adj_pval_cutoff) %>% 
   arrange(desc(abs(logFC))) %>% 
   #slice_head(n = 200) %>% 
   mutate(Symbol = gsub("ENSG[0-9]+([.][0-9]+)?_(.+)","\\2", Gene)) %>% 
   filter(Symbol %in% rownames(a5_snrna)) %>% 
   mutate(rank=row_number()) %>% 
-  dplyr::select(Gene, Symbol, adj.P.Val, logFC, rank)
-
-GOI_pipe_topbottom <- . %>% filter(adj.P.Val < 0.01) %>% 
-  mutate(Symbol = gsub("ENSG[0-9]+([.][0-9]+)?_(.+)","\\2", Gene)) %>% 
-  filter(Symbol %in% rownames(a5_snrna)) %>% 
+  dplyr::select(Gene, Symbol, adj.P.Val, logFC, rank) %>% 
   {
-    bind_rows(slice_max(., n = genes_per_group/2, order_by = logFC), 
-              slice_min(., n = genes_per_group/2, order_by = logFC))
+    if(gene_select == "top_abslogfc")
+    { . }
+    else if(gene_select == "topbottom_logfc")
+    { arrange(., logFC) }
   } %>% 
-  mutate(rank=row_number()) %>% 
-  dplyr::select(Gene, Symbol, adj.P.Val, logFC, rank)
+  mutate(mki67_correlation=mki67_cor[Gene])
+
+GOI_slice_pipe <-  . %>% {
+  if(gene_select == "top_abslogfc") { slice_min(., n = genes_per_group, order_by = rank) 
+  }
+  else if(gene_select == "topbottom_logfc") { 
+    bind_rows(slice_max(., n = genes_per_group/2, order_by = logFC), 
+              slice_min(., n = genes_per_group/2, order_by = logFC)) 
+  }
+}
 
 GOI.met <- 
   wts_top_tables[["genosampletype"]][["Metastasis_All_vs_NonMetPri_WT"]] %>% 
-  GOI_pipe_topbottom %>% 
+  GOI_lfc_pipe %>%  
+  GOI_slice_pipe %>% 
   mutate(source ="Metastasis_All_vs_NonMetPri_WT")
           
 
-GOI.tert <- wts_top_tables[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]] %>% 
-  GOI_pipe_topbottom %>%  
-  mutate(source="TERT_PriMet_vs_NonMetPri_WT")
+GOI.tert <- wts_top_tables[["genosampletype"]][["TERT_All_vs_NonTERT"]] %>% 
+  GOI_lfc_pipe %>% 
+  GOI_slice_pipe %>% 
+  mutate(source="TERT_All_vs_NonTERT")
           
 
 GOI.atrx <-
-  wts_top_tables[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]] %>% 
-  GOI_pipe_topbottom %>% 
-  mutate(source="ATRX_PriMet_vs_NonMetPri_WT")
+  wts_top_tables[["genosampletype"]][["ATRX_All_vs_NonATRX"]] %>% 
+  GOI_lfc_pipe %>%  
+  GOI_slice_pipe %>% 
+  mutate(source="ATRX_All_vs_NonATRX")
   
 
-GOI <- bind_rows(GOI.met, GOI.tert, GOI.atrx) 
+GOI <- bind_rows(GOI.tert %>% dplyr::select(Gene, source),
+                 GOI.atrx %>% dplyr::select(Gene, source),
+                 GOI.met %>% dplyr::select(Gene, source)) #%>% filter(abs(mki67_correlation) < mki67_correlation_cutoff)
 
-GOI.common <- GOI %>% 
-  group_by(Gene) %>% 
-  summarise(n=n(), rank=mean(rank)) %>% 
-  filter(n==3) %>% 
-  slice_min(n = genes_per_group, order_by = rank) %>% 
-  mutate(source="Common") %>% 
-  dplyr::select(Gene, rank, source)
+GOI$Gene[duplicated(GOI$Gene) | duplicated(GOI$Gene, fromLast=T)] <- paste0(GOI$Gene[duplicated(GOI$Gene) | duplicated(GOI$Gene, fromLast=T)], "*")
+GOI <- GOI[!duplicated(GOI$Gene),]
 
-GOI.unique <- GOI %>% 
-  group_by(Gene) %>% 
-  mutate(n=n()) %>% 
-  filter(n==1) %>% 
-  group_by(source) %>% 
-  slice_min(n = genes_per_group, order_by = rank) %>% 
-  dplyr::select(Gene, rank, source)
+# GOI.common <- GOI %>% 
+#   group_by(Gene) %>% 
+#   summarise(n=n(), rank=mean(rank), abs_logFC=mean(abs(logFC)), logFC=mean(logFC)) %>% 
+#   filter(n==3) %>% 
+#   GOI_slice_pipe %>% 
+#   mutate(source="Common") %>% 
+#   dplyr::select(Gene, rank, source)
+
+# GOI.unique <- GOI %>% 
+#   group_by(Gene) %>% 
+#   mutate(n=n()) %>% 
+#   filter(n==1) %>% 
+#   group_by(source) %>% 
+#   GOI_slice_pipe %>% 
+#   dplyr::select(Gene, rank, source)
 
 
-GOI.plot <- bind_rows(GOI.common, GOI.unique) 
+# GOI.plot <- bind_rows(GOI.common, GOI.unique) %>% distinct()
 
-GOI.plot <- GOI.plot %>% 
+GOI.plot <- GOI %>% 
   mutate(Symbol = gsub("ENSG[0-9]+([.][0-9]+)?_(.+)","\\2", Gene),
-         Symbol_Label=ifelse(grepl("^AC[0-9]", Symbol), 
+         Symbol_Label=ifelse(grepl("^A[CL][0-9]", Symbol), 
                              stringr::str_extract(string = Gene, pattern = "ENSG[0-9]+"), 
-                             Symbol))
+                             Symbol),
+         Symbol=gsub("[*]$","", Symbol),
+         Gene=gsub("[*]$","", Gene))
 
 GOI.plot$source <- factor(GOI.plot$source, 
-                     levels = c("Common",
+                     levels = c(#"Common",
                                 "Metastasis_All_vs_NonMetPri_WT",
-                                "TERT_PriMet_vs_NonMetPri_WT",
-                                "ATRX_PriMet_vs_NonMetPri_WT"))
+                                "TERT_All_vs_NonTERT",
+                                "ATRX_All_vs_NonATRX"))
 
 ##################
 # DMR Membership #
@@ -188,26 +208,27 @@ for (i in 1:nrow(GOI.plot))
 # WTS Expr #
 ############
 
+sample.order <- a5_anno %>% 
+  filter(A5_ID %in% colnames(a5_wts_lcpm_list[["SDHB_abdothoracic"]])) %>% 
+  arrange(TERT_ATRX_Mutation, desc(differential_group_sampletype_strict)) %>% 
+  pull(A5_ID)
+
 plot.data <- GOI.plot %>% 
   inner_join(a5_wts_lcpm_list[["SDHB_abdothoracic"]][GOI.plot$Gene,sample.order] %>% 
                data.frame(check.names = F) %>%  
                tibble::rownames_to_column("Gene")) %>% inner_join(ensid_to_biotype) %>% 
-  data.frame()
-rownames(plot.data) <-plot.data$Symbol_Label
+  data.frame(check.names = F)
+rownames(plot.data) <- plot.data$Symbol_Label
 
-#Annotate with MKI67 correlations
-mki67_cor <- c(cor_mat_rho$TERT_PriMet_vs_NonMetPri_WT["ENSG00000148773.14_MKI67",],
-               cor_mat_rho$ATRX_PriMet_vs_NonMetPri_WT["ENSG00000148773.14_MKI67",],
-               cor_mat_rho$Metastasis_All_vs_NonMetPri_WT["ENSG00000148773.14_MKI67",])
-mki67_cor <- mki67_cor[!duplicated(names(mki67_cor))]
-plot.data <- plot.data %>%  mutate(mki67_correlation=mki67_cor[Gene])
+plot.data <- plot.data %>% mutate(mki67_correlation=mki67_cor[Gene])
 
 hm.annot.data.col <- a5_anno %>% 
   filter(A5_ID %in% sample.order) %>% 
+  mutate(A5_ID=factor(A5_ID, levels=sample.order)) %>% 
+  arrange(A5_ID) %>% 
   dplyr::select(A5_ID, TERT_ATRX_Mutation, 
                 differential_group_sampletype_strict)
 
-hm.annot.data.col <- hm.annot.data.col[match(sample.order, hm.annot.data.col$A5_ID),]
 
 hm.annot.col = HeatmapAnnotation(
   df = hm.annot.data.col[, -1],
@@ -229,11 +250,11 @@ hm.annot.row = HeatmapAnnotation(df = plot.data[,c("source", "In_DMR","gene_biot
                                  gene_biotype=setNames(
                                    RColorBrewer::brewer.pal(n=length(unique(plot.data$gene_biotype)), name="Set1"),
                                    unique(plot.data$gene_biotype)),
-                                 mki67_correlation=colorRamp2(c(-1, 0, 1), c("blue", "white", "red"))))
+                                 mki67_correlation=colorRamp2(c(-1, -0.5, -0.25, 0, 0.25, 0.5, 1), c("blue", "lightblue","white", "white", "white", "orange", "red"))))
 
 
 
-hm_bulk_gex <- Heatmap(t(scale(t(plot.data %>% dplyr::select(-Gene, -Symbol,-source,-gene_biotype, -In_DMR, -Symbol_Label, - rank, -mki67_correlation)))),
+hm_bulk_gex <- Heatmap(t(scale(t(plot.data %>% dplyr::select(-Gene, -Symbol,-source,-gene_biotype, -In_DMR, -Symbol_Label, -mki67_correlation)))),
         #col = col_fun,
         row_split = plot.data$source,
         #column_split = a5_anno.wts.nohn_noex$genotype_groups,
@@ -251,6 +272,7 @@ hm_bulk_gex <- Heatmap(t(scale(t(plot.data %>% dplyr::select(-Gene, -Symbol,-sou
         cluster_rows = TRUE,
         #show_row_dend = FALSE,
         cluster_row_slices = FALSE,
+        #row_labels = plot.data$Symbol_Label,
         show_row_names = TRUE,
         row_names_side = "left",
         show_column_names  = TRUE,

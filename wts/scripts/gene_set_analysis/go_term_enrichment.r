@@ -9,23 +9,13 @@ setwd("/g/data/pq08/projects/ppgl")
 if (!exists("wts_top_tables")) {
   source("./a5/wts/scripts/differential_expression/a5_wts_differential_expression.r")}
 
-if !( exists("quickload_go_enrichment") { quickload_go_enrichment <- F })
+if (!exists("quickload_go_enrichment")) { quickload_go_enrichment <- T }
+message("quickload_go_enrichment:", quickload_go_enrichment)
 
 checkpointfile_goenrichment <- "./a5/wts/quickload_checkpoints/goenrichment.rds"
-if(quickload_go_enrichment)
-{
+if(quickload_go_enrichment) {
   ego <- readRDS(checkpointfile_goenrichment)
-}
-else {
-  ego <- enrichGO(gene          = gene,
-                  universe      = names(geneList),
-                  OrgDb         = org.Hs.eg.db,
-                  ont           = "CC",
-                  pAdjustMethod = "BH",
-                  pvalueCutoff  = 0.01,
-                  qvalueCutoff  = 0.05,
-                  readable      = TRUE)
-  
+} else {
   
   tt_p_val_cutoff <- 0.05
   tt_lfc_cutoff <- 1

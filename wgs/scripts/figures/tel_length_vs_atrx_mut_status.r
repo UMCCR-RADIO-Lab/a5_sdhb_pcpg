@@ -86,6 +86,22 @@ plot_data <- a5_anno %>%
               mutate(c_circle_result = recode(c_circle_result, "Positive - Low"="Weakly Positive"),
                      c_circle_result=factor(c_circle_result, levels=c("No data","Negative", "Weakly Positive", "Positive"))) %>% 
   arrange(TERT_ATRX_Mutation, c_circle_result, differential_group_sampletype_strict)
+
+t_test_data <- plot_data %>%  
+  group_by(`Patient ID`, TERT_ATRX_Mutation) %>% 
+  summarise(telhunter_log2_telcontentratio=mean(telhunter_log2_telcontentratio)) 
+
+t_result_atrx_vs_tert <- t.test(telhunter_log2_telcontentratio~TERT_ATRX_Mutation,  
+                                t_test_data %>% filter(TERT_ATRX_Mutation != "WT"))
+
+
+t_result_atrx_vs_wt <- t.test(telhunter_log2_telcontentratio~TERT_ATRX_Mutation,  
+                              t_test_data %>% filter(TERT_ATRX_Mutation != "TERT"))
+
+t_result_tert_vs_wt <- t.test(telhunter_log2_telcontentratio~TERT_ATRX_Mutation,  
+                                t_test_data %>% filter(TERT_ATRX_Mutation != "ATRX"))
+
+
   
 pj=position_jitter(width=0.2, seed=10)  
 ggplot(plot_data ,aes(y=as.numeric(telhunter_log2_telcontentratio), 
@@ -93,8 +109,18 @@ ggplot(plot_data ,aes(y=as.numeric(telhunter_log2_telcontentratio),
                       color=c_circle_result,
                       fill=differential_group_sampletype_strict, 
                       group=`Patient ID`)) + 
+  geom_boxplot(aes(color=NULL,fill=NULL, group=NULL), color="lightgrey",outlier.alpha = 0) +
   geom_point(position=pj, size=3, stroke=1, shape=21) + 
   geom_path(position=pj, alpha=0.3, size=0.5, color="black", linetype=2) +
+  geom_segment(data=tibble(y=c(1.7,1.85,2),yend=c(1.7,1.85,2),x=c(0.6,1.6,0.6), xend=c(2.4,3.4,3.4)),
+               mapping=aes(x=x,y=y,xend=xend,yend=yend, color=NULL,fill=NULL,group=NULL)) +
+  geom_text(data=tibble(y=c(1.78,1.91,2.08),
+                        x=c(1.4,2.6,2), 
+                        label=c(paste0("p=",round(t_result_atrx_vs_tert$p.value,5)), 
+                                paste0("p=",round(t_result_tert_vs_wt$p.value,3)),
+                                paste0("p=",round(t_result_atrx_vs_wt$p.value,3)))),
+            
+            mapping=aes(x=x,y=y,label=label, color=NULL,fill=NULL,group=NULL)) +
   #geom_text(aes(label=A5_ID)) + 
   scale_fill_manual(values = sampletype_strict_cols) +
   scale_color_manual(values = c("Positive"="red", 

@@ -15,8 +15,24 @@ data_loader_a5_clinical_anno(google_account = "aidan.flynn@umccr-radio-lab.page"
 source("/g/data/pq08/projects/ppgl/a5/wgs/scripts/data_loaders/wgs_dataloaders.r")
 data_loader_somatic_variants(quickload = T)
 # data_loader_germline_variants()
-# data_loader_gene_cn()
+data_loader_gene_cn()
 data_loader_cna_segs()
+data_loader_sv_gridsslinx()
+
+
+#Annotate Gene CN as loss/gain
+A5_gene_cn_lossgain <- A5_gene_cn %>% mutate(A5_ID=gsub("T0", "", A5_ID)) %>%  
+  mutate(loss_gain = case_when(
+  !(chromosome %in% c("chrX","chrY")) & minCopyNumber < 1.2 ~ "Loss", 
+  !(chromosome %in% c("chrX","chrY")) & maxCopyNumber_ploidyAdj > 5.2 ~ "Gain",
+  !(chromosome %in% c("chrX","chrY")) & minCopyNumber > 1.8 & minMinorAlleleCopyNumber < 0.2 ~ "CNLOH",
+  chromosome =="chrX" & Gender == "Female" & minCopyNumber < 1.2 ~ "Loss", 
+  chromosome =="chrX" & Gender == "Female" & maxCopyNumber_ploidyAdj > 2.2 ~ "Gain",
+  chromosome =="chrX" & Gender == "Male" & minCopyNumber < 0.2 ~ "Loss", 
+  chromosome =="chrX" & Gender == "Male" & maxCopyNumber_ploidyAdj > 1.2 ~ "Gain",
+  TRUE ~ NA_character_)) %>% 
+  filter(!is.na(loss_gain), chromosome != "chrY") %>%  
+  dplyr::select(A5_ID, gene, loss_gain)
 
 source("/g/data/pq08/projects/ppgl/a5/wts/scripts/data_loaders/a5_wts_dataloader.r")
 data_loader_a5_wts_counts(count_file_dir = "/g/data/pq08/projects/ppgl/a5/wts/analysis/htseq/truseq/gene", 
@@ -338,28 +354,28 @@ plot.data.tmb$wgs_tmb <- as.numeric(plot.data.tmb$wgs_tmb)
 #   theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1)) + ylab("TMB") #, panel.grid = element_blank()
 
 ##Cut Axis
-# ggTMB.cutoff <- ggplot() + 
-#   geom_col(data=plot.data.tmb, mapping=aes(x=A5_ID, y=wgs_tmb)) +
-#   coord_cartesian(ylim=c(0,4.5)) +
-#   geom_text_repel(data=plot.data.tmb %>% filter(wgs_tmb>5), 
-#                   aes(x=A5_ID, y=wgs_tmb,label=wgs_tmb), color=ColorPalette["LightOrange1"]) +
-#   scale_x_discrete(drop=F) +
-#   theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1)) + ylab("TMB")
+ggTMB.cutoff <- ggplot() +
+  geom_col(data=plot.data.tmb, mapping=aes(x=A5_ID, y=wgs_tmb)) +
+  coord_cartesian(ylim=c(0,4.5)) +
+  geom_text_repel(data=plot.data.tmb %>% filter(wgs_tmb>5),
+                  aes(x=A5_ID, y=wgs_tmb,label=wgs_tmb), color=ColorPalette["LightOrange1"]) +
+  scale_x_discrete(drop=F) +
+  theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1)) + ylab("TMB")
 
 ##Heatmap
-ggTMB.heatmap <- ggplot() + 
-  geom_tile(data=plot.data.tmb, 
-            mapping=aes(x=A5_ID, 
-                        y="TMB", 
-                        fill=wgs_tmb),
-            width=0.8,
-            height=0.8) +
-  scale_x_discrete(drop=F) +
-  scale_fill_gradient(low="white", high="blue", limits=c(0,5), na.value="red") +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1),
-        axis.title.y = element_blank(),
-        panel.grid = element_blank())
+# ggTMB.heatmap <- ggplot() + 
+#   geom_tile(data=plot.data.tmb, 
+#             mapping=aes(x=A5_ID, 
+#                         y="TMB", 
+#                         fill=wgs_tmb),
+#             width=0.8,
+#             height=0.8) +
+#   scale_x_discrete(drop=F) +
+#   scale_fill_gradient(low="white", high="blue", limits=c(0,5), na.value="red") +
+#   theme_bw() + 
+#   theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1),
+#         axis.title.y = element_blank(),
+#         panel.grid = element_blank())
 
 ############
 # SV count #
@@ -493,16 +509,16 @@ ggChromothripsis.binary <- ggplot(data=plot.data.chromothripsis, mapping=aes(x=A
 ############
 # FEATURES #
 ############
-offline = F 
-if(offline) { 
-  features <- read.delim("/g/data/pq08/projects/ppgl/a5/offline_cache/sample_features.tsv")
-} else {
-  feature_sheet <- as_sheets_id("1IOczHu91crprHvjxTKDRpqLfpeuYLaGwNXZVsWmXIKY")
-  gs4_auth("aidan.flynn@umccr-radio-lab.page")
-  features <- read_sheet(ss = feature_sheet,sheet = "SampleFeatures", col_types = "c")
-}
+# offline = F 
+# if(offline) { 
+#   features <- read.delim("/g/data/pq08/projects/ppgl/a5/offline_cache/sample_features.tsv")
+# } else {
+#   feature_sheet <- as_sheets_id("1IOczHu91crprHvjxTKDRpqLfpeuYLaGwNXZVsWmXIKY")
+#   gs4_auth("aidan.flynn@umccr-radio-lab.page")
+#   features <- read_sheet(ss = feature_sheet,sheet = "SampleFeatures", col_types = "c")
+# }
 
-keep_genes <- a5_somatic_variants_keep_curated %>% 
+keep_genes_curated <- a5_somatic_variants_keep_curated %>% 
   ungroup() %>%  
   filter(A5_ID != "E167-1") %>% 
   left_join(a5_anno %>% dplyr::select(A5_ID,`Patient ID`)) %>% 
@@ -514,27 +530,93 @@ keep_genes <- a5_somatic_variants_keep_curated %>%
   arrange(desc(n)) %>%
   pull(PCGR_SYMBOL)
 
-#keep_genes <- unique(c(keep_genes,"VHL"))
+keep_genes_pcawg <- a5_somatic_variants_keep %>% 
+  ungroup() %>%
+  filter(A5_ID != "E167-1") %>% 
+  left_join(a5_anno %>% dplyr::select(A5_ID,`Patient ID`)) %>% 
+  dplyr::select(`Patient ID`, PCGR_SYMBOL) %>% 
+  distinct() %>% 
+  group_by(PCGR_SYMBOL) %>% 
+  dplyr::count() %>% 
+  filter(n>1) %>% 
+  arrange(desc(n)) %>%  
+  filter(PCGR_SYMBOL %in% pcawg_drivers$Gene) %>% 
+  pull(PCGR_SYMBOL) 
 
 
-features <- features %>%  filter(as.logical(Include), A5_ID %in% SampleOrder.A5_ID, Gene %in% keep_genes)
-features$Gene <- factor(as.character(features$Gene), rev(keep_genes))
-#features$Gene <- factor(as.character(features$Gene), features %>% group_by(Gene) %>% dplyr::count() %>% arrange(n) %>% pull(Gene))
-features$Event <- factor(as.character(features$Event), levels = c("Missense", "Stop Gained", "Stop Lost", "Frameshift", "In-frame Deletion", "Promotor Mutation", "Structural Variant",
-                                                                  "Splice Acceptor", "Splice Donor", "Splice Region", "Homozyg. Del."))
+tcga_seen_gteq_3 <- c("HRAS", "NF1", "TTN", "EPAS1", "ATRX", "MUC16", "RET", "SCRIB", "ABCA13", "MUC17", 
+                    "FLG", "SPHKAP", "ADGRG7", "SETD2", "HSPG2", "USP9X", "CSDE1", "PARG", "AHNAK", 
+                    "HYDIN", "RYR1", "KCNH5", "KMT2C", "MLLT6", "UNC79", "TGDS", "RP1L1", "MUC5B", 
+                    "PCDHB4", "LYST", "PRUNE2", "WDR11", "FKBP9", "COG7", "TENM1", "TRHDE", "BPTF", 
+                    "BIRC6", "ANK3", "BRCA2", "HUWE1", "LAMA3", "VHL", "VIT", "TRRAP", "COL12A1", 
+                    "ABCA12", "ALMS1", "ZFC3H1", "PDE4DIP")
+
+keep_genes <- unique(c(keep_genes_curated,keep_genes_pcawg,tcga_seen_gt_3))
+
+features_expr <- wts_log_cpm %>%  
+  ungroup() %>% 
+  filter(symbol %in% keep_genes, abs(log2cpm_z) > 2) %>% 
+  mutate(Event=ifelse(log2cpm_z > 2, "High expression", "Low expression")) %>% 
+  dplyr::select(Gene=symbol, A5_ID, Event)
+
+features_sv <- A5_gridss_keep %>% mutate(A5_ID=gsub("T0", "", A5_ID)) %>% 
+  filter(GeneStartDisrupted | GeneEndDisrupted, 
+         (GeneStartName %in% keep_genes | GeneEndName %in% keep_genes))
+
+features_sv <- bind_rows(
+  features_sv %>% dplyr::select(A5_ID, Gene=GeneStartName, disrupted=GeneStartDisrupted),
+  features_sv %>% dplyr::select(A5_ID, Gene=GeneEndName, disrupted=GeneEndDisrupted)) %>% 
+  mutate(Event="Structural variant") %>% 
+  left_join(features_expr %>%  dplyr::rename("Expr_Outlier"=Event)) %>% 
+  filter(as.logical(disrupted) | !is.na(Expr_Outlier), Gene %in% keep_genes) %>%  distinct() %>% 
+  dplyr::select(-Expr_Outlier, -disrupted)
+
+
+features_mutation <- a5_somatic_variants_keep %>%  ungroup() %>%  filter(PCGR_SYMBOL %in% keep_genes) %>% dplyr::select(A5_ID, PCGR_SYMBOL, PCGR_CONSEQUENCE) %>% 
+  mutate(PCGR_CONSEQUENCE=ifelse(PCGR_SYMBOL == "TERT" & PCGR_CONSEQUENCE== "upstream_gene_variant", "Promoter mutation", PCGR_CONSEQUENCE )) %>% 
+  mutate(PCGR_CONSEQUENCE=dplyr::recode(PCGR_CONSEQUENCE, 
+                                        "missense_variant"="Missense", 
+                                        "frameshift_variant"="Frameshift", 
+                                        "stop_gained"="Stop gained",
+                                        "splice_acceptor_variant"="Splice acceptor",
+                                        "splice_donor_variant"="Splice donor",
+                                        "splice_region_variant|_intron_variant"="Splice region",
+                                        "missense_variant|_splice_region_variant"= "Missense",
+                                        "inframe_deletion"="In-frame deletion"
+                                        )) %>% 
+  dplyr::rename("Event"="PCGR_CONSEQUENCE", "Gene"="PCGR_SYMBOL") 
+
+features_cn <- A5_gene_cn_lossgain %>%
+  dplyr::select(A5_ID, gene, loss_gain) %>% 
+  dplyr::rename("Gene"="gene", Event=loss_gain) %>% 
+  inner_join(features_mutation %>%  dplyr::select(A5_ID,Gene)) 
+
+features <- bind_rows(
+  features_mutation %>%  mutate(Source="Mutation"),
+  features_expr %>% mutate(Source="Expression"),
+  features_sv %>% mutate(Source="SV"),
+  features_cn %>% mutate(Source="CN")
+  ) %>% 
+  distinct()
+
+features <- features %>%  filter(A5_ID %in% SampleOrder.A5_ID, Gene %in% c(features_mutation$Gene[features_mutation$A5_ID != "E167-1"], features_sv$Gene))
+#features$Gene <- factor(as.character(features$Gene), rev(keep_genes))
+features$Gene <- factor(as.character(features$Gene), features %>% filter(Source %in% c("Mutation", "SV")) %>% group_by(Gene) %>% dplyr::count() %>% arrange(n) %>% pull(Gene))
+features$Event <- factor(as.character(features$Event), levels = c(names(genomic_alteration_cols), "High expression", "Low expression", "Gain", "CNLOH", "Loss"))
+features$Source <- factor(as.character(features$Source), levels = c("Mutation","SV","Expression", "CN"))
 features$A5_ID <- factor(as.character(features$A5_ID), levels = SampleOrder.A5_ID)
+features <- features %>% filter(!is.na(Gene)) # Remove genes without mutation
+
 
 ggFeatures <- ggplot() + 
-  geom_tile(data=features, mapping=aes(x=A5_ID, y=Gene, fill=Event), width=0.8,height=0.8) + #, alpha=Clonal
+  geom_tile(data=features %>% filter(Source %in% c("Mutation","SV","Expression")) %>% group_by(A5_ID,Gene) %>% slice_min(n= 1, order_by = Event), mapping=aes(x=A5_ID, y=Gene, fill=Event), width=0.8,height=0.8) + #, alpha=Clonal
+  geom_point(data=features %>% filter(Source %in% c("CN")), 
+             mapping=aes(x=A5_ID, y=Gene, shape=Event), color="black") + #, alpha=Clonal
   theme_bw() + 
   theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_line(colour = "#f7f7f7ff")) + 
-  scale_fill_manual(values = c(Missense=ColorPalette[["DarkBlue1"]], `Stop Gained`=ColorPalette[["DarkRed1"]],
-                               `Stop Lost`=ColorPalette[["DarkOrange2"]], Frameshift=ColorPalette[["LightBrown2"]], `Promotor Mutation`=ColorPalette[["Purple3"]],  
-                               `Structural Variant`=ColorPalette[["LightGreen1"]], 
-                               `Splice Acceptor`=ColorPalette[["DarkGrey2"]], `Splice Donor`=ColorPalette[["DarkGrey1"]], 
-                               `Splice Region`=ColorPalette[["LightGrey1"]], `Homozyg. Del.`=ColorPalette[["DarkGreen1"]],
-                               `In-frame Deletion`=ColorPalette[["DarkBrown1"]])) +
+  scale_fill_manual(values = c(genomic_alteration_cols, "Low expression"="#0000ff", "High expression"="#ff0000")) +
   #scale_alpha_manual(values = c(1,0.4)) +
+  scale_shape_manual(values=c("Gain"=24,"Loss"=25,"CNLOH"=23)) +
   scale_x_discrete(drop=F) +
   labs(fill="Mutation Type") 
 
@@ -542,10 +624,7 @@ ggFeatures <- ggplot() +
 #   geom_tile(data=features %>% filter(Gene %in% c("TERT","ATRX")), mapping=aes(x=A5_ID, y=Gene, fill=Event), width=0.8,height=0.8) +
 #   theme_bw() + 
 #   theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_line(colour = "#f7f7f7ff")) + 
-#   scale_fill_manual(values = c(Missense=ColorPalette[["DarkBlue1"]], `Stop Gained`=ColorPalette[["DarkRed1"]],
-#                                `Stop Lost`=ColorPalette[["DarkOrange2"]], Frameshift=ColorPalette[["LightBrown2"]], `Promotor Mutation`=ColorPalette[["Purple3"]],  
-#                                `Structural Variant`=ColorPalette[["LightGreen1"]], 
-#                                `Splice Acceptor`=ColorPalette[["DarkGrey2"]], `Splice Donor`=ColorPalette[["DarkGrey1"]], `Splice Region`=ColorPalette[["LightGrey1"]], `Homozyg. Del.`=ColorPalette[["DarkGreen1"]])) +
+#   scale_fill_manual(values = genomic_alteration_cols) +
 #   scale_x_discrete(drop=F) +
 #   labs(fill="Mutation Type") 
 
@@ -1079,7 +1158,7 @@ gg_oncoplot <- ggLocation + nox + no_margin + shrink_legend + ylab("") + xlab(""
   #ggPurity.heat + nox + no_margin + shrink_legend + ylab("") + xlab("") +
   # ggPurity.col + nox + no_margin + shrink_legend  + xlab("") + theme(axis.title.y = element_text(angle = 0)) +
   #ggStar + nox + no_margin + shrink_legend + ylab("") + xlab("") +
-  ggTMB.heatmap + nox + no_margin + shrink_legend + xlab("") +
+  ggTMB.cutoff + nox + no_margin + shrink_legend + xlab("") +
   ggSV.heatmap + nox + no_margin + shrink_legend + xlab("") +
   ggChromothripsis.binary + nox + no_margin + shrink_legend + ylab("") + xlab("") +
   ggWGD.monotone + nox + no_margin + shrink_legend + ylab("") + xlab("") +
@@ -1106,7 +1185,7 @@ gg_oncoplot <- ggLocation + nox + no_margin + shrink_legend + ylab("") + xlab(""
                   #0.1, #ggPurity.heat
                   # 0.1, #ggPurity.col
                   #0.1, #ggStar
-                  0.1, #ggTMB
+                  0.4, #ggTMB
                   0.1, #ggSV
                   0.1, #ggChromothripsis
                   0.1, #ggWGD
@@ -1522,9 +1601,9 @@ plot.data.tert_atrx_types <- features %>% mutate(Patient=gsub("-.", "" , A5_ID))
 ggTERTATRXEvents <- ggplot(plot.data.tert_atrx_types, aes(x=Gene, y=nPatients, fill=Event)) + geom_col(position = position_stack()) +
   scale_fill_manual(values = c(Missense=ColorPalette[["DarkBlue1"]], `Stop Gained`=ColorPalette[["DarkRed1"]],
                                `Stop Lost`=ColorPalette[["DarkOrange2"]], Frameshift=ColorPalette[["LightBrown2"]], 
-                               `Promotor Mutation`=ColorPalette[["Purple3"]], `Structural Variant`=ColorPalette[["LightGreen1"]], 
-                               `Splice Acceptor`=ColorPalette[["DarkGrey2"]], `Splice Donor`=ColorPalette[["DarkGrey1"]],
-                               `Splice Region`=ColorPalette[["LightGrey1"]], `Homozyg. Del.`=ColorPalette[["DarkGreen1"]])) +
+                               `Promoter Mutation`=ColorPalette[["Purple3"]], `Structural Variant`= ColorPalette[["LightGreen1"]], 
+                               `Splice Acceptor`=ColorPalette[["DarkGrey2"]], `Splice Donor`= ColorPalette[["DarkGrey1"]],
+                               `Splice Region`=ColorPalette[["LightGrey1"]], `Homozyg. Del.`= ColorPalette[["DarkGreen1"]])) +
   theme_bw() + theme(axis.title.x = element_blank())
 
 

@@ -33,9 +33,19 @@ plot_data <- a5_anno %>%
                                                                       "Non-metastatic local recurrence",
                                                                       "Primary (short follow up)",
                                                                       "Non-metastatic primary"))) %>% 
-         filter(A5_ID != "E167-1")
+         filter(A5_ID != "E167-1") %>% 
+  mutate(met_nonmet=recode(as.character(differential_group_sampletype_strict),
+                                        "Metastasis"="Metastatic",
+                                        "Metastatic primary"="Metastatic",
+                                        "Metastatic local recurrence"="Metastatic",
+                                        "Local recurrence (metastasis present)"="Other",
+                                        "Primary (metastasis present)"="Other",
+                                        "Non-metastatic local recurrence"="Other",
+                                        "Primary (short follow up)"="Other",
+                                        "Non-metastatic primary"="Non-metastatic"),
+         met_nonmet=factor(met_nonmet, levels=c("Metastatic", "Non-metastatic", "Other")))
          
-  
+##Detailed categories  
 ggplot(plot_data, 
        aes(x=differential_group_sampletype_strict, y=wgs_tmb)) + 
   geom_boxplot(outlier.alpha = 0) + 
@@ -45,3 +55,31 @@ ggplot(plot_data,
   theme(axis.text.x = element_text(angle=45, vjust = 1,hjust=1)) +
   ylab("TMB") +
   xlab("")
+
+
+
+##Broad categories
+t_test_data <- plot_data %>%  
+  group_by(`Patient ID`, met_nonmet) %>% 
+  summarise(tmb=mean(wgs_tmb)) %>% 
+  filter(met_nonmet != "Other")
+
+t_result <- t.test(tmb~met_nonmet,  t_test_data, alternative="greater")
+
+
+pj=position_jitter(width = 0.2,seed = 10)
+ggplot(plot_data %>% arrange(met_nonmet, `Patient ID`), 
+       aes(x=met_nonmet, y=wgs_tmb)) + 
+  geom_boxplot(outlier.alpha = 0) + 
+  geom_point(mapping = aes(color=differential_group_sampletype_strict, 
+                            shape=TERT_ATRX_Mutation),
+              position=pj) + 
+  geom_path(mapping=aes(group=`Patient ID`), position=pj, linetype=2, alpha=0.3) +
+  scale_color_manual(values = sampletype_strict_cols) +
+  scale_shape_manual(values = c(TERT=8,ATRX=4,WT=16)) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=45, vjust = 1,hjust=1)) +
+  ylab("TMB") +
+  xlab("")
+
+

@@ -16,9 +16,9 @@ library(ggplot2)
 setwd("/g/data/pq08/projects/ppgl/")
 
 #Load black listed variants
-blacklist="/g/data/pq08/projects/ppgl/a5/wgs/analysis/mpileup/blacklists/blacklist_readsupport_gteq3_samplesupport_gteq3.tsv"
+blacklist="/g/data/pq08/projects/ppgl/a5/wgs/analysis/mpileup/blacklist/blacklists/blacklist_readsupport_gteq3_samplesupport_gteq3.tsv"
 blacklisted_variants <- read.delim(blacklist)
-blacklisted_variants_gr <- makeGRangesFromDataFrame(blacklisted_variants)
+blacklisted_variants_gr <- makeGRangesFromDataFrame(blacklisted_variants, seqnames.field = "CHROM", start.field = "POS", end.field = "POS", keep.extra.columns = T)
 
 ref_genome <- "BSgenome.Hsapiens.UCSC.hg38"
 

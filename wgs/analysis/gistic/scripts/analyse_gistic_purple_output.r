@@ -3,7 +3,7 @@ library(ComplexHeatmap)
 library(ggplot2)
 
 # Read in GISTIC results at the confidence level that I set (0.90)
-# Explnantion of options: brlen if the proportion of a chromosome required to be altered considered to be a 'broad peak'
+# Explanation of options: brlen if the proportion of a chromosome required to be altered to be considered a 'broad peak'
 # -genegistic 1 means to calculate the significance of deletions at a gene level instead of a marker level. 
 # Conf was increased to 90 as opposed to default 75 (more stringent)
 # gcm: Method for reducing marker-level copy number data to the gene-level copy number data in the gene tables. 
@@ -22,10 +22,9 @@ library(ggplot2)
 #$GIS_folder/gistic2 -b $basedir -seg $segfile -refgene $refgenefile -genegistic 1 -smallmem 0 -broad 1 -brlen 0.5 \
 # -conf 0.90 -armpeel 1 -savegene 1 -gcm extreme -rx 0
 
-base_dir="/media/gadi/projects/A5"
-#base_dir="/g/data/pq08/projects/A5"
+base_dir="/g/data/pq08/projects/ppgl/a5"
 
-gistic_output_dir=paste(base_dir, "WGS/analysis/gistic/output", sep="/")
+gistic_output_dir=paste(base_dir, "wgs/analysis/gistic/output", sep="/")
 
 gistic_score_files <- list.files(gistic_output_dir, pattern="scores.gistic", recursive = T, full.names = T)
 names(gistic_score_files) <- basename(gsub("/scores.gistic","",gistic_score_files))

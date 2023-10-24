@@ -15,9 +15,9 @@ knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning = F)
 
 #+ config, echo=FALSE
 #Config flags to control output of plots and tables
-output_qc <<- FALSE
-output_tables <<- FALSE
-output_plots <<- FALSE
+output_qc <- FALSE
+output_tables <- TRUE
+output_plots <- TRUE
 setwd('/g/data/pq08/projects/ppgl/')
 
 #+ dependencies, echo=F
@@ -573,8 +573,8 @@ knitr::knit_expand(text="Make a design matrix with biological groups:\n\n* {{pas
 count_contrast_members(contrast_matrix_genosampletype, design_matrix_genosampletype) %>% 
   knitr::kable(caption = "Contrast group member counts")
 
-useful_contrasts <- c("TERT_PriMet_vs_NonMetPri_WT",
-                      "ATRX_PriMet_vs_NonMetPri_WT",
+useful_contrasts <- c("TERT_All_vs_NonTERT",
+                      "ATRX_All_vs_NonATRX",
                       "Metastasis_All_vs_NonMetPri_WT")
 
 #+ AT_DE_contrasts_print, echo=FALSE
@@ -690,29 +690,29 @@ if(output_tables){
                                           P.Value, adj.P.Val, B), round, 4)), 
                 options = list(pageLength = 20, scrollX = T))
 }
-#+ AT_DE_ATRXNonmet_toptables_header, eval=output_tables, echo=FALSE, results='asis'
+#+ AT_DE_ATRXvsRest_toptables_header, eval=output_tables, echo=FALSE, results='asis'
 
-knitr::knit_expand(text="\n\n### Top 1000 DE - All ATRX vs. All Non-Metastatic Primaries\n\n") %>% cat()
+knitr::knit_expand(text="\n\n### Top 1000 DE - All ATRX vs. Rest\n\n") %>% cat()
 
 knitr::knit_expand(text="\nFiltered: Absolute-logFC >1, adj.P.Val < 0.05") %>% cat()
 
 #+ AT_DE_ATRXNonmet_toptables_print, eval=output_tables, echo=FALSE
 if(output_tables){
-  contrast = "ATRX_PriMet_vs_NonMetPri_WT"
+  contrast = "ATRX_All_vs_NonATRX"
   DT::datatable(data = smallrna_top_tables[["genosampletype"]][[contrast]] %>% filter(abs(logFC)>1, adj.P.Val<0.05) %>% slice_min(n = 1000, order_by = adj.P.Val) %>% 
                   mutate(across(.cols = c(logFC, AveExpr, t, 
                                           P.Value, adj.P.Val, B), round, 4)), 
                 options = list(pageLength = 20, scrollX = T))
 }
-#+ AT_DE_TERTNonmet_toptables_header, eval=output_tables, echo=FALSE, results='asis'
+#+ AT_DE_TERTvsRest_toptables_header, eval=output_tables, echo=FALSE, results='asis'
 
-knitr::knit_expand(text="\n\n### Top 1000 DE - All TERT mutatants vs. All Non-Metastatic Primaries\n\n") %>% cat()
+knitr::knit_expand(text="\n\n### Top 1000 DE - All TERT mutatants vs. Rest\n\n") %>% cat()
 
 knitr::knit_expand(text="\nFiltered: Absolute-logFC >1, adj.P.Val < 0.05") %>% cat()
 
 #+ AT_DE_TERTNonmet_toptables_print, eval=output_tables, echo=FALSE
 if(output_tables){
-  contrast = "TERT_PriMet_vs_NonMetPri_WT"
+  contrast = "TERT_All_vs_NonTERT"
   DT::datatable(data = smallrna_top_tables[["genosampletype"]][[contrast]] %>% filter(abs(logFC)>1, adj.P.Val<0.05) %>% slice_min(n = 1000, order_by = adj.P.Val) %>% 
                   mutate(across(.cols = c(logFC, AveExpr, t, 
                                           P.Value, adj.P.Val, B), round, 4)), 
@@ -729,7 +729,7 @@ knitr::knit_expand(text="\n\n### TERT and ATRX vs Non-Metastatic Primaries signi
 
 #+ AT_DE_TERTATRX_venn_print_header, eval=output_plots, echo=FALSE
 if(output_plots) {
-  vennDiagram(sum.fit[,c("ATRX_PriMet_vs_NonMetPri_WT","TERT_PriMet_vs_NonMetPri_WT")], circle.col=c("turquoise", "salmon"))
+  vennDiagram(sum.fit[,c("ATRX_All_vs_NonATRX","TERT_All_vs_NonTERT")], circle.col=c("turquoise", "salmon"))
 }
 #+ AT_DE_volcano_header, eval=output_plots, echo=FALSE, results='asis'
 
@@ -741,7 +741,8 @@ knitr::knit_expand(text="\nTop 20 genes labelled (sorted by adj.P.Val)") %>% cat
 if(output_plots){
   plot_volcano <- function(tt, n_label){
     
-    genes_to_label <- tt %>%
+    genes_to_label <- tt %>% 
+      filter(adj.P.Val < 0.05) %>% 
       slice_min(adj.P.Val, n = n_label) %>% 
       pull(Gene)
     
@@ -759,18 +760,19 @@ if(output_plots){
         segment.color = "grey",
         max.overlaps = Inf,
         size = 3,
-        aes(label=gene_symbol))
+        aes(label=gene_symbol)) +
+      theme_bw()
     
     return(volcano)
     
   }
   
-  tert <- plot_volcano(smallrna_top_tables[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]], 20) + ggtitle("TERT Pri/Met Vs WT Non-metastatic primaries")
-  atrx <- plot_volcano(smallrna_top_tables[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]], 20) + ggtitle("ATRX Pri/Met Vs WT Non-metastatic primaries")
-  tert_vs_atrx <- plot_volcano(smallrna_top_tables[["genosampletype"]][["ATRX_All_vs_TERT_All"]], 20) + ggtitle("TERT Vs ATRX")
+  tert <- plot_volcano(smallrna_top_tables[["genosampletype"]][["TERT_All_vs_NonTERT"]], 20) + ggtitle("TERT Mutant Vs Rest")
+  atrx <- plot_volcano(smallrna_top_tables[["genosampletype"]][["ATRX_All_vs_NonATRX"]], 20) + ggtitle("ATRX Mutant Vs Rest")
+  #tert_vs_atrx <- plot_volcano(smallrna_top_tables[["genosampletype"]][["ATRX_All_vs_TERT_All"]], 20) + ggtitle("TERT Vs ATRX")
   met_vs_nonmet <- plot_volcano(smallrna_top_tables[["genosampletype"]][["Metastasis_All_vs_NonMetPri_WT"]], 20) + ggtitle("All metastases vs non-metastatic primaries")
   
-  tert + atrx + tert_vs_atrx + met_vs_nonmet + plot_layout(ncol=1)
+  tert + atrx + met_vs_nonmet + plot_layout(nrow=1, guides="collect")
 }
 
 #+ AT_DE_BoxPlots_header, eval=output_plots, echo=FALSE, results='asis'
@@ -781,12 +783,12 @@ knitr::knit_expand(text="\nGenes filtered for 'adj.P.Val < 0.05' and sorted by A
 
 #+ AT_DE_BoxPlots_print, eval=output_plots, echo=FALSE, fig.height=21, fig.width=18
 if(output_plots){
-  tert_top <- smallrna_top_tables[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]] %>% 
+  tert_top <- smallrna_top_tables[["genosampletype"]][["TERT_All_vs_NonTERT"]] %>% 
     filter(adj.P.Val < 0.05) %>% 
     arrange(desc(abs(logFC))) %>%  
     slice_head(n = 50) %>% pull(Gene)
   
-  atrx_top <- smallrna_top_tables[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]] %>% 
+  atrx_top <- smallrna_top_tables[["genosampletype"]][["ATRX_All_vs_NonATRX"]] %>% 
     filter(adj.P.Val < 0.05) %>% 
     arrange(desc(abs(logFC))) %>%  
     slice_head(n = 50) %>% 
@@ -801,28 +803,25 @@ if(output_plots){
   GOI <- c(met_top[1:min(length(met_top),10)], tert_top[1:min(length(tert_top),10)], atrx_top[1:min(length(atrx_top),10)])
   
   top_logcpm <- a5_smallrna_lcpm_list[["SDHB_abdothoracic"]][GOI,, drop=F] %>% 
-    data.frame(check.names = F) %>% 
-    tibble::rownames_to_column(var = "Gene") %>% 
+    as_tibble(rownames = "Gene") %>% 
     pivot_longer(cols=-Gene, names_to = "A5_ID", values_to = "log2cpm") 
   
   top_logcpm <- top_logcpm %>% 
     left_join(a5_anno %>% 
                 dplyr::select(A5_ID, `Patient ID`, is_primary_or_met,
                               TERT_ATRX_Mutation, differential_group_purity, 
-                              differential_group_sampletype, differential_group))
+                              differential_group_sampletype_strict, differential_group))
   
   top_logcpm$differential_group <- factor(top_logcpm$differential_group, levels=differential_group_levels)
   
   plot.data <- top_logcpm %>% 
-    mutate(x_group=paste(TERT_ATRX_Mutation, differential_group_sampletype, sep="_"),
-           x_group=factor(x_group)) %>% 
-    arrange(x_group, Gene, log2cpm)
+    arrange(TERT_ATRX_Mutation, Gene, log2cpm)
   
   pj=position_jitter(width = 0.2, seed=21)
   ggplot(data=plot.data, 
-         mapping=aes(x=x_group, 
+         mapping=aes(x=TERT_ATRX_Mutation, 
                      y=log2cpm,
-                     color=differential_group,
+                     color=differential_group_sampletype_strict,
                      alpha=differential_group_purity,
                      group=`Patient ID`)) + 
     geom_boxplot(data=. %>% filter(differential_group_purity=="PurityOK"),
@@ -832,7 +831,7 @@ if(output_plots){
     geom_point(position = pj)  + 
     theme_bw() +
     theme(axis.text.x = element_text(angle=90, vjust=0.5, hjust=1)) + 
-    scale_color_manual(values = differential_group_colors) +
+    scale_color_manual(values = sampletype_strict_cols) +
     scale_alpha_manual(values = c(0.2,1)) + 
     facet_wrap("Gene", scale="free_y")
 }
@@ -848,30 +847,29 @@ if(output_plots){
   genes_per_group <- 50
   
   GOI <- bind_rows(
+    smallrna_top_tables[["genosampletype"]][["TERT_All_vs_NonTERT"]] %>% 
+      filter(adj.P.Val < 0.05) %>% 
+      arrange(desc(abs(logFC))) %>%  
+      slice_head(n = genes_per_group) %>%  
+      mutate(source="TERTvsRest") %>% 
+      dplyr::select(source, Gene),
+    smallrna_top_tables[["genosampletype"]][["ATRX_All_vs_NonATRX"]] %>% 
+      filter(adj.P.Val < 0.05) %>% 
+      arrange(desc(abs(logFC))) %>% 
+      slice_head(n = genes_per_group) %>% 
+      mutate(source="ATRXvsRest") %>% 
+      dplyr::select(source, Gene),
     smallrna_top_tables[["genosampletype"]][["Metastasis_All_vs_NonMetPri_WT"]] %>% 
       filter(adj.P.Val < 0.05) %>% 
       arrange(desc(abs(logFC))) %>% 
       slice_head(n = genes_per_group) %>% 
-      mutate(source="MetvsNonMet") %>% dplyr::select(source, Gene),
-    smallrna_top_tables[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]] %>% 
-      filter(adj.P.Val < 0.05) %>% 
-      arrange(desc(abs(logFC))) %>%  
-      slice_head(n = genes_per_group) %>%  
-      mutate(source="TERTvsNonMet") %>% 
-      dplyr::select(source, Gene),
-    smallrna_top_tables[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]] %>% 
-      filter(adj.P.Val < 0.05) %>% 
-      arrange(desc(abs(logFC))) %>% 
-      slice_head(n = genes_per_group) %>% 
-      mutate(source="ATRXvsNonMet") %>% 
-      dplyr::select(source, Gene)
+      mutate(source="MetvsNonMet") %>% dplyr::select(source, Gene)
   )
   GOI <- GOI[!duplicated(GOI$Gene),]
   
   plot.data <- GOI %>% 
     inner_join(a5_smallrna_lcpm_list[["SDHB_abdothoracic"]][GOI$Gene,] %>% 
-                 data.frame(check.names = F) %>%  
-                 tibble::rownames_to_column("Gene")) 
+                 as_tibble(rownames="Gene")) 
   rownames(plot.data) <-plot.data$Gene
   
   sample.order <- colnames(plot.data)[grepl("^E[0-9]+", colnames(plot.data))]

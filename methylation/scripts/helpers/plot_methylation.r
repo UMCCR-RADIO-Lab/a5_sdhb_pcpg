@@ -342,6 +342,7 @@ plot_methylation <- function(gene_symbol=NULL,
 
 
 plot_methylation_vs_expr <- function(gene_symbol=NULL, 
+                                     probes=NULL,
                                      sample_annotation,
                                      summarise_probes_by_region=T,
                                      grouping_column="group",
@@ -361,7 +362,7 @@ plot_methylation_vs_expr <- function(gene_symbol=NULL,
 {
   
 
-  if (is.null(gene_symbol)) { stop("Gene symbol must be supplied") }
+  if (is.null(gene_symbol) & is.null(probes)) { stop("Gene symbol or probe list must be supplied") }
 
   if (is.null(plot_title)) { plot_title = gene_symbol }
     
@@ -398,9 +399,29 @@ plot_methylation_vs_expr <- function(gene_symbol=NULL,
     probe_annotation <- minfi::getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19::IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
   }
   
+  if (is.null(probes))
+  {
   region_probes <- get_region_probes(gene_symbol=gene_symbol, 
                                      probe_annotation = probe_annotation,
                                      available_probes = rownames(m_vals))
+  } else {
+    region_probes = data.frame(probe_annotation[probe_annotation$Name %in% probes, c("Name", "chr", "pos", "UCSC_RefGene_Name", "UCSC_RefGene_Group")])
+    
+    region_probes = region_probes %>% 
+      tidyr::separate_rows(UCSC_RefGene_Name, UCSC_RefGene_Group, sep=";") %>% 
+      distinct()
+    
+    if(length(unique(region_probes$UCSC_RefGene_Name)) > 1) {
+      stop("Supplied probes map to more than one gene. Unable to fetch gene expression.")
+    }
+    
+    if(unique(region_probes$UCSC_RefGene_Name) == "") {
+      stop("Supplied probes do not map to any gene symbol. Unable to fetch gene expression.")
+    }
+    
+    gene_symbol <- unique(region_probes$UCSC_RefGene_Name)
+    
+  }
   
   if(is.null(region_probes)) { return(NULL) }
   
