@@ -77,7 +77,7 @@ make_genotype_sampletype_contrasts <- function(sample_anno, exclude_samples=NULL
          Metastasis_WT_VAFOK_PurityOK + 
          NonMetastaticPrimary_WT_VAFOK_PurityOK +
          MetastaticPrimary_WT_VAFOK_PurityOK +
-         Other_WT_VAFOK_PurityOK)/6,
+         SFU_WT_VAFOK_PurityOK)/6,
     #All-ATRX vs Non-ATRX
     ATRX_All_vs_NonATRX = 
       (Metastasis_ATRX_VAFOK_PurityOK + 
@@ -88,7 +88,7 @@ make_genotype_sampletype_contrasts <- function(sample_anno, exclude_samples=NULL
          MetastaticPrimary_TERT_VAFLow_PurityOK + 
          MetastaticPrimary_TERT_VAFOK_PurityOK + 
          Metastasis_TERT_VAFOK_PurityOK + 
-         Other_WT_VAFOK_PurityOK)/7,
+         SFU_WT_VAFOK_PurityOK)/7,
     #All-TERT vs All-ATRX
     ATRX_All_vs_TERT_All = (Metastasis_ATRX_VAFOK_PurityOK + MetastaticPrimary_ATRX_VAFOK_PurityOK)/2 - (Metastasis_TERT_VAFOK_PurityOK + MetastaticPrimary_TERT_VAFOK_PurityOK)/2,
     #All-TERT vs All-ATRX

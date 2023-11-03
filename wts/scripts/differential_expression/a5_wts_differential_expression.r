@@ -718,8 +718,8 @@ knitr::knit_expand(text="Make a design matrix with biological groups:\n\n* {{pas
 count_contrast_members(contrast_matrix_genosampletype, design_matrix_genosampletype) %>% 
   knitr::kable(caption = "Contrast group member counts")
 
-useful_contrasts <- c("TERT_All_vs_NonTERT",
-                      "ATRX_All_vs_NonATRX",
+useful_contrasts <- c("TERT_PriMet_vs_NonMetPri_WT",
+                      "ATRX_PriMet_vs_NonMetPri_WT",
                       "Metastasis_All_vs_NonMetPri_WT")
 
 #+ AT_DE_contrasts_print, echo=FALSE
@@ -867,7 +867,7 @@ knitr::knit_expand(text="\nFiltered: Absolute-logFC >1, adj.P.Val < 0.05") %>% c
 
 #+ AT_DE_ATRXvRest_toptables_print, eval=output_tables, echo=FALSE
 if(output_tables){
-  contrast = "ATRX_All_vs_NonATRX"
+  contrast = "ATRX_PriMet_vs_NonMetPri_WT"
   DT::datatable(data = wts_top_tables[["genosampletype"]][[contrast]] %>% filter(abs(logFC)>1, adj.P.Val<0.05) %>% slice_min(n = 1000, order_by = adj.P.Val) %>% 
                   mutate(across(.cols = c(logFC, AveExpr, t, 
                                           P.Value, adj.P.Val, B), 
@@ -882,7 +882,7 @@ knitr::knit_expand(text="\nFiltered: Absolute-logFC >1, adj.P.Val < 0.05") %>% c
 
 #+ AT_DE_TERTNonTERT_toptables_print, eval=output_tables, echo=FALSE
 if(output_tables){
-  contrast = "TERT_All_vs_NonTERT"
+  contrast = "TERT_PriMet_vs_NonMetPri_WT"
   DT::datatable(data = wts_top_tables[["genosampletype"]][[contrast]] %>% filter(abs(logFC)>1, adj.P.Val<0.05) %>% slice_min(n = 1000, order_by = adj.P.Val) %>% 
                   mutate(across(.cols = c(logFC, AveExpr, t, 
                                           P.Value, adj.P.Val, B), 
@@ -900,7 +900,7 @@ knitr::knit_expand(text="\n\n### 'TERT vs Rest' and 'ATRX vs Rest' significant g
 
 #+ AT_DE_TERTATRX_venn_print_header, eval=output_plots, echo=FALSE
 if(output_plots) {
-  vennDiagram(sum.fit[,c("ATRX_All_vs_NonATRX","TERT_All_vs_NonTERT")], circle.col=c("turquoise", "salmon"))
+  vennDiagram(sum.fit[,c("ATRX_PriMet_vs_NonMetPri_WT","TERT_PriMet_vs_NonMetPri_WT")], circle.col=c("turquoise", "salmon"))
 }
 #+ AT_DE_volcano_header, eval=output_plots, echo=FALSE, results='asis'
 
@@ -936,8 +936,8 @@ if(output_plots){
     
   }
   
-  tert <- plot_volcano(wts_top_tables[["genosampletype"]][["TERT_All_vs_NonTERT"]], 20) + ggtitle("TERT Pri/Met Vs Rest")
-  atrx <- plot_volcano(wts_top_tables[["genosampletype"]][["ATRX_All_vs_NonATRX"]], 20) + ggtitle("ATRX Pri/Met Vs Rest")
+  tert <- plot_volcano(wts_top_tables[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]], 20) + ggtitle("TERT Pri/Met Vs non-metastatic primaries")
+  atrx <- plot_volcano(wts_top_tables[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]], 20) + ggtitle("ATRX Pri/Met Vs non-metastatic primaries")
   tert_vs_atrx <- plot_volcano(wts_top_tables[["genosampletype"]][["ATRX_All_vs_TERT_All"]], 20) + ggtitle("TERT Vs ATRX")
   met_vs_nonmet <- plot_volcano(wts_top_tables[["genosampletype"]][["Metastasis_All_vs_NonMetPri_WT"]], 20) + ggtitle("All metastases vs non-metastatic primaries")
   
@@ -952,12 +952,12 @@ knitr::knit_expand(text="\nGenes filtered for 'adj.P.Val < 0.05' and sorted by A
 
 #+ AT_DE_BoxPlots_print, eval=output_plots, echo=FALSE, fig.height=21, fig.width=18
 if(output_plots){
-  tert_top <- wts_top_tables[["genosampletype"]][["TERT_All_vs_NonTERT"]] %>% 
+  tert_top <- wts_top_tables[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]] %>% 
     filter(adj.P.Val < 0.05) %>% 
     arrange(desc(abs(logFC))) %>%  
     slice_head(n = 50) %>% pull(Gene)
   
-  atrx_top <- wts_top_tables[["genosampletype"]][["ATRX_All_vs_NonATRX"]] %>% 
+  atrx_top <- wts_top_tables[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]] %>% 
     filter(adj.P.Val < 0.05) %>% 
     arrange(desc(abs(logFC))) %>%  
     slice_head(n = 50) %>% 
@@ -1011,13 +1011,13 @@ if(output_plots){
   genes_per_group <- 50
   
   GOI <- bind_rows(
-    wts_top_tables[["genosampletype"]][["TERT_All_vs_NonTERT"]] %>% 
+    wts_top_tables[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]] %>% 
       filter(adj.P.Val < 0.05) %>% 
       arrange(desc(abs(logFC))) %>%  
       slice_head(n = genes_per_group) %>%  
       mutate(source="TERTvsNonTERT") %>% 
       dplyr::select(source, Gene),
-    wts_top_tables[["genosampletype"]][["ATRX_All_vs_NonATRX"]] %>% 
+    wts_top_tables[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]] %>% 
       filter(adj.P.Val < 0.05) %>% 
       arrange(desc(abs(logFC))) %>% 
       slice_head(n = genes_per_group) %>% 

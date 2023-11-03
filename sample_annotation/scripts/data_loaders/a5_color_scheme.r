@@ -67,8 +67,10 @@ subtype_cols <- subtype_cols[!duplicated(names(subtype_cols))]
 subtype_cols[["C2B2 (MAML3)"]] <- subtype_cols[["C2B2 (MAML)"]]
 
 
-differential_group_colors=c("darkolivegreen","darkgreen","burlywood1", "burlywood4",  "red", "coral","coral", "coral3",
-                            "lightblue", "darkblue", "grey", "grey", "chocolate3"," cornsilk2", "cornsilk2", "purple","palevioletred2")
+differential_group_colors=c("darkolivegreen","darkgreen","burlywood1","burlywood4",
+                            "red","coral","coral","coral","coral3","coral3",
+                            "lightblue","lightblue","darkblue","grey","grey",
+                            "chocolate3","chocolate3","chocolate3","purple","palevioletred2")
 names(differential_group_colors) <- differential_group_levels
 
 # ggplot scales
@@ -99,10 +101,11 @@ sampletype_strict_cols <- c(`Non-metastatic primary` = ColorPalette[["DarkGreen2
   `Non-metastatic local recurrence` = ColorPalette[["LightBlue1"]],
   `Primary (short follow up)` = ColorPalette[["Yellow3"]],
   `Primary (metastasis present)` = ColorPalette[["DarkBrown2"]],
-  `Local recurrence (metastasis present)` = ColorPalette[["LightBlue3"]],
+  #`Local recurrence (metastasis present)` = ColorPalette[["LightBlue3"]],
   `Metastatic primary` = ColorPalette[["LightOrange2"]],
-  `Metastatic local recurrence` = ColorPalette[["DarkBlue3"]],
-  `Metastasis` = ColorPalette[["LightRed2"]])
+  #`Metastatic local recurrence` = ColorPalette[["DarkBlue3"]],
+  `Metastasis` = ColorPalette[["LightRed2"]],
+  `SFU` = ColorPalette[["DarkBlue3"]])
 
 
 location_cols = c("Adrenal"=ColorPalette[["LightGreen1"]], 
