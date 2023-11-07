@@ -14,9 +14,9 @@ library(patchwork)
 ################
 
 save_plots <- F 
-if (!exists("quickload_diff_meth")) { quickload_diff_meth <- F }
-if (!exists("quickload_gsea")) { quickload_gsea <- F }
-if (!exists("quickload_dmr")) { quickload_dmr <- F }
+if (!exists("quickload_diff_meth")) { quickload_diff_meth <- T }
+if (!exists("quickload_gsea")) { quickload_gsea <- T }
+if (!exists("quickload_dmr")) { quickload_dmr <- T }
 
 message("quickload_diff_meth: ", quickload_diff_meth)
 message("quickload_gsea: ", quickload_gsea) 
@@ -58,12 +58,6 @@ blank_theme <- theme_bw(base_size = 18)+
 # Make annotation #
 ###################
 
-#compute age at surgery
-a5_anno <- a5_anno %>% mutate(age_at_resection=
-                                floor(lubridate::interval(lubridate::my(paste("01", `Year of birth`,sep="-")),
-                                                          lubridate::dmy(`Date of resection (DD/MM/YYYY)`)) 
-                                      / lubridate::years(1)))
-
 # reorder clinical data in same order as arrays
 a5_anno.meth <- a5_anno %>% 
   mutate(A5_ID=factor(A5_ID, 
@@ -103,10 +97,10 @@ a5_anno.meth.nohn_noex <-  a5_anno.meth %>% filter(!(A5_ID %in% c(samples.hn, sa
 source("./a5/sample_annotation/scripts/data_loaders/a5_contrast_groups.r")
 
 make_hn_vs_abdominothoracic_contrasts(sample_anno = a5_anno.meth.noex,
-                                      exclude_samples = c("E185-1", "E167-2", "E135-1", "E166-1",  "E166-2", "E188-1"))
+                                    exclude_samples = c()) # "E135-1", "E185-1", "E167-2","E166-1",  "E188-1"
 
 make_genotype_sampletype_contrasts(sample_anno = a5_anno.meth.nohn_noex, 
-                                   exclude_samples = c("E185-1", "E167-2", "E135-1", "E166-1",  "E166-2", "E188-1"))
+                                   exclude_samples = c()) # "E135-1", "E185-1", "E167-2","E166-1",  "E188-1"
 
 count_contrast_members(contrast_matrix_genosampletype, design_matrix_genosampletype)
 count_contrast_members(contrast_matrix_hn, design_matrix_hn)

@@ -36,6 +36,11 @@ data_loader_a5_clinical_anno <- function(google_account=NULL,
   }
   
   a5_anno <- add_differential_groups(a5_anno)
+  
+  a5_anno <- a5_anno %>% mutate(age_at_resection=
+                       floor(lubridate::interval(lubridate::my(paste("01", `Year of birth`,sep="-")),
+                                                 lubridate::dmy(`Date of resection (DD/MM/YYYY)`)) 
+                             / lubridate::years(1)))
  
   assign(x = "a5_anno", value = a5_anno, envir = globalenv())
   message("Loaded clinical annotation into the global environment as a5_anno")
