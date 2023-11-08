@@ -14,6 +14,8 @@ source("/g/data/pq08/projects/ppgl/a5/wgs/scripts/data_loaders/wgs_dataloaders.r
 data_loader_cna_segs()
 
 
+source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
+
 ################
 # Make windows #
 ################
@@ -26,7 +28,7 @@ names(chrom_windows) <- purrr::map_chr(.x=chrom_windows, .f=\(x) { as.character(
 # Prepare CNA #
 ###############
 
-seg_gr <- A5_seg_keep.merged %>%  
+seg_gr <- a5_seg_keep %>%  
   group_by(chromosome) %>%  
   group_split() %>% 
   purrr::set_names(purrr::map_chr(., ~.x$chromosome[1])) %>% 
@@ -70,6 +72,7 @@ cna_simplify_coding <- c(
   "Loss"="Loss",
   "Loss"="Loss + Subclonal CNLOH",
   "Subclonal Loss"="Subclonal Loss",
+  "Subclonal Loss"="Minor Subclonal Loss",
   "CNLOH"="CNLOH",
   "Diploid/Haploid-X"="Diploid/Haploid-X",
   "Gain"="Gain+LOH",
@@ -77,18 +80,20 @@ cna_simplify_coding <- c(
   "Gain"="WGD+Gain",              
   "Gain"="Subclonal Gain",
   "Other"="Hom. Del.",
-  "Other"="Other",
-  "Other"="WGD",
+  "Diploid/Haploid-X"="Other",
+  "WGD"="WGD",
   "Chromothripsis"="Chromothripsis")
 
 count_members <- function(chrom_segs, grouping_feature, permitted_anatomical_groups) { 
   segs_annotated <- 
     chrom_segs %>%
     mutate(Class=forcats::fct_recode(Class, !!!cna_simplify_coding),
+           Class=factor(as.character(Class, levels=cn_event_types)),
            Class=forcats::fct_drop(Class)) %>% 
     dplyr::select(seqnames,  start, end, A5_ID, Class) %>% 
     inner_join(a5_anno %>%  
-                 dplyr::select(A5_ID, differential_group_anatomy, !!sym(grouping_feature))) %>% 
+                 dplyr::select(A5_ID, differential_group_anatomy, !!sym(grouping_feature)) %>% 
+                 mutate(differential_group_anatomy=ifelse(A5_ID=="E185-1", "Head_Neck",differential_group_anatomy))) %>% 
     filter(differential_group_anatomy %in% permitted_anatomical_groups) %>% 
     distinct() %>% 
     group_by(seqnames, start, end, A5_ID) %>% 
@@ -119,14 +124,15 @@ seg_counts_anatomy <- seg_window_overlap_df %>%
 
 seg_counts_anatomy <- bind_rows(seg_counts_anatomy)
 
+seg_counts_anatomy$Class <- factor(as.character(seg_counts_anatomy$Class), levels=intersect(cn_event_types, unique(seg_counts_anatomy$Class)))
+
 #Require 75% of samples in a class to have a classification for a window
 plot_data <- seg_counts_anatomy %>% 
   filter(total_samples_window/total_samples_class > 0.75, total_samples_class > 10) %>% 
   mutate(proportion=n/total_samples_window) %>% 
   inner_join(chr_offsets ,by=c("seqnames"="chromosome")) %>% 
-  mutate(start_offset=start+offset) %>% 
-  mutate()
-  
+  mutate(start_offset=start+offset)
+
 x_breaks <- chr_offsets %>% mutate(offset_midway=offset+((lead(offset, default = (155689000+2863281000))-offset)/2)) %>% pull(offset_midway)
 names(x_breaks) <- chr_offsets$chromosome
 ggplot(plot_data, 
@@ -150,6 +156,8 @@ seg_counts_sampletype <- seg_window_overlap_df %>%
                                   permitted_anatomical_groups=c("Abdominal_Thoracic")))  
 
 seg_counts_sampletype <- bind_rows(seg_counts_sampletype)
+
+seg_counts_sampletype$Class <- factor(as.character(seg_counts_sampletype$Class), levels=intersect(cn_event_types, unique(seg_counts_sampletype$Class)))
 
 #Require 75% of samples in a class to have a classification for a window
 plot_data <- seg_counts_sampletype %>% 

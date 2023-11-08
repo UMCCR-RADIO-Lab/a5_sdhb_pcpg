@@ -1118,7 +1118,7 @@ ggSignatures_indel_contrib <- ggplot() +
 # CNA
 ####
 
-ggCNVSeg.merged <- ggplot(A5_seg_keep.merged %>% filter(A5_ID %in% SampleOrder.A5_ID) %>% 
+ggCNVSeg <- ggplot(A5_seg_keep %>% filter(A5_ID %in% SampleOrder.A5_ID) %>% 
                             mutate(Class=forcats:::fct_recode(.f=Class,  
                                                               Loss="Loss + Subclonal CNLOH",
                                                               Gain="WGD+Gain",
@@ -1132,11 +1132,7 @@ ggCNVSeg.merged <- ggplot(A5_seg_keep.merged %>% filter(A5_ID %in% SampleOrder.A
   theme_bw() +
   theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank()) +
   scale_y_reverse(breaks = chr_offsets$offset, labels = chr_offsets$chromosome, expand=c(0,0)) +
-  scale_color_manual(values=c(`None`=ColorPalette[["LightGrey1"]], Loss=ColorPalette[["DarkRed1"]], 
-                              `Subclonal Loss`="#fdadadff", `Hom. Del.`=ColorPalette[["Yellow1"]], CNLOH="#f97344ff", 
-                              Gain=ColorPalette[["DarkBlue3"]], `Subclonal Gain`=ColorPalette[["LightBlue1"]],
-                              WGD=ColorPalette[["Purple2"]], Chromothripsis=ColorPalette[["LightGreen1"]], Other=ColorPalette[["DarkGrey2"]]
-  )) + 
+  scale_color_manual(values=cna_palette) + 
   ylab("Copy Number")
 
 
@@ -1168,7 +1164,7 @@ gg_oncoplot <- ggLocation + nox + no_margin + shrink_legend + ylab("") + xlab(""
   # ggTelomere.monotone + nox + no_margin + shrink_legend + ylab("") + xlab("") +
   # ggTERTATRXExp + nox + no_margin + shrink_legend + ylab("") + xlab("") +
   ggFeatures + nox  + no_margin + shrink_legend + ylab("") + xlab("") +
-  ggCNVSeg.merged + no_margin + shrink_legend + ylab("") + 
+  ggCNVSeg + no_margin + shrink_legend + ylab("") + 
   plot_layout(ncol = 1, heights = 
                 c(0.1, #ggLocation
                   0.1, #ggDiseaseCourse

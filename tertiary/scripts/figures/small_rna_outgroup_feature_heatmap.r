@@ -254,14 +254,14 @@ tcga_ppgl_cna_ascat_chr14.summarised <-
 #A5 segment data
 ####
 
-A5_seg_keep.merged_gr <- 
-  GenomicRanges::makeGRangesFromDataFrame(A5_seg_keep.merged, 
+A5_seg_keep_gr <- 
+  GenomicRanges::makeGRangesFromDataFrame(A5_seg_keep, 
                                           seqnames.field ="chromosome", 
                                           start.field =  "start", 
                                           end.field = "end", 
                                           ignore.strand = T,keep.extra.columns = T)
 
-hits <- findOverlaps(subject = A5_seg_keep.merged_gr, query = cytoband_gr)
+hits <- findOverlaps(subject = A5_seg_keep_gr, query = cytoband_gr)
 mcols(hits)[["cytoband"]] <- mcols(cytoband_gr)[["cytoband"]][queryHits(hits)]
 mcols(hits)[["cytoband_start_pos"]] <- start(cytoband_gr)[queryHits(hits)]
 mcols(hits)[["cytoband_end_pos"]] <- end(cytoband_gr)[queryHits(hits)]
@@ -273,19 +273,19 @@ hits <- as.data.frame(hits) %>%
   summarise(cytoband=paste(unique(cytoband), collapse = "-"), 
             arm=paste(unique(arm), collapse = "/"))
 
-A5_seg_keep.merged[hits$subjectHits,"cytoband"] <- hits$cytoband
-A5_seg_keep.merged[hits$subjectHits,"arm"] <- hits$arm
+A5_seg_keep[hits$subjectHits,"cytoband"] <- hits$cytoband
+A5_seg_keep[hits$subjectHits,"arm"] <- hits$arm
 
 
-A5_seg_keep.merged_chr14 <- A5_seg_keep.merged %>% filter(chromosome=="chr14")
+A5_seg_keep_chr14 <- A5_seg_keep %>% filter(chromosome=="chr14")
 
 #not true sizes just regions represented in segments
-chrom_sizes <- A5_seg_keep.merged %>% 
+chrom_sizes <- A5_seg_keep %>% 
   group_by(chromosome) %>% 
   summarise(size=max(end)-min(start)) %>%  
   {'names<-'(.$size, .$chromosome)}
 
-A5_seg_keep.merged_chr14.summarised <- A5_seg_keep.merged_chr14 %>%  
+A5_seg_keep_chr14.summarised <- A5_seg_keep_chr14 %>%  
   mutate(cn_state=case_when(
       (majorAlleleCopyNumber >= 1.85 &
          majorAlleleCopyNumber <= 2.15) &
@@ -347,8 +347,8 @@ A5_seg_keep.merged_chr14.summarised <- A5_seg_keep.merged_chr14 %>%
   summarise(seg_size=sum(seg_size)) %>% 
   mutate(prop=seg_size/chrom_sizes[chromosome]) 
 
-A5_seg_keep.merged_chr14.summarised <- 
-  A5_seg_keep.merged_chr14.summarised %>% 
+A5_seg_keep_chr14.summarised <- 
+  A5_seg_keep_chr14.summarised %>% 
   group_by(A5_ID) %>% 
   mutate(priority=case_when(
     cn_state=="Loss" & prop > 0.25 ~ 1,
@@ -471,7 +471,7 @@ plot_data_expr_meth$source <- factor(plot_data_expr_meth$source)
 
 plot_data_14q_cn <- bind_rows(
   tcga_ppgl_cna_ascat_chr14.summarised,
-  A5_seg_keep.merged_chr14.summarised %>% dplyr::rename(Sample=A5_ID))
+  A5_seg_keep_chr14.summarised %>% dplyr::rename(Sample=A5_ID))
 
 complete_samples <- purrr::reduce(.x = list(colnames(smallrna_tcga_comete_a5_lcpm.batch_removed),
                         colnames(wts_tcga_comete_a5_lcpm.batch_removed),

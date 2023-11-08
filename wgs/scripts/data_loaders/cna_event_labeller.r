@@ -5,28 +5,28 @@ cn_event_types <- c("Diploid/Haploid-X", "Loss",  "Subclonal Loss", "Minor Subcl
                     "Loss + Subclonal CNLOH", "CNLOH", "Gain", "Subclonal Gain", "Gain+LOH", "WGD", "WGD+Gain",
                     "Hom. Del.", "Other", "Chromothripsis")
 
-classify_cna_event <- function(minorAlleleCopyNumber,majorAlleleCopyNumber, Gender, chromosome, tumorCopyNumber, mean_tumorCopyNumber)
+classify_cna_event <- function(minorAlleleCopyNumber,majorAlleleCopyNumber, Gender, chromosome, copyNumber, mean_copyNumber)
 {
   dplyr::case_when(
     (majorAlleleCopyNumber >= 1.85 &
        majorAlleleCopyNumber <= 2.15) &
       (minorAlleleCopyNumber >= 1.85 &
          minorAlleleCopyNumber <= 2.15) &
-      (mean_tumorCopyNumber >= 3) ~ "WGD",
+      (mean_copyNumber >= 3) ~ "WGD",
     (majorAlleleCopyNumber >= 2.85) &
       (minorAlleleCopyNumber >= 1.85 &
          minorAlleleCopyNumber <= 2.15) &
-      (mean_tumorCopyNumber >= 3) ~ "WGD+Gain",
+      (mean_copyNumber >= 3) ~ "WGD+Gain",
     (majorAlleleCopyNumber >= 0.5 &
-       majorAlleleCopyNumber <= 1.0) &
-      (minorAlleleCopyNumber >= 0.97 &
+       majorAlleleCopyNumber <= 1.15) &
+      (minorAlleleCopyNumber >= 0.90 &
          minorAlleleCopyNumber <= 1.15) ~ "Diploid/Haploid-X",
     (majorAlleleCopyNumber >= 0.5 &
        majorAlleleCopyNumber <= 1.15) &
       (minorAlleleCopyNumber <= 0.25) &
       (chromosome != "chrX" |
          (chromosome == "chrX" & Gender == "female")) ~ "Loss",
-    (majorAlleleCopyNumber >= 1.15 &
+    (majorAlleleCopyNumber >= 0.97 &
        majorAlleleCopyNumber <= 1.85) &
       (minorAlleleCopyNumber <= 0.25) &
       (chromosome != "chrX" |
@@ -39,14 +39,14 @@ classify_cna_event <- function(minorAlleleCopyNumber,majorAlleleCopyNumber, Gend
          Gender == "male") ~ "Diploid/Haploid-X",
     (majorAlleleCopyNumber >= 0.5 &
        majorAlleleCopyNumber <= 1.15) &
-      (minorAlleleCopyNumber <= 0.85) &
+      (minorAlleleCopyNumber <= 0.7) &
       (chromosome != "chrX" |
          (chromosome == "chrX" &
             Gender == "female")) ~ "Subclonal Loss",
     (majorAlleleCopyNumber >= 0.5 &
        majorAlleleCopyNumber <= 1.15) &
-      (minorAlleleCopyNumber <= 0.97) &
-      (chromosome != "chrX" |
+      (minorAlleleCopyNumber <= 0.93) &
+      (!(chromosome %in% c("chrX", "chr19")) |
          (chromosome == "chrX" &
             Gender == "female")) ~ "Minor Subclonal Loss",
     (majorAlleleCopyNumber >= 1.85 &
@@ -55,12 +55,12 @@ classify_cna_event <- function(minorAlleleCopyNumber,majorAlleleCopyNumber, Gend
     (majorAlleleCopyNumber >= 1.85) &
       (minorAlleleCopyNumber >= 0.85) ~ "Gain",
     #& minorAlleleCopyNumber <= 1.15
-    (majorAlleleCopyNumber >= 1.0) &
+    (majorAlleleCopyNumber >= 1.15) &
       (minorAlleleCopyNumber >= 0.85) ~ "Subclonal Gain",
     #& minorAlleleCopyNumber <= 1.15
     (majorAlleleCopyNumber >= 1.85) &
       (minorAlleleCopyNumber <= 0.85) ~ "Gain+LOH",
-    tumorCopyNumber <= 0.5 ~ "Hom. Del.",
+    copyNumber <= 0.5 ~ "Hom. Del.",
     TRUE ~ "Other"
   )
 }

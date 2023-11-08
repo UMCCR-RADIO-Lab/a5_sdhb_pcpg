@@ -475,25 +475,23 @@ chromothripsis_regions <- data.frame(A5_ID=c("E123-T01","E128-T02","E138-T01","E
 data_loader_cna_segs <- function()
 {
   
-  purple_seg_dir <- paste0(basedir, "/wgs/symlinks/purple_seg")
+  purple_seg_dir <- paste0(basedir, "/wgs/symlinks/purple_cnv_somatic")
   
-  A5_seg.files <- list.files(purple_seg_dir, pattern = ".purple.segment.tsv", full.names = T ,recursive = T)
-  names(A5_seg.files) <- gsub(".purple.segment.tsv", "", basename(A5_seg.files))
+  A5_seg.files <- list.files(purple_seg_dir, pattern = ".purple.cnv.somatic.tsv", full.names = T ,recursive = T)
+  names(A5_seg.files) <- gsub(".purple.cnv.somatic.tsv", "", basename(A5_seg.files))
   A5_seg <- lapply(A5_seg.files, read.delim)
   
   A5_seg <- bind_rows(A5_seg, .id="A5_ID")
   A5_seg <- A5_seg %>% mutate(A5_ID=gsub("T0","",A5_ID))
   A5_seg <- A5_seg %>%  dplyr::filter(chromosome!="chrY")
   
-  A5_seg_keep <- A5_seg  %>%  filter(germlineStatus != "NOISE" & 
-                                       (
-                                         (end-start > 1000000 & (bafCount > 20 | chromosome=="chrX") & depthWindowCount > 100) | 
-                                           support %in% c("BND","DEL","SGL","DUP","INV","MULTIPLE","INF")
-                                       )
-  )
+  A5_seg_keep <- A5_seg  %>%  filter((end-start > 1000000 & (bafCount > 20 | chromosome=="chrX") & depthWindowCount > 100) | 
+                                       #segmentStartSupport %in% c("BND","DEL","SGL","DUP","INV","MULTIPLE","INF"),
+                                       #segmentEndSupport %in% c("BND","DEL","SGL","DUP","INV","MULTIPLE","INF"),
+                                       method=="BAF_WEIGHTED")
   
   A5_seg_keep <- A5_seg_keep %>% left_join(a5_anno %>%  dplyr::select(A5_ID, Gender))
-  A5_seg_keep <- A5_seg_keep %>% group_by(A5_ID) %>% mutate(mean_tumorCopyNumber=mean(tumorCopyNumber)) %>%  ungroup()
+  A5_seg_keep <- A5_seg_keep %>% group_by(A5_ID) %>% mutate(mean_copyNumber=mean(copyNumber)) %>%  ungroup()
   
   chr_offsets <- A5_seg_keep %>% 
     mutate(chromosome=factor(as.character(chromosome), levels=paste0("chr",c(1:22,"X")))) %>% 
@@ -505,34 +503,9 @@ data_loader_cna_segs <- function()
   A5_seg_keep <- A5_seg_keep %>% left_join(chr_offsets) %>% mutate(start_offset=start+offset, end_offset=end+offset)
   
   A5_seg_keep <- A5_seg_keep %>% mutate(
-    Class = classify_cna_event(minorAlleleCopyNumber,majorAlleleCopyNumber, Gender,chromosome, tumorCopyNumber, mean_tumorCopyNumber) #function sourced from cna_event_labeller.R
+    Class = classify_cna_event(minorAlleleCopyNumber,majorAlleleCopyNumber, Gender,chromosome, copyNumber, mean_copyNumber) #function sourced from cna_event_labeller.R
   ) %>%
-    mutate(
-      Class = ifelse((
-        Class == "Minor Subclonal Loss" &
-          (
-            !is.na(lead(Class)) & lead(Class) == "Subclonal Loss"
-          ) |
-          (!is.na(lag(Class))  &
-             lag(Class) == "Subclonal Loss")
-      ),
-      "Subclonal Loss",
-      Class),
-      Class = ifelse((
-        Class == "Minor Subclonal Loss" &
-          (
-            !is.na(lead(Class)) & lead(Class) == "Diploid/Haploid-X"
-          ) |
-          (!is.na(lag(Class))  &
-             lag(Class) == "Diploid/Haploid-X")
-      ),
-      "Diploid/Haploid-X",
-      Class
-      )
-    ) %>%
     mutate(Class = factor(Class, levels = cn_event_types))
-  
-  
   
   #Manual overide for chromothripsis regions
   
@@ -544,81 +517,12 @@ data_loader_cna_segs <- function()
            ((start >= chromothripsis_regions$start[[cr]]) & (end <= chromothripsis_regions$end[[cr]]))), "Chromothripsis", as.character(Class)))
   }
   
-  # A5_seg_keep <- A5_seg_keep %>% mutate(Class=case_when(
-  #   ((A5_ID=="E123-1" | A5_ID=="E123-T01") & chromosome=="chr5") ~ "Chromothripsis",
-  #   ((A5_ID=="E128-2" | A5_ID=="E128-T02") & (chromosome=="chr1" & start > 124*10^6)) ~ "Chromothripsis",
-  #   ((A5_ID=="E138-1" | A5_ID=="E138-T01") & chromosome=="chr2") ~ "Chromothripsis",
-  #   ((A5_ID=="E180-1" | A5_ID=="E180-T01") & (chromosome=="chr3" | chromosome=="chr11")) ~ "Chromothripsis",
-  #   ((A5_ID=="E231-1" | A5_ID=="E231-T01") & (chromosome=="chr3" & start > 50*10^6)) ~ "Chromothripsis",
-  #   ((A5_ID=="E198-1" | A5_ID=="E198-T01") & (chromosome=="chr17" & start < 10*10^6)) ~ "Chromothripsis",
-  #   ((A5_ID=="E198-1" | A5_ID=="E198-T01") & (chromosome=="chr22" & ((start > 17*10^6) & (end < 50*10^6)))) ~ "Chromothripsis",
-  #   TRUE ~ as.character(Class)
-  # ))
-  
-  
-  min_gap <-5000000
-  A5_seg_keep.merged <- A5_seg_keep %>% mutate(Class=gsub("Minor Subclonal Loss","Subclonal Loss", Class)) %>% arrange(A5_ID, chromosome,start,end) %>% group_by(A5_ID, chromosome) %>% 
-    mutate(
-      # lead_class=lead(Class),     
-      # lag_class=lag(Class),
-      #      lag_start=lag(start),
-      #      lag_end=lag(end),
-      #      diff_start_lend=start-lag(end),
-      #      diff_lstart_end=lead(start) - end,
-      seg_boundary=case_when(
-        (Class != lead(Class) & Class != lag(Class)) ~ "Standalone",
-        ((start-lag(end) > min_gap | is.na(lag(end))) & (is.na(lead(start)) | lead(start) - end > min_gap)) ~ "Standalone",
-        (Class != lead(Class) & (start-lag(end) > min_gap | is.na(lag(end)))) ~ "Standalone",
-        (Class != lag(Class) & (is.na(lead(start)) | lead(start) - end > min_gap)) ~ "Standalone",
-        ((Class != lag(Class)) | (start-lag(end) > min_gap) | is.na(lag(start))) ~ "Begin",
-        Class != lead(Class) | lead(start) - end > min_gap | is.na(lead(start)) ~ "End",
-        TRUE ~ NA_character_
-      )
-    ) %>% 
-    filter(!is.na(seg_boundary)) %>% 
-    mutate(new_seg_start=ifelse(seg_boundary %in% c("Standalone", "Begin"), start, lag(start)),
-           new_seg_end=ifelse(seg_boundary %in% c("Standalone", "End"), end, lead(end))) %>% 
-    dplyr::select(-start, -end, -seg_boundary) %>% 
-    group_by(A5_ID,chromosome,Gender,Class, new_seg_start, new_seg_end, offset) %>% slice_head(n=1) %>% ungroup() %>% 
-    arrange(A5_ID,chromosome, new_seg_start, new_seg_end)
-  
-  #Annotate merged segments with median of values from constituent segments
-  A5_seg_keep.merged$observedBAF <- NA
-  A5_seg_keep.merged$minorAlleleCopyNumber <- NA
-  A5_seg_keep.merged$majorAlleleCopyNumber <- NA
-  A5_seg_keep.merged$tumorCopyNumber <- NA
-  for (i in 1:nrow(A5_seg_keep.merged))  
-  {
-    SOI <- A5_seg_keep[A5_seg_keep$A5_ID==A5_seg_keep.merged$A5_ID[i] &
-                         A5_seg_keep$chromosome==A5_seg_keep.merged$chromosome[i] &
-                         A5_seg_keep$start >= A5_seg_keep.merged$new_seg_start[i] &
-                         A5_seg_keep$end <= A5_seg_keep.merged$new_seg_end[i],]
-    
-    A5_seg_keep.merged$observedBAF[i] <- median(SOI$observedBAF) 
-    A5_seg_keep.merged$minorAlleleCopyNumber[i] <- median(SOI$minorAlleleCopyNumber, na.rm = T) 
-    A5_seg_keep.merged$majorAlleleCopyNumber[i] <- median(SOI$majorAlleleCopyNumber, na.rm = T)
-    A5_seg_keep.merged$tumorCopyNumber[i] <- median(SOI$tumorCopyNumber, na.rm = T)
-  }
-  
-  
-  A5_seg_keep.merged <- A5_seg_keep.merged %>% 
-    dplyr::rename(start=new_seg_start, end=new_seg_end) %>%  
-    mutate(start_offset=start+offset, end_offset=end+offset) %>% 
-    mutate(Class=factor(Class,levels=cn_event_types)) %>% 
-    arrange(A5_ID, chromosome,start,end) %>% 
-    mutate(Class=case_when(
-      Class=="Subclonal Gain" & majorAlleleCopyNumber < 1.15 ~ factor("Diploid/Haploid-X", levels=cn_event_types),
-      Class=="Minor Subclonal Loss" & minorAlleleCopyNumber > 0.95 ~ factor("Diploid/Haploid-X", levels=cn_event_types),
-      TRUE ~ Class
-    ))
-  
-  assign("A5_seg", A5_seg, envir = globalenv())
-  assign("A5_seg_keep", A5_seg_keep, envir = globalenv())
-  assign("A5_seg_keep.merged", A5_seg_keep.merged, envir = globalenv())
+  assign("a5_seg", A5_seg, envir = globalenv())
+  assign("a5_seg_keep", A5_seg_keep, envir = globalenv())
   assign("chr_offsets", chr_offsets, envir = globalenv())
   assign("chromothripsis_regions", chromothripsis_regions, envir = globalenv())
   
-  message("Created objects A5_seg, A5_seg_keep (size/quality filtered and annotated), A5_seg_keep.merged (fused similar segments), chr_offsets (linear chr pos for plotting")
+  message("Created objects A5_seg, A5_seg_keep (size/quality filtered and annotated), chr_offsets (linear chr pos for plotting")
   
   
 }
