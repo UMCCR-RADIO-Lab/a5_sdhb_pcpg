@@ -122,7 +122,7 @@ generate_snrna_qc <- function(sn_data,
   compute_percentiles <- function(qc)
   {
     qc %>% 
-      select(-orig.ident) %>% 
+      dplyr::select(-orig.ident) %>% 
       as.list %>% 
       purrr::map(quantile) %>% 
       as.data.frame() %>% as_tibble(rownames = "quantile") %>% 
@@ -158,7 +158,7 @@ generate_snrna_qc <- function(sn_data,
                                      )
     )) %>%
     group_by(orig.ident, nCount_RNA_category) %>% 
-    count() %>%  
+    dplyr::count() %>%  
     group_by(orig.ident) %>% 
     mutate(proportion = round(n / sum(n),4))
   
@@ -184,7 +184,7 @@ generate_snrna_qc <- function(sn_data,
                                        )
     )) %>%
     group_by(orig.ident, nFeature_RNA_category) %>% 
-    count() %>%  
+    dplyr::count() %>%  
     group_by(orig.ident) %>% mutate(proportion = round(n / sum(n),4))
   
   nFeature_RNA_all <- nFeature_RNA_per_sample %>% 
@@ -207,7 +207,7 @@ generate_snrna_qc <- function(sn_data,
                                                 paste(percent_mt_cutoff, 100, sep = "-")), 
                                      include.lowest=T)) %>%
     group_by(orig.ident, percent_mt_category) %>% 
-    count() %>%  
+    dplyr::count() %>%  
     group_by(orig.ident) %>% 
     mutate(proportion = round(n / sum(n),4)) 
   
@@ -237,15 +237,15 @@ generate_snrna_qc <- function(sn_data,
 }
 
 data_loader_a5_snrna <- function(quickload=T,
-                                 cell_ranger_count_dir="/g/data/pq08/projects/ppgl/a5/sn_rna_seq/analysis/cellranger_hg38",
-                                 scrublet_out_dir="/g/data/pq08/projects/ppgl/a5/sn_rna_seq/analysis/scrublet/hg38",
+                                 cell_ranger_count_dir="/g/data/pq08/projects/ppgl/a5/sn_rna_seq/analysis/cellranger_hg38/intronic_counted/",
+                                 scrublet_out_dir="/g/data/pq08/projects/ppgl/a5/sn_rna_seq/analysis/scrublet/hg38/intronic_counted/",
                                  quickload_checkpoint_dir="/g/data/pq08/projects/ppgl/a5/sn_rna_seq/quickload_checkpoints", 
                                  seurat_min_cells=3,
                                  seurat_min_features=200,
-                                 exclude_samples=c("NPG103", "E019"),
+                                 exclude_samples=c(),
                                  output_qc=F,
                                  qc_out_dir="/g/data/pq08/projects/ppgl/a5/sn_rna_seq/qc",
-                                 sample_rename = c("NAM021" = "E240-1", "NAM025" = "E243-1", "E019"="E019-1"),
+                                 sample_rename = c(),
                                  perform_feature_regression=T,            
                                  qc_thresholds=list(nCount_RNA_upper = 16000, 
                                                     nCount_RNA_lower = 750, 
@@ -262,7 +262,7 @@ data_loader_a5_snrna <- function(quickload=T,
   
   if(!exists("a5_anno")) {
     source(paste0(base_dir,"/a5/sample_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r"))
-    data_loader_a5_clinical_anno(google_account = "aidan.flynn@umccr-radio-lab.org", use_cache = T)
+    data_loader_a5_clinical_anno(google_account = "aidan.flynn@umccr-radio-lab.org", use_cache = T, remove_excluded_samples = F)
   }
   
   if(!("differential_group" %in% colnames("a5_anno"))) {
@@ -392,7 +392,7 @@ data_loader_a5_snrna <- function(quickload=T,
     zethoven_metadata <- readr::read_tsv(file.path(base_dir, "a5/sample_annotation/metadata_sc_samples.tsv") ,show_col_types = F) 
     
     # harmonize the important single cell metadata fields with A5 metadata  
-    zethoven_samples <- c("P018-PGL1", "P018-PGL3", "E240", "E243")
+    zethoven_samples <- c("P018-PGL1", "P018-PGL3", "E240", "E243", "E018")
     
     zethoven_metadata <- zethoven_metadata %>%
       dplyr::rename(A5_ID = Sample) %>% 
@@ -401,26 +401,38 @@ data_loader_a5_snrna <- function(quickload=T,
                     Gender, 
                     tumour_metastasised=Malignancy, 
                     Primary_Location_Simplified=Location) %>% 
-      mutate(A5_ID = ifelse(!grepl("-", A5_ID), paste(A5_ID,"1", sep="-"), A5_ID),
+      mutate(#A5_ID = ifelse(!grepl("-", A5_ID), paste(A5_ID,"1", sep="-"), A5_ID),
         Gender = recode(Gender,"M" = "male","F" = "female"),
+        Genotype = case_when(
+          A5_ID %in% c("E240", "E243") ~ "WT", 
+          A5_ID %in% c("E018") ~ "RET",
+          A5_ID %in% c("P018-PGL1", "P018-PGL3") ~ "SDHB"),
         is_primary_or_met = case_when(
-          A5_ID %in% c("E240-1", "E243-1") ~ "Normal", 
-          A5_ID %in% c("P018-PGL1", "P018-PGL3") ~ "Primary"),
+          A5_ID %in% c("E240", "E243") ~ "Normal", 
+          A5_ID %in% c("P018-PGL1", "P018-PGL3", "E018") ~ "Primary"),
         tumour_metastasised = case_when(
-          A5_ID %in% c("E240-1", "E243-1") ~ "Normal", 
-          A5_ID %in% c("P018-PGL1", "P018-PGL3") ~ "No"),
+          A5_ID %in% c("E240", "E243") ~ "Normal", 
+          A5_ID %in% c("P018-PGL1", "P018-PGL3") ~ "No",
+          A5_ID %in% c("E018") ~ "Short follow up"),
         is_head_and_neck = case_when(
-          A5_ID %in% c("E240-1", "E243-1") ~ "Normal", 
-          A5_ID %in% c("P018-PGL1", "P018-PGL3") ~ "PC_or_PGL"),
+          A5_ID %in% c("E240", "E243") ~ "Normal", 
+          A5_ID %in% c("P018-PGL1", "P018-PGL3", "E018") ~ "PC_or_PGL"),
+        Major_Cluster = case_when(
+          A5_ID %in% c("E240", "E243") ~ "Normal", 
+          A5_ID %in% c("P018-PGL1", "P018-PGL3", "E018") ~ "Sympathetic"),
         `Patient ID` = gsub("-.+", "", A5_ID),
         PublicationID = A5_ID,
         Primary_Location_Simplified = gsub("AT-PGL",
                                            "Extraadrenal_abdominal", 
                                            Primary_Location_Simplified),
-        TERT_ATRX_Mutation = "WT",
-        TERT_purity_adj_vaf = 0,
+        TERT_ATRX_Mutation = case_when(
+          A5_ID %in% c("E240", "E243", "P018-PGL1", "P018-PGL3") ~ "WT", 
+          A5_ID %in% c("E018") ~ "ATRX"),
+        TERT_purity_adj_vaf = case_when(
+          A5_ID %in% c("E018") ~ 0.28,
+          TRUE ~ 0),
         ATRX_purity_adj_vaf = 0,
-        sample_purity=0.5 #arbitrary value above 0.4 for use by the differential groups function
+        sample_purity=0.51 #arbitrary value above 0.5 for use by the differential groups function
       ) %>% add_differential_groups()
     
     # join the A5 and singlecell metadata
@@ -448,7 +460,7 @@ data_loader_a5_snrna <- function(quickload=T,
       rename(!!!compatiblenames)
     
     rownames(metadata) <- metadata$barcode
-    a5_snrna@meta.data <- metadata
+    a5_snrna@meta.data <- metadata[,-1]
     
     ######################
     # scMatch annotation #
@@ -689,28 +701,34 @@ snrna_annotate_cell_types <- function(snrna_object, output_qc=FALSE, qc_out_dir=
     "Tumor", #7
     "Tumor", #8
     "Tumor", #9
-    "Tumor", #10
+    "Myeloid cells", #10
     "Tumor", #11
     "Chromaffin cells", #12 
-    "Adrenocortical cells", #13
-    "Myeloid cells", #14
-    "Tumor", #15
+    "Tumor", #13
+    "Tumor", #14
+    "Adrenocortical cells", #15
     "SCLCs", #16
-    "Endothelial cells",#17
+    "Tumor",#17
     "Fibroblasts", #18
-    "Adrenocortical cells", #19
+    "Endothelial cells", #19
     "Tumor", #20
-    "Lymphocytes", #21
-    "Tumor", #22
+    "Adrenocortical cells", #21
+    "Lymphocytes", #22
     "Tumor", #23
-    "Endothelial cells", #24
-    "SCLCs", #25
+    "Tumor", #24
+    "Endothelial cells", #25
     "Tumor", #26 
     "Fibroblasts", #27
-    "Myeloid cells" #28
+    "Tumor", #28
+    "SCLCs", #29
+    "Lymphocytes", #30
+    "Tumor", #31
+    "Tumor", #32
+    "Tumor" #33
+    
   )
   
-  if (digest::digest(snrna_object$seurat_clusters, algo="md5") != "adb57556ebce53743e33d8404ccd7d92"){
+  if (digest::digest(snrna_object$seurat_clusters, algo="md5") != "36b6e32adda0b888a695546ad4e48cfb"){
     if (names(dev.cur()) != "null device") { dev.off() }
     stop("The checksum for cell to cluster assignment does not match the stored checksum. This may be due to a change in 
     package versions or input data. The cluster to cell-type assignments hardcoded in this function are only valid when 
