@@ -51,11 +51,11 @@ cor_mat_pval <- list()
 
 adj_pval_cutoff <- 0.05
   
-  if(!exists("threads")) { threads <- 6 }
+  if(!exists("threads")) { threads <- 12 }
   options(future.debug = FALSE)
   plan(strategy="multisession", workers=threads)
-
-  for (contrast in c("ATRX_All_vs_NonATRX","TERT_All_vs_NonTERT", "TERT_PriMet_vs_NonMetPri_WT", "ATRX_PriMet_vs_NonMetPri_WT", "Metastasis_All_vs_NonMetPri_WT"))
+  
+  for (contrast in c("TERT_PriMet_vs_NonMetPri_WT", "ATRX_PriMet_vs_NonMetPri_WT", "ATRX_All_vs_TERT_All", "Metastatic_All_vs_NonMetPri_WT"))
   {
     
     tt_sig <- wts_top_tables[["genosampletype"]][[contrast]] %>%

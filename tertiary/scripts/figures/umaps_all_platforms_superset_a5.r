@@ -52,7 +52,7 @@ source("./a5/tertiary/scripts/data_mergers/combine_tcga_comete_a5_smallrna_data.
 #############
 
 #Perform UMAP and annotate plotting coordinates with sample annotation
-make_umap_plot_data <- function (current_data_set_name, current_annotation_set_name, n_neighbors=10, umap_seed=10) { 
+make_umap_plot_data <- function (current_data_set_name, current_annotation_set_name, n_neighbors=10, umap_seed=21) { 
   message("UMAP processing ", current_data_set_name)
   
   #pull inputs from global environment
@@ -106,9 +106,9 @@ make_umap_plot_data <- function (current_data_set_name, current_annotation_set_n
 # Prepare datasets
 ####
 
-a5_wts_logcpm <- cpm(a5_wts_dge_list$qc_ok,log = T)
+a5_wts_logcpm <- edgeR::cpm(a5_wts_dge_list$qc_ok,log = T)
 
-a5_smallrna_logcpm <- cpm(a5_smallrna_dge_list$qc_ok, log = T)
+a5_smallrna_logcpm <- edgeR::cpm(a5_smallrna_dge_list$qc_ok, log = T)
 
 rownames(a5_methylation_mval) <- a5_methylation_mval$Probe
 a5_methylation_mval <- a5_methylation_mval %>%  dplyr::select(-Probe)
@@ -164,7 +164,7 @@ gg_tcga_a5_umap <- ggplot(mapping= aes(x=UMAP1,
                                        y=UMAP2, 
                                        color=new_naming, 
                                        shape=Dataset)) + 
-  geom_point(data = plot_data__umap__tcga_flynn_a5_comete %>% filter(Dataset == "A5"), alpha = 0.8) +
+  geom_point(data = plot_data__umap__tcga_flynn_a5_comete %>% filter(Dataset == "A5"), alpha = 0.8, size=0.7) +
   geom_point(data = plot_data__umap__tcga_flynn_a5_comete %>% filter(Dataset != "A5")) + 
   #Annotate sample count
   geom_text(data=plot_data__umap__tcga_flynn_a5_comete %>% 
@@ -176,12 +176,12 @@ gg_tcga_a5_umap <- ggplot(mapping= aes(x=UMAP1,
             aes(label=Label, x=x_pos, y=y_pos, shape=NULL), color="black") + 
   #label E124/E145
   geom_text_repel(data=plot_data__umap__tcga_flynn_a5_comete %>% 
-                    filter((Sample %in% c("E124-1", "E145-1") & Platform=="WTS") | 
-                    (Sample %in% c("E229-1", "E229-2") & Platform=="Methylation")),
+                    filter((Sample %in% c("E124-1", "E145-1") & Platform=="WTS")), 
+                  #|(Sample %in% c("E229-1", "E229-2") & Platform=="Methylation")),
             aes(label=Sample, shape=NULL), color="black", nudge_y =3) + 
   xlab("UMAP1") + ylab("UMAP2") + 
   labs(color="Subtype") + 
-  scale_color_manual(values =subtype_cols) +
+  scale_color_manual(values =subtype_cols, na.value = "black") +
   scale_shape_manual(values = c(A5=19, TCGA=0, "Loriot et al."=2, "Flynn et al."=5)) +
   theme_bw() + 
   theme(panel.grid = element_line(colour = "#f6f6f6ff"), aspect.ratio = 1) + 
@@ -198,7 +198,7 @@ gg_a5_umap <- ggplot(plot_data__umap__a5, aes(x=UMAP1, y=UMAP2, color=Primary_Lo
               mutate(Label=paste0("n=",n), x_pos=x_max-(x_range*0.08), y_pos=y_max-(y_range*0.01)),
             aes(label=Label, x=x_pos, y=y_pos, shape=NULL), color="black") + 
   geom_text_repel(data=plot_data__umap__a5 %>% 
-                    filter(Sample %in% c("E185-1", "E129-1", "E128-1")),
+                    filter(Sample %in% c("E185-1")),#, "E129-1", "E128-1"
                   aes(label=Sample, shape=NULL), color="black") + 
   xlab("UMAP1") + ylab("UMAP2") + 
   labs(color="Primary site") + 

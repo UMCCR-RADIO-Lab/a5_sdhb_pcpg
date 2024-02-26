@@ -575,7 +575,7 @@ count_contrast_members(contrast_matrix_genosampletype, design_matrix_genosamplet
 
 useful_contrasts <- c("TERT_All_vs_NonTERT",
                       "ATRX_All_vs_NonATRX",
-                      "Metastasis_All_vs_NonMetPri_WT")
+                      "Metastatic_All_vs_NonMetPri_WT")
 
 #+ AT_DE_contrasts_print, echo=FALSE
 
@@ -669,7 +669,7 @@ knitr::knit_expand(text="\nFiltered: Absolute-logFC >1, adj.P.Val < 0.05") %>% c
 #+ AT_DE_toptable_print_code, eval=output_tables, echo=FALSE
 if(output_tables)
 {
-  contrast = "Metastasis_All_vs_NonMetPri_WT"
+  contrast = "Metastatic_All_vs_NonMetPri_WT"
   DT::datatable(data = smallrna_top_tables[["genosampletype"]][[contrast]] %>% filter(abs(logFC)>1, adj.P.Val<0.05) %>% slice_min(n = 1000, order_by = adj.P.Val) %>% 
                   mutate(across(.cols = c(logFC, AveExpr, t, 
                                           P.Value, adj.P.Val, B), round, 4)), 
@@ -770,7 +770,7 @@ if(output_plots){
   tert <- plot_volcano(smallrna_top_tables[["genosampletype"]][["TERT_All_vs_NonTERT"]], 20) + ggtitle("TERT Mutant Vs Rest")
   atrx <- plot_volcano(smallrna_top_tables[["genosampletype"]][["ATRX_All_vs_NonATRX"]], 20) + ggtitle("ATRX Mutant Vs Rest")
   #tert_vs_atrx <- plot_volcano(smallrna_top_tables[["genosampletype"]][["ATRX_All_vs_TERT_All"]], 20) + ggtitle("TERT Vs ATRX")
-  met_vs_nonmet <- plot_volcano(smallrna_top_tables[["genosampletype"]][["Metastasis_All_vs_NonMetPri_WT"]], 20) + ggtitle("All metastases vs non-metastatic primaries")
+  met_vs_nonmet <- plot_volcano(smallrna_top_tables[["genosampletype"]][["Metastatic_All_vs_NonMetPri_WT"]], 20) + ggtitle("All metastases vs non-metastatic primaries")
   
   tert + atrx + met_vs_nonmet + plot_layout(nrow=1, guides="collect")
 }
@@ -794,7 +794,7 @@ if(output_plots){
     slice_head(n = 50) %>% 
     pull(Gene)
   
-  met_top <- smallrna_top_tables[["genosampletype"]][["Metastasis_All_vs_NonMetPri_WT"]] %>% 
+  met_top <- smallrna_top_tables[["genosampletype"]][["Metastatic_All_vs_NonMetPri_WT"]] %>% 
     filter(adj.P.Val < 0.05) %>% 
     arrange(desc(abs(logFC))) %>%  
     slice_head(n = 50) %>% 
@@ -859,7 +859,7 @@ if(output_plots){
       slice_head(n = genes_per_group) %>% 
       mutate(source="ATRXvsRest") %>% 
       dplyr::select(source, Gene),
-    smallrna_top_tables[["genosampletype"]][["Metastasis_All_vs_NonMetPri_WT"]] %>% 
+    smallrna_top_tables[["genosampletype"]][["Metastatic_All_vs_NonMetPri_WT"]] %>% 
       filter(adj.P.Val < 0.05) %>% 
       arrange(desc(abs(logFC))) %>% 
       slice_head(n = genes_per_group) %>% 

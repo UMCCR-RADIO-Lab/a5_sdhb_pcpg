@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -N A5_gistic
+#PBS -N a5_gistic
 #PBS -l ncpus=3
 #PBS -l walltime=3:00:00
 #PBS -l mem=24gb
@@ -8,10 +8,11 @@
 #PBS -m ae
 #PBS -M aidan.flynn@unimelb.edu.au
 
-threads=3
+threads=6
 
 ## run GISTIC analysis on GADI (modified from Andrew's Spartan scripts)
 
+source /g/data/pq08/people/flynna/software/miniconda3/etc/profile.d/conda.sh
 conda activate /g/data/pq08/projects/ppgl/a5/software/gistic2
 module load parallel
 
@@ -25,12 +26,13 @@ output_dir="${gistic_dir}/output"
 
 ## input file definitions
 declare -A seg_files
-seg_files['all']="${input_dir}/a5_purple_segs_gistic_format.seg"
-seg_files['non_metastatic_atpgl']="${input_dir}/a5_purple_segs_gistic_format_non_metastatic_atpgl.seg"
-seg_files['metastatic_atpgl']="${input_dir}/a5_purple_segs_gistic_format_metastatic_atpgl.seg"
-seg_files['tert']="${input_dir}/a5_purple_segs_gistic_format_tert_atpgl.seg"
-seg_files['atrx']="${input_dir}/a5_purple_segs_gistic_format_atrx_atpgl.seg"
-seg_files['hn']="${input_dir}/a5_purple_segs_gistic_format_all_hnpgl.seg"
+seg_files['all']="${input_dir}/a5_purple_segs_gistic_format_all.seg"
+seg_files['non_metastatic_sympathetic']="${input_dir}/a5_purple_segs_gistic_format_non_metastatic_sympathetic.seg"
+seg_files['metastatic_sympathetic']="${input_dir}/a5_purple_segs_gistic_format_metastatic_sympathetic.seg"
+seg_files['tert']="${input_dir}/a5_purple_segs_gistic_format_tert.seg"
+seg_files['atrx']="${input_dir}/a5_purple_segs_gistic_format_atrx.seg"
+seg_files['sympathetic']="${input_dir}/a5_purple_segs_gistic_format_sympathetic.seg"
+seg_files['parasympathetic']="${input_dir}/a5_purple_segs_gistic_format_parasympathetic.seg"
 
 #runner function for parallel
 run_gistic() { #outdir, seg_group, seg_file
@@ -45,12 +47,15 @@ run_gistic() { #outdir, seg_group, seg_file
     
     echo "--- running GISTIC ---"
     gistic2 -b "${output_dir}/${seg_group}" \
+    -ta 0.2 \
+    -td 0.2  \
+    -js 50 \
     -seg "${seg_file}" \
     -refgene "${ref_gene_file}" \
     -genegistic 1 \
     -smallmem 0 \
     -broad 1 \
-    -brlen 0.5 \
+    -brlen 0.75 \
     -conf 0.90 \
     -armpeel 1 \
     -savegene 1 \

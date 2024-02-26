@@ -23,7 +23,7 @@ source("./a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
 #########
 
 ensgid_to_hgnc <- ensgid_to_hgnc_from_biomart(ens_gids = rownames(wts_tcga_flynn_a5_lcpm.batch_removed),
-                                              use_cache = T) 
+                                              use_cache = T, update_cache = F, ensembl_mirror = "https://www.ensembl.org") 
 
 plot_data <- wts_tcga_flynn_a5_lcpm.batch_removed %>% 
   as_tibble(rownames = "ensembl_gene_id") %>% 
@@ -48,13 +48,15 @@ plot_data <- wts_tcga_flynn_a5_lcpm.batch_removed %>%
                                          Primary_Location_Simplified)) %>% 
   filter(Catecholamine_profile != "No data") %>% 
   mutate(Catecholamine_profile=recode(Catecholamine_profile, 
-         "Multiple - predominantly norepinephrine" = "Mixed",
-         "Norepinephrine and dopamine" = "Mixed"))
+          "Non secreting" = "Biochemically silent",
+         "Norepinephrine (minor dopamine)" = "Norepinephrine/dopamine",
+         "Norepinephrine and dopamine" = "Norepinephrine/dopamine"))
 
 
 ggplot(plot_data %>%  
          mutate(Catecholamine_profile=factor(Catecholamine_profile, 
-                                             levels=c("Non secreting", "Dopamine", "Norepinephrine", "Mixed"))), 
+                                             levels=c("Biochemically silent", "Dopamine", "Norepinephrine", "Norepinephrine/dopamine"))) %>% 
+         filter(Catecholamine_profile != "Norepinephrine/dopamine"), 
        aes(y=hgnc_symbol, 
            x=log2_cpm_z, 
            color=Primary_Location_Simplified,
@@ -103,7 +105,7 @@ ggplot(plot_data %>%
 #                                "A5 - Adrenal"="C1A1 (SDHx)",
 #                                "A5 - Head_neck"="C1A2 (SDHx-HN)",
 #                                "A5 - VHL"="C1B1 (VHL)",
-#                                "A5 - Extraadrenal_aortic"="C1A2 (SDHx-HN)",
+#                                "A5 - Extraadrenal_mediastinum"="C1A2 (SDHx-HN)",
 #                                "A5 - Unspecified"="C1A1 (SDHx)",
 #                                "C2B2 (MAML)"="C2B2 (MAML3)")) %>% 
 #   arrange(symbol, Sample) %>% 

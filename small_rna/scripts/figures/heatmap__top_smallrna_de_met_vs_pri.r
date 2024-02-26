@@ -40,9 +40,9 @@ GOI_pipe <- . %>% filter(adj.P.Val < 0.05) %>%
   dplyr::select(Gene, adj.P.Val, logFC, rank)
 
 GOI.met <- 
-  smallrna_top_tables[["genosampletype"]][["Metastasis_All_vs_NonMetPri_WT"]] %>% 
+  smallrna_top_tables[["genosampletype"]][["Metastatic_All_vs_NonMetPri_WT"]] %>% 
   GOI_pipe %>% 
-  mutate(source ="Metastasis_All_vs_NonMetPri_WT")
+  mutate(source ="Metastatic_All_vs_NonMetPri_WT")
 
 
 GOI.tert <- 
@@ -71,7 +71,7 @@ GOI <- bind_rows(GOI.met, GOI.tert, GOI.atrx)
 GOI.plot <- GOI
 
 GOI.plot$source <- factor(GOI.plot$source, 
-                          levels = c("Metastasis_All_vs_NonMetPri_WT",
+                          levels = c("Metastatic_All_vs_NonMetPri_WT",
                                      "TERT_All_vs_NonTERT",
                                      "ATRX_All_vs_NonATRX"))
 

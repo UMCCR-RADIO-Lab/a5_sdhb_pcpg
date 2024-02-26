@@ -65,7 +65,7 @@ quickload_correlation_matrix = T
 source("./a5/wts/scripts/differential_expression/wts_de_toptable_correlation_matrix.r")
 mki67_cor <- c(cor_mat_rho$TERT_All_vs_NonTERT["ENSG00000148773.14_MKI67",],
                cor_mat_rho$ATRX_All_vs_NonATRX["ENSG00000148773.14_MKI67",],
-               cor_mat_rho$Metastasis_All_vs_NonMetPri_WT["ENSG00000148773.14_MKI67",])
+               cor_mat_rho$Metastatic_All_vs_NonMetPri_WT["ENSG00000148773.14_MKI67",])
 mki67_cor <- mki67_cor[!duplicated(names(mki67_cor))]
 
 #####################
@@ -88,9 +88,9 @@ GOI_lfc_pipe <- . %>% filter(adj.P.Val < adj_pval_cutoff) %>%
   mutate(mki67_correlation=mki67_cor[Gene])
 
 GOI.met <- 
-  wts_top_tables[["genosampletype"]][["Metastasis_All_vs_NonMetPri_WT"]] %>% 
+  wts_top_tables[["genosampletype"]][["Metastatic_All_vs_NonMetPri_WT"]] %>% 
   GOI_lfc_pipe %>%  
-  mutate(source ="Metastasis_All_vs_NonMetPri_WT")
+  mutate(source ="Metastatic_All_vs_NonMetPri_WT")
 
 
 GOI.tert <- wts_top_tables[["genosampletype"]][["TERT_All_vs_NonTERT"]] %>% 
@@ -110,10 +110,10 @@ GOI <- bind_rows(GOI.met, GOI.tert, GOI.atrx)
 
 GOI <- GOI %>% 
   mutate(source = factor(as.character(source), 
-                         levels = c("Metastasis_All_vs_NonMetPri_WT", 
+                         levels = c("Metastatic_All_vs_NonMetPri_WT", 
                          "TERT_All_vs_NonTERT", "ATRX_All_vs_NonATRX")),
          source=forcats::fct_recode(source, 
-                                    "All Metastasis vs NMP"="Metastasis_All_vs_NonMetPri_WT", 
+                                    "All Metastasis vs NMP"="Metastatic_All_vs_NonMetPri_WT", 
                                     "TERT vs Rest"="TERT_All_vs_NonTERT", 
                                     "ATRX vs Rest"="ATRX_All_vs_NonATRX")) 
 

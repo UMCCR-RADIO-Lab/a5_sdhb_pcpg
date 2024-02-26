@@ -358,7 +358,8 @@ plot_methylation_vs_expr <- function(gene_symbol=NULL,
                                      colour_column=NULL,
                                      shape_column=NULL,
                                      colour_scale=NULL,
-                                     shape_scale=NULL)
+                                     shape_scale=NULL,
+                                     export_plot_data = NULL)
 {
   
 
@@ -411,15 +412,17 @@ plot_methylation_vs_expr <- function(gene_symbol=NULL,
       tidyr::separate_rows(UCSC_RefGene_Name, UCSC_RefGene_Group, sep=";") %>% 
       distinct()
     
-    if(length(unique(region_probes$UCSC_RefGene_Name)) > 1) {
-      stop("Supplied probes map to more than one gene. Unable to fetch gene expression.")
+    if(length(unique(region_probes$UCSC_RefGene_Name)) > 1 & is.null(gene_symbol)) {
+      stop("Supplied probes map to more than one gene. Unable to fetch gene expression. Please supply gene symbol.")
     }
     
-    if(unique(region_probes$UCSC_RefGene_Name) == "") {
+    if(all(unique(region_probes$UCSC_RefGene_Name) == "")) {
       stop("Supplied probes do not map to any gene symbol. Unable to fetch gene expression.")
     }
     
-    gene_symbol <- unique(region_probes$UCSC_RefGene_Name)
+    if(is.null(gene_symbol)){ 
+      gene_symbol <- unique(region_probes$UCSC_RefGene_Name)
+    }
     
   }
   
@@ -473,6 +476,11 @@ plot_methylation_vs_expr <- function(gene_symbol=NULL,
          log2cpm_z=(log2cpm-mean(log2cpm))/sd(log2cpm),
          label=ifelse((label_outliers & (abs(m_z) > outlier_z_threshold | abs(log2cpm_z) > outlier_z_threshold)) | 
                         Sample_ID %in% samples_to_label , Sample_ID, NA))
+  
+  if(!is.null(export_plot_data)){
+    assign(x = export_plot_data, value = plot.data, envir = globalenv())
+    message("Exported plot data to:", export_plot_data)
+  }
   
   if(plot_mode == "beta") { 
     y_source = "b_val" 

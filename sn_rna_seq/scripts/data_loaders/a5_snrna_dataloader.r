@@ -262,7 +262,7 @@ data_loader_a5_snrna <- function(quickload=T,
   
   if(!exists("a5_anno")) {
     source(paste0(base_dir,"/a5/sample_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r"))
-    data_loader_a5_clinical_anno(google_account = "aidan.flynn@umccr-radio-lab.org", use_cache = T, remove_excluded_samples = F)
+    data_loader_a5_clinical_anno(google_account = "aidan.flynn@umccr-radio-lab.org", use_cache = T, remove_excluded_samples = T)
   }
   
   if(!("differential_group" %in% colnames("a5_anno"))) {

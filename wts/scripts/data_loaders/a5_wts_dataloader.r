@@ -57,7 +57,7 @@ data_loader_a5_wts_counts <- function(count_file_dir=NULL, count_file_pattern=".
   exclude_genotype <- a5_anno %>%  filter(Genotype != "SDHB") %>% pull(A5_ID)
   exclude_no_rna_data <- setdiff(a5_anno$A5_ID, colnames(counts_df))
   exclude_no_wgs_data <- c("E181-1", "E191-1")
-  exclude_qc <- c("E144-1")
+  exclude_qc <- c("E144-1", "E159-3")
 
   exclude_base <- c(exclude_no_rna_data, exclude_no_wgs_data, exclude_qc, exclude_global, exclude_missing_anno)
   
@@ -79,8 +79,8 @@ data_loader_a5_wts_counts <- function(count_file_dir=NULL, count_file_pattern=".
     pull(A5_ID)
   
   #Select samples of unclear origin tumours based on UMAP
-  samples_aortic <- a5_anno %>% 
-    filter(differential_group_anatomy == "Aortic") %>% 
+  samples_mediastinum <- a5_anno %>% 
+    filter(differential_group_anatomy == "Mediastinum") %>% 
     pull(A5_ID)
   
   #Select samples of unclear origin tumours based on UMAP

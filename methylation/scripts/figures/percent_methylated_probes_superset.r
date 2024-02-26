@@ -9,6 +9,7 @@
 # Date: 11/08/2023                   #
 ######################################
 
+setwd("/g/data/pq08/projects/ppgl/")
 
 ##################
 # Color Definitions
@@ -57,8 +58,8 @@ plot_data <- tibble(Sample=names(n_high_meth),
                                "A5 - Adrenal"="C1A1 (SDHx)",
                                "A5 - Head_neck"="C1A2 (SDHx-HN)",
                                "A5 - VHL"="C1B1 (VHL)",
-                               "A5 - Extraadrenal_cardiac"="C1A2 (SDHx-HN)",
-                               "A5 - Extraadrenal_aortic"="C1A2 (SDHx-HN)",
+                               "A5 - Extraadrenal_cardiac"="C1A1 (SDHx)",
+                               "A5 - Extraadrenal_mediastinal"="C1A2 (SDHx-HN)",
                                "A5 - Unspecified"="C1A1 (SDHx)",
                                "C2B2 (MAML)"="C2B2 (MAML3)")) %>% 
   filter(!(subtype %in% c("Normal","C2C (Cortical admixture)"))) %>% 
@@ -81,3 +82,6 @@ ggplot(plot_data,
                               A5=ColorPalette[["DarkRed2"]])) +
   ylab(paste("Probes with beta > ", high_meth_cutoff, "(%)")) 
 
+
+
+t.test(pcnt_probes~subtype , plot_data %>%  filter(subtype %in% c("C1A1 (SDHx)","C1A2 (SDHx-HN)"))) 

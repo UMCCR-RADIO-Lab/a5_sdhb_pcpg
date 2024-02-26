@@ -28,7 +28,7 @@ ensgid_to_hgnc <- ensgid_to_hgnc_from_biomart(ens_gids = rownames(wts_tcga_flynn
 plot_data <- wts_tcga_flynn_a5_lcpm.batch_removed %>% 
   as_tibble(rownames = "ensembl_gene_id") %>% 
   inner_join(ensgid_to_hgnc) %>% 
-  filter(hgnc_symbol %in% c("PAH", "QDPR", "TH", "DDC" , "DBH","SLC18A2","PNMT", "SLC6A2")) %>% #, 
+  filter(hgnc_symbol %in% c("TH", "DDC" , "DBH","SLC18A2","PNMT", "SLC6A2")) %>% #"PAH", "QDPR", 
   pivot_longer(cols = c(-ensembl_gene_id,-hgnc_symbol), names_to = "Sample", values_to = "log2_cpm") %>% 
   group_by(hgnc_symbol) %>% mutate(log2_cpm_z=(log2_cpm-mean(log2_cpm))/sd(log2_cpm)) %>% 
   inner_join(a5_anno %>% 
@@ -38,34 +38,44 @@ plot_data <- wts_tcga_flynn_a5_lcpm.batch_removed %>%
   dplyr::rename("A5_ID"="Sample") %>% 
   mutate(hgnc_symbol=factor(hgnc_symbol, levels=rev(c("QDPR", "PAH", "TH", "DDC" , "DBH", "PNMT", "SLC18A2", "SLC6A2")))) %>% 
   arrange(hgnc_symbol, Primary_Location_Simplified, A5_ID) %>% 
-  mutate(label=ifelse(A5_ID %in% c("E152-1","E186-1","E182-1","E188-1",
-                                   "E225-1","E225-2", 
-                                   "E125-1","E133-1", 
-                                   "E146-1", "E146-2", "E160-1", "E165-1", "E152-1",
-                                   "E141-1","E200-1"), A5_ID,NA)) %>% 
+  mutate(label=ifelse(A5_ID %in% 
+                        c(#"E152-1","E186-1","E182-1","E188-1",
+                           #"E225-1","E225-2", 
+                           #"E125-1","E133-1", 
+                           #"E146-1", "E146-2", "E165-1", "E152-1",
+                           #"E141-1","E200-1"
+                          "E160-1") & hgnc_symbol=="TH", A5_ID,NA)) %>% 
   mutate(Primary_Location_Simplified=gsub("_abdominal|_thoracic|_bladder|_cardiac|_[Ll]eft|_[Rr]ight",
                                          "",
                                          Primary_Location_Simplified)) %>% 
   filter(Catecholamine_profile != "No data") %>% 
   mutate(Catecholamine_profile=recode(Catecholamine_profile, 
+                                      "Non secreting" = "Biochemically silent",
          "Norepinephrine (minor dopamine)" = "Norepinephrine",
-         "Norepinephrine and dopamine" = "Norepinephrine"))
+         "Norepinephrine and dopamine" = "Norepinephrine")) %>%  
+         mutate(Catecholamine_profile=factor(Catecholamine_profile, 
+                                             levels=c("Biochemically silent", "Dopamine", "Norepinephrine")))
 
+count_labels <- plot_data %>%  
+  ungroup() %>% 
+  dplyr::select(A5_ID,Catecholamine_profile) %>%  
+  distinct() %>%  
+  group_by(Catecholamine_profile) %>%  
+  count() %>% 
+  mutate(label=paste0("n=",n))
 
-ggplot(plot_data #%>%  
-         # mutate(Catecholamine_profile=factor(Catecholamine_profile, 
-         #                                     levels=c("Non secreting", "Dopamine", "Norepinephrine", "Mixed")))
-       , 
+ggplot(plot_data, 
        aes(y=hgnc_symbol, 
            x=log2_cpm_z, 
            color=Primary_Location_Simplified,
-           shape=Catecholamine_class,
+           #shape=Catecholamine_class,
            label=label,
            group=A5_ID)) + 
-  geom_point(position=position_jitter(width = 0, height = 0.1)) +
+  geom_point( size=0.7) +#position=position_jitter(width = 0, height = 0.1),
   geom_path(alpha=0.5,linetype="22") +
+  geom_text(data = count_labels, aes(group=NULL, color=NULL, label=label), x=2,y=6.3) +
   scale_color_manual(values=location_cols) +
-  scale_shape_manual(values=c("<3xULN"=6, ">3xULN"=2,"No data"=4)) +
+  #scale_shape_manual(values=c("<3xULN"=6, ">3xULN"=2,"No data"=4)) +
   ggrepel::geom_text_repel(nudge_y = 0.2) +       
   facet_wrap("Catecholamine_profile", ncol=4) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
@@ -106,7 +116,7 @@ ggplot(plot_data #%>%
 #                                "A5 - Adrenal"="C1A1 (SDHx)",
 #                                "A5 - Head_neck"="C1A2 (SDHx-HN)",
 #                                "A5 - VHL"="C1B1 (VHL)",
-#                                "A5 - Extraadrenal_aortic"="C1A2 (SDHx-HN)",
+#                                "A5 - Extraadrenal_mediastinum"="C1A2 (SDHx-HN)",
 #                                "A5 - Unspecified"="C1A1 (SDHx)",
 #                                "C2B2 (MAML)"="C2B2 (MAML3)")) %>% 
 #   arrange(symbol, Sample) %>% 

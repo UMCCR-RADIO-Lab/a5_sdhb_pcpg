@@ -13,7 +13,6 @@
 ##########################################################
 
 setwd("/g/data/pq08/projects/ppgl/a5")
-renv::activate("./")
 
 library(googlesheets4)
 library(dplyr)

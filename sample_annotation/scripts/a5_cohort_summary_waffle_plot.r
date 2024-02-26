@@ -20,7 +20,7 @@ swap_position <- function(Sample_ID, position_data, new_x, new_y)
     pull(Primary_Location_Simplified) %>% 
     as.character()
   
-  swap_donor_sample_type <- position_data %>% 
+  swap_donor_differential_group_sampletype_strict <- position_data %>% 
     filter(x_pos == new_x, y_pos == new_y) %>% 
     pull(differential_group_sampletype_strict) %>% 
     as.character()
@@ -30,7 +30,7 @@ swap_position <- function(Sample_ID, position_data, new_x, new_y)
     pull(A5_ID) %>% 
     as.character()
   
-  if(swap_donor_sample_type != swap_reciever_sample_type) {
+  if(swap_donor_differential_group_sampletype_strict != swap_reciever_differential_group_sampletype_strict) {
     stop("Donor/Reciever sample type do not match")
   }
   
@@ -66,7 +66,7 @@ if(!exists("a5_anno"))
 
 source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
 location_cols[["Extraadrenal (abdominal/thoracic)"]] <-  location_cols[["Extraadrenal"]]
-location_cols[["Extraadrenal (aortic)"]] <-  location_cols[["Extraadrenal_aortic"]]
+location_cols[["Extraadrenal (mediastinum)"]] <-  location_cols[["Extraadrenal_mediastinum"]]
 location_cols[["Extraadrenal (bladder)"]] <-  location_cols[["Extraadrenal_bladder"]]
 
 ################################
@@ -79,14 +79,14 @@ waffle_data <- a5_anno %>% filter(Exclude != "Y") %>%
                                                    "Extraadrenal_thoracic"="Extraadrenal (abdominal/thoracic)",
                                                    "Extraadrenal_thoracic_cardiac"="Extraadrenal (abdominal/thoracic)",
                                                    "Extraadrenal_bladder"="Extraadrenal (bladder)",
-                                                   "Extraadrenal_thoracic_aortic"="Extraadrenal (aortic)",
+                                                   "Extraadrenal_thoracic_mediastinum"="Extraadrenal (mediastinum)",
                                                    "Adrenal_left"="Adrenal",
                                                    "Adrenal_right"="Adrenal",
                                                    "Head_neck"="Head and neck"),
          Primary_Location_Simplified=factor(Primary_Location_Simplified,
                                             levels=c("Extraadrenal (abdominal/thoracic)",
                                                      "Extraadrenal (bladder)",
-                                                     "Extraadrenal (aortic)",
+                                                     "Extraadrenal (mediastinum)",
                                                      "Adrenal",
                                                      "Head and neck",
                                                      "Unspecified"))) %>% 
@@ -114,46 +114,51 @@ waffle_dots <- waffle_data %>%
 
 
 #Assign linked/paired samples to set positions for joining by lines
-#E128
+#E128 - Paired Primaries
 waffle_dots <- swap_position("E128-1",waffle_dots, new_x = 1, new_y = 10)
 waffle_dots <- swap_position("E128-2",waffle_dots, new_x = 2, new_y = 10)
-#E229
+#E229 - Paired Primaries
 waffle_dots <- swap_position("E229-1",waffle_dots, new_x = 1, new_y = 9)
 waffle_dots <- swap_position("E229-2",waffle_dots, new_x = 2, new_y = 9)
-#E122
-waffle_dots <- swap_position("E122-1",waffle_dots, new_x = 8, new_y = 7)
-waffle_dots <- swap_position("E122-2",waffle_dots, new_x = 8, new_y = 6)
-#E132
-waffle_dots <- swap_position("E132-2",waffle_dots, new_x = 8, new_y = 3)
-waffle_dots <- swap_position("E132-1",waffle_dots, new_x = 9, new_y = 3)
+#E136 - Paired Primaries
+waffle_dots <- swap_position("E136-1",waffle_dots, new_x = 1, new_y = 8)
+waffle_dots <- swap_position("E136-2",waffle_dots, new_x = 2, new_y = 8)
+#E129 - #E148 - swap
+#waffle_dots <- swap_position("E148-1",waffle_dots, new_x = 4, new_y = 2)
+#waffle_dots <- swap_position("E129-1",waffle_dots, new_x = 3, new_y = 1)
+#E122 - Local recurrence (metastasis reported) 
+waffle_dots <- swap_position("E122-1",waffle_dots, new_x = 7, new_y = 10)
+waffle_dots <- swap_position("E122-2",waffle_dots, new_x = 7, new_y = 9)
+#E159  - Paired Primary/mets(x 2) + Primary 
+waffle_dots <- swap_position("E159-2",waffle_dots, new_x = 7, new_y = 1)
+waffle_dots <- swap_position("E159-3",waffle_dots, new_x = 8, new_y = 1)
+waffle_dots <- swap_position("E159-1",waffle_dots, new_x = 9, new_y = 1)
+waffle_dots <- swap_position("E159-4",waffle_dots, new_x = 10, new_y = 1)
 #E143
-waffle_dots <- swap_position("E143-3",waffle_dots, new_x = 7, new_y = 10)
-waffle_dots <- swap_position("E143-1",waffle_dots, new_x = 8, new_y = 10)
-waffle_dots <- swap_position("E143-2",waffle_dots, new_x = 9, new_y = 10)
+waffle_dots <- swap_position("E143-3",waffle_dots, new_x = 8, new_y = 2)
+waffle_dots <- swap_position("E143-1",waffle_dots, new_x = 9, new_y = 2)
+waffle_dots <- swap_position("E143-2",waffle_dots, new_x = 10, new_y = 2)
 #E146
-waffle_dots <- swap_position("E146-1",waffle_dots, new_x = 8, new_y = 1)
-waffle_dots <- swap_position("E146-2",waffle_dots, new_x = 9, new_y = 1)
-#E158
-waffle_dots <- swap_position("E158-1",waffle_dots, new_x = 8, new_y = 2)
-waffle_dots <- swap_position("E158-2",waffle_dots, new_x = 9, new_y = 2)
-#E159
-waffle_dots <- swap_position("E159-2",waffle_dots, new_x = 4, new_y = 9)
-waffle_dots <- swap_position("E159-3",waffle_dots, new_x = 7, new_y = 9)
-waffle_dots <- swap_position("E159-1",waffle_dots, new_x = 8, new_y = 9)
-waffle_dots <- swap_position("E159-4",waffle_dots, new_x = 9, new_y = 9)
-#E166
-waffle_dots <- swap_position("E166-1",waffle_dots, new_x = 9, new_y = 6)
-waffle_dots <- swap_position("E166-2",waffle_dots, new_x = 10, new_y = 6)
-#E167
-waffle_dots <- swap_position("E167-1",waffle_dots, new_x = 9, new_y = 5)
-waffle_dots <- swap_position("E167-2",waffle_dots, new_x = 10, new_y = 5)
-#E169
-waffle_dots <- swap_position("E169-1",waffle_dots, new_x = 9, new_y = 4)
-waffle_dots <- swap_position("E169-2",waffle_dots, new_x = 10, new_y = 4)
+waffle_dots <- swap_position("E146-1",waffle_dots, new_x = 8, new_y = 3)
+waffle_dots <- swap_position("E146-2",waffle_dots, new_x = 9, new_y = 3)
 #E225
-waffle_dots <- swap_position("E225-1",waffle_dots, new_x = 7, new_y = 8)
-waffle_dots <- swap_position("E225-2",waffle_dots, new_x = 8, new_y = 8)
+waffle_dots <- swap_position("E225-1",waffle_dots, new_x = 8, new_y = 4)
+waffle_dots <- swap_position("E225-2",waffle_dots, new_x = 9, new_y = 4)
+#E158
+waffle_dots <- swap_position("E158-1",waffle_dots, new_x = 8, new_y = 5)
+waffle_dots <- swap_position("E158-2",waffle_dots, new_x = 9, new_y = 5)
+#E132
+waffle_dots <- swap_position("E132-2",waffle_dots, new_x = 8, new_y = 6)
+waffle_dots <- swap_position("E132-1",waffle_dots, new_x = 9, new_y = 6)
+#E169
+waffle_dots <- swap_position("E169-1",waffle_dots, new_x = 8, new_y = 7)
+waffle_dots <- swap_position("E169-2",waffle_dots, new_x = 9, new_y = 7)
+#E167
+waffle_dots <- swap_position("E167-1",waffle_dots, new_x = 8, new_y = 8)
+waffle_dots <- swap_position("E167-2",waffle_dots, new_x = 9, new_y = 8)
 
+waffle_dots <- waffle_dots %>%  
+  mutate(group=ifelse(`Patient ID` %in% c("E129", "E148"), `Patient ID`, group)) #set for group for pinning
 
 #Re-sort to bring similar combinations back into blocks after required position swaps  
 #Filter rows without a "required" location, isolate values and sort 
@@ -198,12 +203,7 @@ ggplot( ) +
   geom_line(data=waffle_dots %>% filter(A5_ID %in% c("E159-2","E159-3")), 
             mapping = aes(x=x_pos,y=y_pos, group=`Patient ID`),
             linetype=2) +
-  scale_fill_manual(
-    name = "Clinical Course",
-    values = c("#6ea668", "#6ea6cc", "#d6d6d4", "#f18d73", "#ee7474ff", "#969696", "#c04241ff"),
-    labels = c("Non-metastatic primary", "Primary (short follow up)", "Non-metastatic local recurrence",
-               "Primary (metastasis present)", "Metastatic primary","Metastatic local recurrence","Metastasis")
-  ) +
+  scale_fill_manual(values=sampletype_strict_cols) +
   scale_color_manual(
     name = "Anatomical Location (Primary)",
     values = location_cols)  +

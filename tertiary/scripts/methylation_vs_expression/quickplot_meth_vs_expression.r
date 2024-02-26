@@ -46,19 +46,20 @@ b_vals <- getBeta(a5_methylation_filtered)
 
 a5_wts_lcpm_list <- lapply(a5_wts_dge_list, cpm, log = T)
 
-plot_methylation_vs_expr(gene_symbol = "MSH6",
-                         samples_to_label = c("E169-1", "E169-2"),
+plot_methylation_vs_expr(#gene_symbol = "MSH6",
+                         probes = c("cg00539935", "cg12755110", "cg16080759", "cg16975576", "cg02269272", "cg05628496"),
+                         #samples_to_label = c("E169-1", "E169-2"),
                          label_outliers = F,
-                         sample_annotation = (a5_anno %>% dplyr::select(Sample_ID=A5_ID,differential_group_sampletype, Gender, TERT_ATRX_Mutation, differential_group_anatomy)), 
+                         sample_annotation = (a5_anno %>% dplyr::select(Sample_ID=A5_ID,differential_group_sampletype_strict, Gender, TERT_ATRX_Mutation, differential_group_anatomy)), 
                          b_vals = b_vals, 
                          summarise_probes_by_region = F,
                          m_vals = m_vals,
                          log2_cpm =a5_wts_lcpm_list$SDHB, 
                          plot_mode = "beta", 
                          array_type = "EPIC", 
-                         colour_column = "differential_group_anatomy", 
-                         grouping_column = "differential_group_anatomy",
-                         #shape_column = "TERT_ATRX_Mutation",
+                         colour_column = "differential_group_sampletype_strict", 
+                         grouping_column = "differential_group_sampletype_strict",
+                         shape_column = "TERT_ATRX_Mutation",
                          )
 
 plot_methylation(gene_symbol = "ATRX", 

@@ -8,9 +8,9 @@ source("./a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
 adj_pval_cutoff = 0.05
 
 GOI.met <- 
-  wts_top_tables[["genosampletype"]][["Metastasis_All_vs_NonMetPri_WT"]] %>% 
+  wts_top_tables[["genosampletype"]][["Metastatic_All_vs_NonMetPri_WT"]] %>% 
   filter(adj.P.Val < adj_pval_cutoff) %>%  
-  mutate(source ="Metastasis_All_vs_NonMetPri_WT")
+  mutate(source ="Metastatic_All_vs_NonMetPri_WT")
 
 
 GOI.tert <- wts_top_tables[["genosampletype"]][["TERT_All_vs_NonTERT"]] %>% 
@@ -44,10 +44,10 @@ plot_data <- GOI %>%
 
 plot_data <- plot_data %>% 
   mutate(source = factor(as.character(source), 
-                         levels = c("Metastasis_All_vs_NonMetPri_WT", 
+                         levels = c("Metastatic_All_vs_NonMetPri_WT", 
                                     "TERT_All_vs_NonTERT", "ATRX_All_vs_NonATRX")),
          source=forcats::fct_recode(source, 
-                                    "All Metastasis vs NMP"="Metastasis_All_vs_NonMetPri_WT", 
+                                    "All Metastasis vs NMP"="Metastatic_All_vs_NonMetPri_WT", 
                                     "TERT vs Rest"="TERT_All_vs_NonTERT", 
                                     "ATRX vs Rest"="ATRX_All_vs_NonATRX")) 
 

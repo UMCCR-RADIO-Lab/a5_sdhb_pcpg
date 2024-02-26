@@ -10,7 +10,11 @@ if(!require("IlluminaHumanMethylationEPICanno.ilm10b5.hg38"))
 if (!require("maxprobes")) {devtools::install_github("markgene/maxprobes")}
 
 
-data_loader_a5_methylation_array <- function(quickload=T, quickload_checkpoint_dir="/g/data/pq08/projects/ppgl/a5/methylation/quickload_checkpoints", output_qc=F, remove_excluded_samples=T, normalisation="Functional")
+data_loader_a5_methylation_array <- function(quickload=T, 
+                                             quickload_checkpoint_dir="/g/data/pq08/projects/ppgl/a5/methylation/quickload_checkpoints", 
+                                             output_qc=F, 
+                                             remove_excluded_samples=T, 
+                                             normalisation="Functional")
 {
   det_p_threshold <- 0.01
   
@@ -58,7 +62,7 @@ data_loader_a5_methylation_array <- function(quickload=T, quickload_checkpoint_d
     data_loader_a5_clinical_anno(google_account = "aidan.flynn@umccr-radio-lab.org", use_cache = T)
   }
   
-  excluded_samples <- a5_anno %>% filter(Exclude=="Y") %>% pull(A5_ID)
+
   
   # Find the sample sheet
   message("Reading targets file...")  
@@ -66,6 +70,11 @@ data_loader_a5_methylation_array <- function(quickload=T, quickload_checkpoint_d
     mutate (Sample_Name=gsub("E158_T01_D_(.)","E158_T0\\1_D",Sample_Name)) %>% #Fix misnamed samples
     mutate(Sample_Name = gsub("_T0", "-", Sample_Name)) %>% 
     mutate(Sample_Name = gsub("_D", "", Sample_Name))
+  
+  qc_excluded_samples <- NULL
+  global_excluded_samples <- a5_anno %>% filter(Exclude=="Y") %>% pull(A5_ID)
+  global_excluded_samples <- unique(c(global_excluded_samples, setdiff(targets$Sample_Name, a5_anno$A5_ID)))
+  excluded_samples <- c(qc_excluded_samples, global_excluded_samples)
   
   if(!("methylation_batch" %in% colnames(a5_anno))) {
     a5_anno_temp <- a5_anno %>% 

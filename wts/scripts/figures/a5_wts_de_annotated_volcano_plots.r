@@ -126,8 +126,10 @@ gene_geneset_lookup <- gene_geneset_lookup %>% filter(GeneSet %in% genesets_to_u
 # Data Loaders #
 ################
 
+if (!exists("wts_top_tables")) {
 output_qc <- FALSE; output_tables <- FALSE; output_plots <- FALSE
 source("./a5/wts/scripts/differential_expression/a5_wts_differential_expression.r")
+}
 
 ############
 # GO Terms #
@@ -209,7 +211,7 @@ go_levels <-
     "Chromatin/chromosome organization",
     "DNA repair",
     "DNA replication",
-    "Nervous system development/neurogenesis  ",
+    "Nervous system development/neurogenesis",
     "Programmed cell death",
     #"RNA biosynthetic process",
     "Regulation of DNA-templated transcription",
@@ -254,18 +256,22 @@ c26 = c("dodgerblue2",
 
 
 
-plot_volcano <- function(tt, n_label, lfc_cutoff=1.5, padj_cutoff=0.05, color_feature, color_scale){
+plot_volcano <- function(tt, n_label=30, genes_to_label=NULL, lfc_cutoff=1.5, padj_cutoff=0.05, color_feature, color_scale){
   
+  if(is.null(genes_to_label)) {
   genes_to_label <- tt %>% filter(adj.P.Val < padj_cutoff & abs(logFC) > lfc_cutoff) %>% 
     slice_min(adj.P.Val, n = n_label) %>% 
     pull(Gene)
+  } else {
+    genes_to_label <- tt %>%  filter(gene_symbol %in% genes_to_label) %>%  pull(Gene)
+  }
+  
+  if(!is.factor(tt[[color_feature]])) { stop("Color feature columns must be a factor")}
   
   tt_plot <- tt %>% #flag the most significant genes to label
     mutate(color_feature = if_else(adj.P.Val < padj_cutoff & abs(logFC) > lfc_cutoff , !!sym(color_feature), "Not significant"),
            color_feature = factor(as.character(color_feature), levels=levels(!!sym(color_feature)))) %>% 
     mutate(label = if_else(Gene %in% genes_to_label, TRUE, FALSE)) 
-  
-  color_scale[["Not significant"]] <- "black"
   
   volcano <- ggplot(tt_plot, aes(logFC, -log10(adj.P.Val))) +
     geom_point(aes(col=color_feature)) +
@@ -274,21 +280,34 @@ plot_volcano <- function(tt, n_label, lfc_cutoff=1.5, padj_cutoff=0.05, color_fe
       data = . %>% filter(label == TRUE),
       box.padding = unit(0.5, "lines"),
       point.padding = unit(0.1, "lines"),
-      segment.color = "grey",
+      #segment.color = "grey",
       max.overlaps = Inf,
-      size = 3,
+      size = 4,
+      nudge_y = 0.2,
       aes(label=gene_symbol)) +
     geom_hline(yintercept=-log10(padj_cutoff), linetype=2,color="red")+
     geom_vline(xintercept=c(lfc_cutoff, -1 * lfc_cutoff), linetype=2,color="red")+
-    theme_bw()
+    theme_bw() + theme(aspect.ratio = 1)
   
   return(volcano)
   
 }
 
+
+if(!exists("lfc_cutoff")) {
+  lfc_cutoff=1
+}
+
+if(!exists("padj_cutoff")) {
+  padj_cutoff=0.05
+}
+
 gg_volcano_go_benmet <- list()
 gg_volcano_geneset_benmet <- list()
-for (contrast in c("Metastasis_All_vs_NonMetPri_WT", "TERT_All_vs_NonTERT", "ATRX_All_vs_NonATRX"))
+genes_to_label <- list(Metastatic_All_vs_NonMetPri_WT = c("TERT","ATRX"),
+                       TERT_PriMet_vs_NonMetPri_WT = c("TERT"), 
+                       ATRX_PriMet_vs_NonMetPri_WT = c("DRG2", "RPRM"))
+for (contrast in c("Metastatic_All_vs_NonMetPri_WT", "TERT_PriMet_vs_NonMetPri_WT", "ATRX_PriMet_vs_NonMetPri_WT"))
 {
   
   plot_data_base <- wts_top_tables[["genosampletype"]][[contrast]] %>% 
@@ -300,19 +319,27 @@ for (contrast in c("Metastasis_All_vs_NonMetPri_WT", "TERT_All_vs_NonTERT", "ATR
   
   plot_data <- plot_data_base %>% mutate(parent_go_term = factor(as.character(parent_go_term), levels=c(go_levels, "Not significant")))
   col_set = setNames(c26[1:length(go_levels)], go_levels)
-  gg_volcano_go_benmet[[contrast]] <- plot_volcano(tt = plot_data, 
-               n_label = 30, 
-               color_feature = "parent_go_term",
-               color_scale = col_set) + ggtitle(contrast)
+  
+  gg_volcano_go_benmet[[contrast]] <- 
+    plot_volcano(tt = plot_data,
+                 padj_cutoff = padj_cutoff,
+                 lfc_cutoff = lfc_cutoff,
+                 genes_to_label = genes_to_label[[contrast]],
+                 color_feature = "parent_go_term",
+                 color_scale = col_set) + ggtitle(contrast)
   
   plot_data <- plot_data_base %>% mutate(GeneSet = replace_na(GeneSet, "None"),
-                        GeneSet = factor(as.character(GeneSet), levels=c(unique(GeneSet), "Not significant")))
+                                         GeneSet = factor(as.character(GeneSet), levels=c(unique(GeneSet), "Not significant")))
   col_set = setNames(c26[1:length(unique(plot_data$GeneSet))], unique(plot_data$GeneSet))
   col_set[["None"]] = "grey50"
-  gg_volcano_geneset_benmet[[contrast]] <- plot_volcano(tt = plot_data, 
-               n_label = 30, 
-               color_feature = "GeneSet",
-               color_scale = col_set) + ggtitle(contrast)
+  
+  gg_volcano_geneset_benmet[[contrast]] <- 
+    plot_volcano(tt = plot_data, 
+                 padj_cutoff = padj_cutoff,
+                 lfc_cutoff = lfc_cutoff,
+                 genes_to_label = genes_to_label[contrast],
+                 color_feature = "GeneSet",
+                 color_scale = col_set) + ggtitle(contrast)
   
 }
 
@@ -331,18 +358,66 @@ for (contrast in c("Parasympathetic_vs_Sympathetic"))
   
   plot_data <- plot_data_base %>% mutate(parent_go_term = factor(as.character(parent_go_term), levels=c(go_levels, "Not significant")))
   col_set = setNames(c26[1:length(go_levels)], go_levels)
-  gg_volcano_go_parasymp[[contrast]] <- plot_volcano(tt = plot_data, 
-                                            n_label = 30, 
-                                            color_feature = "parent_go_term",
-                                            color_scale = col_set) + ggtitle(contrast)
+  gg_volcano_go_parasymp[[contrast]] <- 
+    plot_volcano(tt = plot_data, 
+                 padj_cutoff = padj_cutoff,
+                 lfc_cutoff = lfc_cutoff,
+                 n_label = 30, 
+                 color_feature = "parent_go_term",
+                 color_scale = col_set) + ggtitle(contrast)
   
   plot_data <- plot_data_base %>% mutate(GeneSet = replace_na(GeneSet, "None"),
                                          GeneSet = factor(as.character(GeneSet), levels=c(unique(GeneSet), "Not significant")))
   col_set = setNames(c26[1:length(unique(plot_data$GeneSet))], unique(plot_data$GeneSet))
   col_set[["None"]] = "grey50"
-  gg_volcano_geneset_parasymp[[contrast]] <- plot_volcano(tt = plot_data, 
-                                                 n_label = 30, 
-                                                 color_feature = "GeneSet",
-                                                 color_scale = col_set) + ggtitle(contrast)
+  gg_volcano_geneset_parasymp[[contrast]] <- 
+    plot_volcano(tt = plot_data, 
+                 n_label = 30, 
+                 padj_cutoff = padj_cutoff,
+                 lfc_cutoff = lfc_cutoff,
+                 color_feature = "GeneSet",
+                 color_scale = col_set) + ggtitle(contrast)
   
 }
+
+
+#####################################
+# ATRX/TERT/Met_vs_NMP intersection #
+#####################################
+
+contrast = "Metastatic_All_vs_NonMetPri_WT"
+plot_data_base <- wts_top_tables[["genosampletype"]][[contrast]] %>% 
+  left_join(goterms)  %>% 
+  mutate(gene_symbol = ifelse(grepl("^A[CL][0-9]", gene_symbol), 
+                              stringr::str_extract(string = Gene, pattern = "ENSG[0-9]+"), 
+                              gene_symbol))
+
+plot_data <- plot_data_base %>% mutate(parent_go_term = factor(as.character(parent_go_term), levels=c(go_levels, "Not significant")))
+
+GOI <- purrr::map(.x = c(wts_top_tables$genosampletype[c("TERT_PriMet_vs_NonMetPri_WT","ATRX_PriMet_vs_NonMetPri_WT","Metastatic_All_vs_NonMetPri_WT")]), 
+                  .f = \(tt) { tt %>% filter(adj.P.Val < padj_cutoff, abs(logFC) > lfc_cutoff) %>% pull(ensembl_gene_id) }) %>% 
+  purrr::reduce(.f = intersect) %>% unique()
+
+hgnc_lookup <- wts_top_tables$genosampletype$Metastatic_All_vs_NonMetPri_WT %>% dplyr::select(ensembl_gene_id, gene_symbol)
+
+plot_data <- plot_data %>%  
+  mutate(color_field=ifelse(ensembl_gene_id %in% GOI, as.character(parent_go_term), "Not intersecting"),
+         color_field=factor(as.character(color_field), levels=c(go_levels, "Not significant", "Not intersecting")))
+plot_data <- plot_data %>%  arrange(desc(color_field))
+
+col_set = go_biotype_cols
+col_set[["Other"]] <- "black"
+col_set[["None"]] <- "black"
+col_set[["Not intersecting"]] <- "grey70"
+col_set[["Not significant"]] <- "grey50"
+
+cellcycle_genes <- unlist(purrr:::map(as.list(Revelio::revelioTestData_cyclicGenes), .f = \(x) as.character(x[!is.na(x)])))
+cellcycle_genes.use <- intersect(cellcycle_genes, hgnc_lookup$gene_symbol[hgnc_lookup$ensembl_gene_id %in% GOI])
+gg_volcano_go_benmet[[contrast]] <- 
+  plot_volcano(tt = plot_data,
+               padj_cutoff = padj_cutoff,
+               lfc_cutoff = lfc_cutoff,
+               genes_to_label = c("CDK1", "BUB1", "TOP2A", "AURKB", "EZH2", "MKI67", "FOXM1",
+                                  "LHX9","CDH19","PENK","FOXD3","DCHS2","SSTR1","FZD9"),
+               color_feature = "color_field",
+               color_scale = col_set) + ggtitle(contrast)

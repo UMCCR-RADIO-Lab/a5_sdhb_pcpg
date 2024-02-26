@@ -720,7 +720,8 @@ count_contrast_members(contrast_matrix_genosampletype, design_matrix_genosamplet
 
 useful_contrasts <- c("TERT_PriMet_vs_NonMetPri_WT",
                       "ATRX_PriMet_vs_NonMetPri_WT",
-                      "Metastasis_All_vs_NonMetPri_WT")
+                      "ATRX_All_vs_TERT_All",
+                      "Metastatic_All_vs_NonMetPri_WT")
 
 #+ AT_DE_contrasts_print, echo=FALSE
 
@@ -741,45 +742,73 @@ if(!all(counts_anno$A5_ID == rownames(design_matrix_genosampletype) & rownames(d
   stop("Sanity check failed on annotation, design matrix, and expression matrix row/columns ordering")
 }
 
-# voom transform
-
-par(mfrow=c(1,2))
-v <- voom(counts_dge, design_matrix_genosampletype, plot=TRUE)
-
-# estimate correlation between samples from the same patient  
-file_hashes <- purrr::map(list(a5_wts_dge_list[["SDHB_abdothoracic"]]$counts, 
-                               design_matrix_genosampletype, 
-                               counts_anno), 
-                          digest::digest, algo = "md5")
-suffix <- paste(purrr::map(file_hashes, stringr::str_sub, start=25, end=32), collapse = "_")
-checkpoint_file <- paste0("./a5/wts/quickload_checkpoints/dupcor_",suffix,".rds")
-if(file.exists(checkpoint_file))
+for (contrast in useful_contrasts)
 {
-  dupcor <- readRDS(file = checkpoint_file)
-} else {
-  dupcor <- duplicateCorrelation(v, design_matrix_genosampletype, block=counts_anno$`Patient ID`)
-  saveRDS(object = dupcor, file = checkpoint_file)
-}
-
-
-# differential expression analysis, keeping track of samples that are correlated as they come from the same patient
-vfit <- lmFit(v, 
-              design_matrix_genosampletype, 
-              block=counts_anno$`Patient ID`, 
-              correlation=dupcor$consensus)
-vfit <- contrasts.fit(vfit, contrasts=contrast_matrix_genosampletype)
-efit <- eBayes(vfit)
-plotSA(efit, main="Final model: Mean-variance trend")
-
-wts_de_fits[["genosampletype"]] <- efit
-
-sum.fit <- decideTests(efit, lfc = 0.5, adjust.method = "BH", p.value = 0.05)
-summary(sum.fit) %>% knitr::kable(caption = "DE gene counts at adj.p<0.05 and LFC>0.5")
-
-wts_top_tables[["genosampletype"]] <- list()
-for (contrast in dimnames(contrast_matrix_genosampletype)$Contrasts)
-{
-  # get top ATRX signature genes 
+  message("Processing contrast:", contrast)
+  # make a design matrix 
+  if (contrast %in% names(contrast_recode))
+  {
+    differential_group <- factor(dplyr::recode(counts_anno$differential_group,!!!contrast_recode[[contrast]]))
+  } else {
+    differential_group <- factor(counts_anno$differential_group)
+  }
+  
+  sex <- counts_anno$Gender
+  
+  design_mat <- model.matrix(~0 + differential_group + sex)
+  colnames(design_mat) <- gsub("differential_group","", colnames(design_mat))
+  rownames(design_mat) <- counts_anno$A5_ID
+  
+  contr_matrix <- rlang:::inject(
+    makeContrasts(!!!recoded_contrast_strings[contrast], levels = colnames(design_mat)))
+  
+  #######
+  # Perform fitting
+  #######
+  
+  # voom transform
+  
+  par(mfrow=c(1,2))
+  v <- voom(counts_dge, design_mat, plot=TRUE)
+  
+  # estimate correlation between samples from the same patient  
+  file_hashes <- purrr::map(list(a5_wts_dge_list[["SDHB_abdothoracic"]]$counts, 
+                                 design_mat, 
+                                 counts_anno), 
+                            digest::digest, algo = "md5")
+  suffix <- paste(purrr::map(file_hashes, stringr::str_sub, start=25, end=32), collapse = "_")
+  checkpoint_file <- paste0("./a5/wts/quickload_checkpoints/efit_",suffix,".rds")
+  if(file.exists(checkpoint_file))
+  {
+    efit <- readRDS(file = checkpoint_file)
+  } else {
+    
+    dupcor <- duplicateCorrelation(v, design_mat, block=counts_anno$`Patient ID`)
+    
+    # differential expression analysis, keeping track of samples that are correlated as they come from the same patient
+    vfit <- lmFit(v,
+                  design_mat,
+                  block=counts_anno$`Patient ID`,
+                  correlation=dupcor$consensus)
+    vfit <- contrasts.fit(vfit, contrasts=contr_matrix)
+    efit <- eBayes(vfit)
+    
+    
+    saveRDS(object = efit, file = checkpoint_file)
+  }
+  
+  plotSA(efit, main="Final model: Mean-variance trend")
+  
+  wts_de_fits[["genosampletype"]][[contrast]] <- efit
+  
+  sum.fit <- decideTests(efit, lfc = 1, adjust.method = "BH", p.value = 0.05)
+  
+  summary(sum.fit) %>% knitr::kable(caption = "DE gene counts at adj.p<0.05 and LFC>0.5")
+  
+  #######
+  # Generate TopTable
+  #######
+  
   go_pval_cutoff <- 0.05
   
   tt <- 
@@ -807,6 +836,7 @@ for (contrast in dimnames(contrast_matrix_genosampletype)$Contrasts)
   tt$GO_name[is.na(tt$GO_name) & tt$adj.P.Val < go_pval_cutoff] <- "None"
   
   wts_top_tables[["genosampletype"]][[contrast]] <-  tt
+  
 }
 # Get the top TERT signature genes 
 
@@ -829,14 +859,14 @@ for (contrast in dimnames(contrast_matrix_genosampletype)$Contrasts)
 # Result Tables 
 #########
 
-knitr::knit_expand(text="\n\n### Top 1000 DE - All Metastases vs. All Non-Metastatic Primaries\n\n") %>% cat()
+knitr::knit_expand(text="\n\n### Top 1000 DE - All Metastatic (Pri/Met) vs. All Non-Metastatic Primaries\n\n") %>% cat()
 
 knitr::knit_expand(text="\nFiltered: Absolute-logFC >1, adj.P.Val < 0.05") %>% cat()
 
 #+ AT_DE_toptable_print_code, eval=output_tables, echo=FALSE
 if(output_tables)
 {
-  contrast = "Metastasis_All_vs_NonMetPri_WT"
+  contrast = "Metastatic_All_vs_NonMetPri_WT"
   DT::datatable(data = wts_top_tables[["genosampletype"]][[contrast]] %>% filter(abs(logFC)>1, adj.P.Val<0.05) %>% slice_min(n = 1000, order_by = adj.P.Val) %>% 
                   mutate(across(.cols = c(logFC, AveExpr, t, 
                                           P.Value, adj.P.Val, B), 
@@ -939,7 +969,7 @@ if(output_plots){
   tert <- plot_volcano(wts_top_tables[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]], 20) + ggtitle("TERT Pri/Met Vs non-metastatic primaries")
   atrx <- plot_volcano(wts_top_tables[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]], 20) + ggtitle("ATRX Pri/Met Vs non-metastatic primaries")
   tert_vs_atrx <- plot_volcano(wts_top_tables[["genosampletype"]][["ATRX_All_vs_TERT_All"]], 20) + ggtitle("TERT Vs ATRX")
-  met_vs_nonmet <- plot_volcano(wts_top_tables[["genosampletype"]][["Metastasis_All_vs_NonMetPri_WT"]], 20) + ggtitle("All metastases vs non-metastatic primaries")
+  met_vs_nonmet <- plot_volcano(wts_top_tables[["genosampletype"]][["Metastatic_All_vs_NonMetPri_WT"]], 20) + ggtitle("All metastatic (pri/met) vs non-metastatic primaries")
   
   tert + atrx + tert_vs_atrx + met_vs_nonmet + plot_layout(ncol=1)
 }
@@ -963,7 +993,7 @@ if(output_plots){
     slice_head(n = 50) %>% 
     pull(Gene)
   
-  met_top <- wts_top_tables[["genosampletype"]][["Metastasis_All_vs_NonMetPri_WT"]] %>% 
+  met_top <- wts_top_tables[["genosampletype"]][["Metastatic_All_vs_NonMetPri_WT"]] %>% 
     filter(adj.P.Val < 0.05) %>% 
     arrange(desc(abs(logFC))) %>%  
     slice_head(n = 50) %>% 
@@ -1023,7 +1053,7 @@ if(output_plots){
       slice_head(n = genes_per_group) %>% 
       mutate(source="ATRXvsNonATRX") %>% 
       dplyr::select(source, Gene),
-    wts_top_tables[["genosampletype"]][["Metastasis_All_vs_NonMetPri_WT"]] %>% 
+    wts_top_tables[["genosampletype"]][["Metastatic_All_vs_NonMetPri_WT"]] %>% 
       filter(adj.P.Val < 0.05) %>% 
       arrange(desc(abs(logFC))) %>% 
       slice_head(n = genes_per_group) %>% 

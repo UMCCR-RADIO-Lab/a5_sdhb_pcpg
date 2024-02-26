@@ -8,7 +8,7 @@ setwd("/g/data/pq08/projects/ppgl")
 ################
 
 source("./a5/sample_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r")
-data_loader_a5_clinical_anno(google_account = "aidan.flynn@umccr-radio-lab.page", use_cache = T)
+data_loader_a5_clinical_anno(google_account = "aidan.flynn@umccr-radio-lab.page", use_cache = F)
 
 
 ########################
@@ -203,7 +203,7 @@ anno_to_swimmer <- function(patient_anno)
   
   swimmer_events[["presentation_timepoint"]] <- 
     patient_anno %>% 
-    select(`Patient ID`, dx_date) %>% 
+   dplyr::select(`Patient ID`, dx_date) %>% 
     distinct() %>% 
     pull(dx_date) 
   
@@ -245,12 +245,12 @@ anno_to_swimmer <- function(patient_anno)
   }
   
   swimmer_events[["sample_timepoint"]] <- patient_anno %>% 
-    select(PublicationID, sx_date, is_primary_or_met) %>% rowwise() %>% 
+   dplyr::select(PublicationID, sx_date, is_primary_or_met) %>% rowwise() %>% 
     mutate(sx_date = pad_and_format_date(sx_date,
                                          date_accuracy(sx_date)))
   
   additional_surgery_annotation <- patient_anno %>% 
-    select(PublicationID, surgical_events_excluding_profiled) %>% 
+   dplyr::select(PublicationID, surgical_events_excluding_profiled) %>% 
     filter(!is.na(surgical_events_excluding_profiled)) 
   
   if(nrow(additional_surgery_annotation) > 0) {
@@ -258,7 +258,7 @@ anno_to_swimmer <- function(patient_anno)
   }
   
   sample_treament_annotation <- patient_anno %>% 
-    select(PublicationID, non_surgical_therapy) %>% 
+   dplyr::select(PublicationID, non_surgical_therapy) %>% 
     filter(!is.na(non_surgical_therapy)) 
   
   if(nrow(sample_treament_annotation) > 0) {
@@ -355,6 +355,7 @@ a5_anno_use <- a5_anno %>%
   filter(Exclude == "N") %>% 
   #mutate(multisample=n()>1) %>% 
   #filter(multisample | !is.na(non_surgical_therapy)) %>% 
+  filter(any(tumour_metastasised =="Yes")) %>% 
   #filter(!(non_surgical_therapy %in% c("Interferon","SSA"))) %>% 
   #filter(A5_ID != "E168-1") %>% #Unreliable information 
   mutate(tumour_metastasised = ifelse(A5_ID == "E159-2", "Yes", tumour_metastasised)) %>% 
@@ -368,7 +369,8 @@ a5_anno_use <- a5_anno %>%
                                                    `Date of first pathologic diagnosis of PPGL (MM/YYYY)`, 
                                                    `Date of resection (DD/MM/YYYY)`)) %>% 
   mutate(Post_diagnosis_follow_up_months = gsub("<","",Post_diagnosis_follow_up_months)) %>% 
-  mutate(Overall_Survival = gsub("<","",Overall_Survival))
+  mutate(Overall_Survival = gsub("<","",Overall_Survival)) %>% 
+  mutate(`Date of first pathologic diagnosis of PPGL (MM/YYYY)` = ifelse(A5_ID=="E204-1", `Date of resection (DD/MM/YYYY)`, `Date of first pathologic diagnosis of PPGL (MM/YYYY)`))
 
 
 
@@ -425,7 +427,7 @@ swimmer_sx <- purrr::map2(
     }
     
     if ("sample_timepoint" %in% names(patient_anno)) {
-      if (nrow(patient_anno[["sample_timepoint"]] > 0))
+      if (nrow(patient_anno[["sample_timepoint"]]) > 0)
       {
         return_table <- return_table %>% 
           add_row(tibble(patient_id = patient_id, 
@@ -446,10 +448,12 @@ swimmer_tx <- purrr::map2(
                            treatment = vector(mode = "character"),
                            quantity = vector(mode = "character"),
                            time_start = vector(mode = "numeric"),
-                           time_end = vector(mode = "numeric"))
+                           time_end = vector(mode = "numeric"),
+                           start_date_accuracy = vector(mode = "character"),
+                           end_date_accuracy = vector(mode = "character"))
     
     if ("treament_timepoint" %in% names(patient_anno)) {
-      if (nrow(patient_anno[["treament_timepoint"]] > 0)){
+      if (nrow(patient_anno[["treament_timepoint"]]) > 0){
         TOI <- patient_anno[["treament_timepoint"]] %>% filter(grepl("MIBG|CVD|TMZ|Luta",treatment_type)) %>% 
           separate(col = treatment_type, into = c("treatment","quantity"), sep=" - ")
         if (nrow(TOI) > 0) {
@@ -458,7 +462,9 @@ swimmer_tx <- purrr::map2(
                            treatment = TOI$treatment, 
                            quantity = TOI[["quantity"]],
                            time_start = TOI[["start_date"]],
-                           time_end = TOI[["end_date"]]))
+                           time_end = TOI[["end_date"]],
+                           start_date_accuracy = TOI[["start_date_accuracy"]],
+                           end_date_accuracy = TOI[["end_date_accuracy"]]))
         }
       }
     }
@@ -475,7 +481,7 @@ swimmer_plot <- swimmer_plot(df=swimmer_base,id='patient_id',end='end',name_fill
 
 swimmer_plot <- swimmer_plot +
   swimmer_lines(df_lines=swimmer_tx,id='patient_id',start =
-                  'time_start',end='time_end',name_col='treatment',size=1.5)
+                  'time_start',end='time_end',name_col='treatment', size=1.5 ) #name_size = "start_date_accuracy"
 
 swimmer_plot <- swimmer_plot + swimmer_points(df_points= swimmer_sx,
                                               id='patient_id',
@@ -488,5 +494,6 @@ swimmer_plot <- swimmer_plot + swimmer_points(df_points= swimmer_sx,
 swimmer_plot <- swimmer_plot + 
   scale_fill_manual(name="Clinical behaviour", values=c(`No Metastatic Disease`="#98ca8cff", `Metastatic Disease`="#de5353ff")) +
   scale_color_manual(name="Treatment", values=c(CVD="#f4e764ff", `I131-MIBG`="#cadae8ff", `CAPE/TMZ`="#d6a097ff", Lutate="#efecdcff")) +
-  scale_shape_manual(name="Event", values=c("Death"=4,"Surgery - Metastasis"=8,"Surgery - Primary"=1, "Surgery - Recurrent"=3))
+  scale_shape_manual(name="Event", values=c("Death"=4,"Surgery - Metastasis"=8,"Surgery - Primary"=1, "Surgery - Recurrent"=3)) +
+  scale_size_manual(values=c("Day"=3, "Month"=1.5, "Year"=0.6))
 

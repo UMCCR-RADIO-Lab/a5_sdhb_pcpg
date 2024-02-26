@@ -67,11 +67,28 @@ subtype_cols <- subtype_cols[!duplicated(names(subtype_cols))]
 subtype_cols[["C2B2 (MAML3)"]] <- subtype_cols[["C2B2 (MAML)"]]
 
 
-differential_group_colors=c("darkolivegreen","darkgreen","burlywood1","burlywood4",
-                            "red","coral","coral","coral","coral3","coral3",
-                            "lightblue","lightblue","darkblue","grey","grey",
-                            "chocolate3","chocolate3","chocolate3","purple","palevioletred2")
-names(differential_group_colors) <- differential_group_levels
+differential_group_colors=
+  c("NMP_WT_VAFOK_PurityLow" = "darkolivegreen",
+    "NMP_WT_VAFOK_PurityOK" = "darkgreen",
+    "SFU_ATRX_VAFOK_PurityOK" = "burlywood1",
+    "SFU_TERT_VAFOK_PurityLow" = "burlywood4",
+    "SFU_WT_VAFOK_PurityOK" = "yellow",
+    "MetatastaticPrimaryUnconfirmed_ATRX_VAFOK_PurityLow" = "lightblue",
+    "MetatastaticPrimaryUnconfirmed_ATRX_VAFOK_PurityOK" = "lightblue",
+    "MetatastaticPrimaryUnconfirmed_TERT_VAFLow_PurityLow" = "coral",
+    "MetatastaticPrimaryUnconfirmed_TERT_VAFLow_PurityOK" = "coral3",
+    "MetatastaticPrimaryUnconfirmed_TERT_VAFOK_PurityOK" = "coral3",
+    "MetatastaticPrimaryUnconfirmed_WT_VAFOK_PurityLow" = "purple",
+    "MetatastaticPrimaryUnconfirmed_WT_VAFOK_PurityOK" = "purple",
+    "MetatastaticPrimaryConfirmed_ATRX_VAFOK_PurityOK" = "blue",
+    "MetatastaticPrimaryConfirmed_TERT_VAFLow_PurityOK" = "chocolate3",
+    "MetatastaticPrimaryConfirmed_TERT_VAFOK_PurityOK" = "chocolate3",
+    "MetatastaticPrimaryConfirmed_WT_VAFOK_PurityOK" = "red1",
+    "Metastasis_ATRX_VAFOK_PurityOK" = "darkblue",
+    "Metastasis_TERT_VAFOK_PurityLow" = "orange",
+    "Metastasis_TERT_VAFOK_PurityOK" = "orange",
+    "Metastasis_WT_VAFOK_PurityOK" = "red3",
+    "Normal_WT_VAFOK_PurityOK" = "palevioletred2")
 
 # ggplot scales
 
@@ -88,10 +105,12 @@ continuous_colours = c("blue", "white", "yellow")
 cont_color_scale = scale_color_gradientn(colours = continuous_colours)
 cont_fill_scale2 = scale_fill_gradientn(colours = continuous_colours)
 
-specimen_type_cols = setNames(c(ColorPalette[["DarkGreen2"]], ColorPalette[["LightOrange1"]],
-                              ColorPalette[["LightRed2"]], ColorPalette[["LightGrey2"]]),
-                              c("Non-malignant Primary", "Malignant primary", 
-                                "Metastasis", "Local Recurrance"))
+specimen_type_cols = c("Non-malignant Primary"=ColorPalette[["DarkGreen2"]], 
+                       "Malignant primary"="orange",
+                       `SFU` = ColorPalette[["Yellow3"]],
+                       "Metastasis"= ColorPalette[["LightRed2"]], 
+                       "Local Recurrance"= ColorPalette[["LightGrey2"]])
+                              
 specimen_type_cols[["MetastaticPrimary"]] <- specimen_type_cols[["Malignant primary"]]
 specimen_type_cols[["NonMetastaticPrimary"]] <- specimen_type_cols[["Non-malignant Primary"]]
 specimen_type_cols[["Other"]] <- "#999999"
@@ -100,10 +119,10 @@ specimen_type_cols[["Other"]] <- "#999999"
 sampletype_strict_cols <- c(`Non-metastatic primary` = ColorPalette[["DarkGreen2"]],
   `Non-metastatic local recurrence` = ColorPalette[["LightBlue1"]],
   `Primary (short follow up)` = ColorPalette[["Yellow3"]],
-  `Primary (metastasis present)` = ColorPalette[["DarkBrown2"]],
-  #`Local recurrence (metastasis present)` = ColorPalette[["LightBlue3"]],
+  `Primary (metastasis reported)` = ColorPalette[["DarkBrown2"]],
+  `Local recurrence (metastasis reported)` = ColorPalette[["LightBlue3"]],
   `Metastatic primary` = ColorPalette[["LightOrange2"]],
-  #`Metastatic local recurrence` = ColorPalette[["DarkBlue3"]],
+  `Metastatic local recurrence` = ColorPalette[["DarkBlue3"]],
   `Metastasis` = ColorPalette[["LightRed2"]],
   `SFU` = ColorPalette[["DarkBlue3"]])
 
@@ -111,13 +130,13 @@ sampletype_strict_cols <- c(`Non-metastatic primary` = ColorPalette[["DarkGreen2
 location_cols = c("Adrenal"=ColorPalette[["LightGreen1"]], 
                   "Extraadrenal"=ColorPalette[["DarkBlue1"]], 
                   "Head_neck"=ColorPalette[["LightOrange1"]], 
-                  "Extraadrenal_aortic"=ColorPalette[["DarkRed1"]], 
+                  "Extraadrenal_mediastinum"=ColorPalette[["DarkRed1"]], 
                   "Metastasis"=ColorPalette[["Purple3"]], 
                   "Unspecified"=ColorPalette[["DarkGrey1"]])
 location_cols[["Head and neck"]] <- location_cols[["Head_neck"]] 
 location_cols[["Extraadrenal_bladder"]] = "#99cccc"
 location_cols[["Extraadrenal (abdominal/thoracic)"]] <-  location_cols[["Extraadrenal"]]
-location_cols[["Extraadrenal (aortic)"]] <-  location_cols[["Extraadrenal_aortic"]]
+location_cols[["Extraadrenal (mediastinum)"]] <-  location_cols[["Extraadrenal_mediastinum"]]
 location_cols[["Extraadrenal (bladder)"]] <-  location_cols[["Extraadrenal_bladder"]]
 
 driver_cols <- c(ATRX=ColorPalette[["DarkBlue1"]], 
@@ -162,3 +181,33 @@ cna_palette <- c(`None`=ColorPalette[["LightGrey1"]],
                  `Loss + Subclonal CNLOH`=ColorPalette[["LightOrange2"]],
                  `Diploid/Haploid-X`=ColorPalette[["LightGrey1"]],
                  `Minor Subclonal Loss`= ColorPalette[["Salmon"]])
+
+
+go_biotype_cols <- c("Cell adhesion" = c25[[1]],
+                     "Cell cycle/proliferation" = c25[[2]],
+                     "Cell migration" = c25[[3]],
+                     "Cellular developmental process" = c25[[4]],
+                     "Cellular response to DNA damage stimulus" = c25[[5]],
+                     "Chromatin/chromosome organization" = c25[[6]],
+                     "Nervous system development/neurogenesis" = c25[[7]],
+                     "None" = "gray30",
+                     "Other" = "gray70",
+                     "Programmed cell death" = c25[[10]],
+                     "Pseudogene" = c25[[11]],
+                     "Regulation of DNA-templated transcription" = c25[[23]],
+                     "lncRNA" = c25[[18]],
+                     "Angiogenesis" = c25[[14]],
+                     "DNA replication"  = c25[[15]])
+
+bio_types <-  c(
+   "protein_coding","processed_pseudogene",
+   "transcribed_unprocessed_pseudogene", "snRNA","misc_RNA",
+   "unitary_pseudogene","unprocessed_pseudogene", "miRNA",
+   "Not available", "TEC", "pseudogene","snoRNA", "transcribed_processed_pseudogene",
+   "IG_V_pseudogene","transcribed_unitary_pseudogene","rRNA_pseudogene", 
+   "IG_D_gene","lncRNA", "TR_V_pseudogene","TR_V_gene")
+
+bio_type_cols <- setNames(c25[1:length(bio_types)], bio_types)
+rm(bio_types)
+
+

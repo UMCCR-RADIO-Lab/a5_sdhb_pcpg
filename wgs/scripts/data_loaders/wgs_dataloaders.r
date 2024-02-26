@@ -485,10 +485,11 @@ data_loader_cna_segs <- function()
   A5_seg <- A5_seg %>% mutate(A5_ID=gsub("T0","",A5_ID))
   A5_seg <- A5_seg %>%  dplyr::filter(chromosome!="chrY")
   
-  A5_seg_keep <- A5_seg  %>%  filter((end-start > 1000000 & (bafCount > 20 | chromosome=="chrX") & depthWindowCount > 100) | 
-                                       #segmentStartSupport %in% c("BND","DEL","SGL","DUP","INV","MULTIPLE","INF"),
-                                       #segmentEndSupport %in% c("BND","DEL","SGL","DUP","INV","MULTIPLE","INF"),
-                                       method=="BAF_WEIGHTED")
+  A5_seg_keep <- A5_seg  %>% filter(method=="BAF_WEIGHTED")
+  # A5_seg_keep <- A5_seg  %>%  filter((end-start > 1000000 & (bafCount > 20 | chromosome=="chrX") & depthWindowCount > 100), 
+  #                                      #segmentStartSupport %in% c("BND","DEL","SGL","DUP","INV","MULTIPLE","INF"),
+  #                                      #segmentEndSupport %in% c("BND","DEL","SGL","DUP","INV","MULTIPLE","INF"),
+  #                                      method=="BAF_WEIGHTED")
   
   A5_seg_keep <- A5_seg_keep %>% left_join(a5_anno %>%  dplyr::select(A5_ID, Gender))
   A5_seg_keep <- A5_seg_keep %>% group_by(A5_ID) %>% mutate(mean_copyNumber=mean(copyNumber)) %>%  ungroup()
@@ -522,7 +523,7 @@ data_loader_cna_segs <- function()
   assign("chr_offsets", chr_offsets, envir = globalenv())
   assign("chromothripsis_regions", chromothripsis_regions, envir = globalenv())
   
-  message("Created objects A5_seg, A5_seg_keep (size/quality filtered and annotated), chr_offsets (linear chr pos for plotting")
+  message("Created objects a5_seg, a5_seg_keep (size/quality filtered and annotated), chr_offsets (linear chr pos for plotting")
   
   
 }

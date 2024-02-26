@@ -41,7 +41,7 @@ sample_anno <- wts_tcga_flynn_a5_anno %>%
                                "A5 - Adrenal"="C1A1 (SDHx)",
                                "A5 - Head_neck"="C1A2 (SDHx-HN)",
                                "A5 - VHL"="C1B1 (VHL)",
-                               "A5 - Extraadrenal_aortic"="C1A2 (SDHx-HN)",
+                               "A5 - Extraadrenal_mediastinum"="C1A2 (SDHx-HN)",
                                "A5 - Unspecified"="C1A1 (SDHx)",
                                "C2B2 (MAML)"="C2B2 (MAML3)"),
          Malignancy=replace_na(Malignancy, "Unknown")) 
@@ -70,8 +70,8 @@ rownames(wts_tcga_flynn_a5_lcpm.batch_removed) <- ensgid_symbol_lookup$symbol[ma
 ############
 
 plot_methylation_vs_expr(#gene_symbol = "MGMT",
-                         probes= c("cg12434587","cg12981137","cg09993459", "cg04473030","cg13405636"),
-                         samples_to_label = c("E169-1", "E169-2"),
+                         probes= c("cg00539935", "cg12755110", "cg16080759", "cg16975576", "cg02269272", "cg05628496"),
+                         samples_to_label = c("E169-1", "E169-2", "E167-2"),
                          label_outliers = F,
                          sample_annotation = (sample_anno %>% dplyr::select(Sample_ID=Sample, subtype, Sex, Malignancy, Genotype, PCPG, ATRX_mutation)), 
                          b_vals = b_vals, 
@@ -86,16 +86,16 @@ plot_methylation_vs_expr(#gene_symbol = "MGMT",
                          colour_scale = subtype_cols 
 )
 
-plot_methylation(#gene_symbol = "MGMT", 
-                 region = "chr10:131265043-131265625",
+plot_methylation(gene_symbol = "SLC6A2", 
+                 #region = "chr10:131265043-131265625",
                  show_mean_summarised_only = F,
                  label_outliers = F,
-                 sample_annotation = (sample_anno %>% dplyr::select(Sample_ID=Sample, subtype, Malignancy, Genotype, PCPG, ATRX_mutation)), 
+                 sample_annotation = (sample_anno %>% dplyr::select(Sample_ID=Sample, Dataset, subtype, Malignancy, Genotype, PCPG, ATRX_mutation)), 
                  b_vals = b_vals, 
                  m_vals = m_vals, 
                  plot_mode = "m", 
                  array_type = "450K", 
                  colour_column = "subtype", 
-                 grouping_column = "subtype",
+                 grouping_column = "Malignancy",
                  colour_scale = subtype_cols,
-                 shape_column = "Malignancy")  + coord_cartesian(ylim=c(-8,2))
+                 shape_column = "Dataset")  + coord_cartesian(ylim=c(-6,4))

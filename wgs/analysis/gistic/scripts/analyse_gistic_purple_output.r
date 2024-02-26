@@ -22,9 +22,24 @@ library(ggplot2)
 #$GIS_folder/gistic2 -b $basedir -seg $segfile -refgene $refgenefile -genegistic 1 -smallmem 0 -broad 1 -brlen 0.5 \
 # -conf 0.90 -armpeel 1 -savegene 1 -gcm extreme -rx 0
 
-base_dir="/g/data/pq08/projects/ppgl/a5"
+setwd("/g/data/pq08/projects/ppgl/")
 
-gistic_output_dir=paste(base_dir, "wgs/analysis/gistic/output", sep="/")
+#######################
+# Clinical Annotation #
+#######################
+
+source(paste0(basedir,"/sample_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r"))
+data_loader_a5_clinical_anno(google_account = "aidan.flynn@umccr-radio-lab.page", use_cache = T)
+
+###############
+# GISTIC Data #
+###############
+
+##########
+# GISTIC Narrow Peaks 
+##########
+
+gistic_output_dir="./a5/wgs/analysis/gistic/output"
 
 gistic_score_files <- list.files(gistic_output_dir, pattern="scores.gistic", recursive = T, full.names = T)
 names(gistic_score_files) <- basename(gsub("/scores.gistic","",gistic_score_files))
@@ -46,6 +61,26 @@ ggplot(gistic_scores %>%
 
 gistic_scores %>% filter(Group %in% c("malignant_tert_atrx", "non_malignant_primary_nohn"), Type=="Amp") %>% 
   pivot_wider(id_cols = c(Chromosome, Start, End), names_from = Group, values_from = `-log10(q-value)`)
+
+##########
+# GISTIC Broad Peaks 
+##########
+
+broad_peaks <- read.delim(file.path(gistic_output_dir,"broad_values_by_arm.txt"))
+
+broad_peaks <- broad_peaks %>% 
+  pivot_longer(cols = -`Chromosome Arm`, names_to="A5_ID", values_to = "value") %>% 
+  mutate(A5_ID = gsub("-T0", "-", A5_ID))
+
+broad_peaks <- broad_peaks %>% 
+  mutate(value_catagory = 
+           case_when(
+             value > 0.25 ~ "Gain",
+             value < -0.25 ~ "Loss",
+             TRUE ~ "Neutral"
+           ))
+
+broad_peaks <- broad_peaks %>% inner_join(a5_anno)
 
 ######################
 # ANDREW LEGACY CODE #

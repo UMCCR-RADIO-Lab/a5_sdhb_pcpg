@@ -113,7 +113,7 @@ wts_tcga_flynn_a5_dge <- wts_tcga_flynn_a5_dge[keep.exprs,, keep.lib.sizes=FALSE
 # Apply TMM normalisation to the DGElist
 wts_tcga_flynn_a5_dge <- calcNormFactors(wts_tcga_flynn_a5_dge)
 # Convert the TMM counts to log2 CPMs
-wts_tcga_flynn_a5_lcpm <- cpm(wts_tcga_flynn_a5_dge, log = T)
+wts_tcga_flynn_a5_lcpm <- edgeR::cpm(wts_tcga_flynn_a5_dge, log = T)
 
 design_genotype <- model.matrix(~0 + Genotype, data = wts_tcga_flynn_a5_anno)
 colnames(design_genotype) <- gsub("Genotype| ","", colnames(design_genotype))

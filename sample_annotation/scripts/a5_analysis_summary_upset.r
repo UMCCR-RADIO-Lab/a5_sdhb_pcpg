@@ -12,6 +12,7 @@ library(ggupset)
 library(grid)
 
 source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r")
+source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
 
 if(!exists("a5_anno")) {
   data_loader_a5_clinical_anno(use_cache = T) }
@@ -52,7 +53,7 @@ assay_combo_by_anatomy <- a5_anno %>% filter(Exclude=="N") %>%
                          "Extraadrenal_thoracic_cardiac"="Extraadrenal",
                          "Extraadrenal_abdominal"="Extraadrenal",
                          "Extraadrenal_bladder"="Extraadrenal",
-                         "Extraadrenal_thoracic_aortic"="Extraadrenal")) %>% 
+                         "Extraadrenal_thoracic_mediastinum"="Extraadrenal")) %>% 
   inner_join(assay_groups) %>% 
   group_by(Assay, Primary_Location_Simplified, n_assay_combo) %>% dplyr::count(name="n_samples")
 

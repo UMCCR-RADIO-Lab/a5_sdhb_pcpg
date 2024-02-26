@@ -65,13 +65,14 @@ mmr_expr <- cpm(a5_wts_dge_list$SDHB, log = T) %>%
   separate(ensgid_symbol, into=c("ensgid","symbol"), extra = "merge", se="_") %>% 
   group_by(symbol) %>% mutate(log2_cpm_z=(log2_cpm-mean(log2_cpm))/sd(log2_cpm)) 
 
-patient = "E169"
+patients = c("E167","E169")
 
 mmr_expr <- mmr_expr %>% 
-    mutate(point_color=ifelse(grepl(patient, A5_ID), A5_ID, "Other"), 
-           Label=ifelse(test = grepl(patient, A5_ID), 
+    mutate(point_color=ifelse(gsub("-.","",A5_ID) %in% patients, A5_ID, "Other"),
+           PublicationID = dplyr::recode(A5_ID, !!!setNames(a5_anno$PublicationID, a5_anno$A5_ID)),
+           Label=ifelse(test = gsub("-.","",A5_ID) %in% patients, 
                         yes = dplyr::recode(A5_ID, !!!setNames(a5_anno$PublicationID, a5_anno$A5_ID)), 
-                        no = NA))
+                        no = NA)) %>%  arrange(desc(point_color))
   
 pj <- position_jitter(width=0.1, seed=100)
 gg_mmr_expr <- 
@@ -79,7 +80,7 @@ gg_mmr_expr <-
          aes(x=symbol, y=log2_cpm_z, color=Label, label=Label)) + 
   geom_point(position = pj) + 
   #geom_text_repel(mapping=aes(y=log2_cpm_z),position = pj, color="black") +
-  scale_color_manual(values = c("E169-M1"="#637b62","E169-M2"="#eb7b54"), na.value ="#d6d6d4") + 
+  scale_color_manual(values = c("E167-M1"="#cbc262","E167-M2"="#af6884","E169-M1"="#637b62","E169-M2"="#eb7b54"), na.value ="#d6d6d4") + 
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
   xlab("") +

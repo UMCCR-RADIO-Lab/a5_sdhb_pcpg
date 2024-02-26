@@ -64,11 +64,13 @@ min_rank <- 2
 max_rank <- 10
 for (current_sample_set in names(sample_sets))
 {
+  message("Processing estimate for ", current_sample_set, "...")
   mut_mat_current = mut_mat[,sample_sets[[current_sample_set]]]
   mut_mat_md5 <- digest::digest(mut_mat_current,algo="md5")
   checkpoint_file <- paste0("./a5/wgs/quickload_checkpoints/de_novo_nmf_estimate_",mut_mat_md5,".rds")
   if (file.exists(checkpoint_file)) {
-    estimate_list[current_sample_set] <- readRDS(checkpoint_file)
+    message("Quickloading estimate for ", current_sample_set, ".")
+    estimate_list[[current_sample_set]] <- readRDS(checkpoint_file)
   } else {
     estimate_list[[current_sample_set]] <- nmf(mut_mat, rank = min_rank:max_rank, method = "brunet", 
                     nrun = 50, seed = 123456, .opt = "v-p")
@@ -86,12 +88,14 @@ for (current_sample_set in names(sample_sets))
   mut_mat_md5 <- digest::digest(mut_mat_current,algo="md5")
   checkpoint_file <- paste0("./a5/wgs/quickload_checkpoints/de_novo_nmf_extract_",mut_mat_md5,".rds")
   if (file.exists(checkpoint_file)) {
+    message("Quickloading extraction for ", current_sample_set)
     sig_ex[[current_sample_set]] <- readRDS(checkpoint_file)
   } else {
     sig_ex[[current_sample_set]] <- list()
     
     for (rank in min_rank:max_rank)
     {
+      message("Processing extraction for ", current_sample_set, ": Rank", rank, "...")
       sig_ex[[current_sample_set]][[rank]] <- extract_signatures(mut_mat_current, rank = rank, nrun = 200, single_core = FALSE, seed = 123456)
     }
     saveRDS(sig_ex[[current_sample_set]], checkpoint_file)

@@ -6,6 +6,7 @@
 # Languages: R                                                       #
 ######################################################################
 
+library(rlang)
 
 #Creates contrast and design matrices for head/neck versus abdothoracic comparisons
 make_hn_vs_abdominothoracic_contrasts <- function(sample_anno, exclude_samples=NULL)
@@ -65,34 +66,107 @@ make_genotype_sampletype_contrasts <- function(sample_anno, exclude_samples=NULL
   rownames(design_mat) <- sample_anno$A5_ID
   
   contr_matrix <- makeContrasts(
+    
     #TERT/ATRX vs Non-Metastatic Primary
-    TERT_PriMet_vs_NonMetPri_WT = (Metastasis_TERT_VAFOK_PurityOK + MetastaticPrimary_TERT_VAFOK_PurityOK)/2 - NonMetastaticPrimary_WT_VAFOK_PurityOK,
-    ATRX_PriMet_vs_NonMetPri_WT = (Metastasis_ATRX_VAFOK_PurityOK + MetastaticPrimary_ATRX_VAFOK_PurityOK)/2 - NonMetastaticPrimary_WT_VAFOK_PurityOK,
+    TERT_PriMet_vs_NonMetPri_WT = 
+      (MetastaticPrimaryUnconfirmed_TERT_VAFOK_PurityOK+
+          MetastaticPrimaryConfirmed_TERT_VAFOK_PurityOK+
+          Metastasis_TERT_VAFOK_PurityOK)/3 -
+         NMP_WT_VAFOK_PurityOK,
+    
+    ATRX_PriMet_vs_NonMetPri_WT = 
+      (SFU_ATRX_VAFOK_PurityOK+
+          MetastaticPrimaryUnconfirmed_ATRX_VAFOK_PurityOK+
+          MetastaticPrimaryConfirmed_ATRX_VAFOK_PurityOK+
+          Metastasis_ATRX_VAFOK_PurityOK)/4 -
+         NMP_WT_VAFOK_PurityOK,
+    
     #All-TERT vs Non-TERT
     TERT_All_vs_NonTERT = 
-      (Metastasis_TERT_VAFOK_PurityOK + 
-         MetastaticPrimary_TERT_VAFOK_PurityOK)/2 - 
-      (Metastasis_ATRX_VAFOK_PurityOK + 
-         MetastaticPrimary_ATRX_VAFOK_PurityOK + 
-         Metastasis_WT_VAFOK_PurityOK + 
-         NonMetastaticPrimary_WT_VAFOK_PurityOK +
-         MetastaticPrimary_WT_VAFOK_PurityOK +
-         SFU_WT_VAFOK_PurityOK)/6,
+      (MetastaticPrimaryUnconfirmed_TERT_VAFOK_PurityOK +
+         MetastaticPrimaryConfirmed_TERT_VAFOK_PurityOK +
+         Metastasis_TERT_VAFOK_PurityOK)/3 -
+      (NMP_WT_VAFOK_PurityOK +
+         SFU_ATRX_VAFOK_PurityOK +
+         SFU_WT_VAFOK_PurityOK +
+         MetastaticPrimaryUnconfirmed_WT_VAFOK_PurityOK +
+         MetastaticPrimaryUnconfirmed_ATRX_VAFOK_PurityOK +
+         MetastaticPrimaryConfirmed_ATRX_VAFOK_PurityOK +
+         MetastaticPrimaryConfirmed_WT_VAFOK_PurityOK +
+         Metastasis_ATRX_VAFOK_PurityOK +
+         Metastasis_WT_VAFOK_PurityOK)/9,
+    
     #All-ATRX vs Non-ATRX
     ATRX_All_vs_NonATRX = 
-      (Metastasis_ATRX_VAFOK_PurityOK + 
-         MetastaticPrimary_ATRX_VAFOK_PurityOK)/2 - 
-      (NonMetastaticPrimary_WT_VAFOK_PurityOK + 
-         MetastaticPrimary_WT_VAFOK_PurityOK + 
-         Metastasis_WT_VAFOK_PurityOK + 
-         MetastaticPrimary_TERT_VAFLow_PurityOK + 
-         MetastaticPrimary_TERT_VAFOK_PurityOK + 
-         Metastasis_TERT_VAFOK_PurityOK + 
-         SFU_WT_VAFOK_PurityOK)/7,
+      (SFU_ATRX_VAFOK_PurityOK +
+         MetastaticPrimaryUnconfirmed_ATRX_VAFOK_PurityOK +
+         MetastaticPrimaryConfirmed_ATRX_VAFOK_PurityOK +
+         Metastasis_ATRX_VAFOK_PurityOK)/4 -
+      (NMP_WT_VAFOK_PurityOK +
+         SFU_WT_VAFOK_PurityOK +
+         MetastaticPrimaryUnconfirmed_TERT_VAFLow_PurityOK +
+         MetastaticPrimaryUnconfirmed_TERT_VAFOK_PurityOK +
+         MetastaticPrimaryUnconfirmed_WT_VAFOK_PurityOK +
+         MetastaticPrimaryConfirmed_TERT_VAFLow_PurityOK +
+         MetastaticPrimaryConfirmed_TERT_VAFOK_PurityOK +
+         MetastaticPrimaryConfirmed_WT_VAFOK_PurityOK +
+         Metastasis_TERT_VAFOK_PurityOK +
+         Metastasis_WT_VAFOK_PurityOK)/10,
+    
     #All-TERT vs All-ATRX
-    ATRX_All_vs_TERT_All = (Metastasis_ATRX_VAFOK_PurityOK + MetastaticPrimary_ATRX_VAFOK_PurityOK)/2 - (Metastasis_TERT_VAFOK_PurityOK + MetastaticPrimary_TERT_VAFOK_PurityOK)/2,
-    #All-TERT vs All-ATRX
-    Metastasis_All_vs_NonMetPri_WT = (Metastasis_ATRX_VAFOK_PurityOK + Metastasis_TERT_VAFOK_PurityOK + Metastasis_WT_VAFOK_PurityOK)/3 - NonMetastaticPrimary_WT_VAFOK_PurityOK,
+    ATRX_All_vs_TERT_All = 
+      (SFU_ATRX_VAFOK_PurityOK +
+         MetastaticPrimaryUnconfirmed_ATRX_VAFOK_PurityOK +
+         MetastaticPrimaryConfirmed_ATRX_VAFOK_PurityOK +
+         Metastasis_ATRX_VAFOK_PurityOK)/4 -
+      (MetastaticPrimaryUnconfirmed_TERT_VAFOK_PurityOK +
+         MetastaticPrimaryConfirmed_TERT_VAFOK_PurityOK +
+         Metastasis_TERT_VAFOK_PurityOK)/3,
+    
+    #Metastasis Only vs NonMetPri
+    Metastasis_Only_vs_NonMetPri_WT = 
+      (Metastasis_ATRX_VAFOK_PurityOK +
+       Metastasis_TERT_VAFOK_PurityOK +
+       Metastasis_WT_VAFOK_PurityOK)/3 -
+      NMP_WT_VAFOK_PurityOK,
+    
+    #Metastasis and confirmed metastatic primaries vs NonMetPri
+    Metastatic_Confirmed_vs_NonMetPri_WT = 
+      (MetastaticPrimaryConfirmed_ATRX_VAFOK_PurityOK +
+         MetastaticPrimaryConfirmed_TERT_VAFLow_PurityOK +
+         MetastaticPrimaryConfirmed_TERT_VAFOK_PurityOK +
+         MetastaticPrimaryConfirmed_WT_VAFOK_PurityOK +
+         Metastasis_ATRX_VAFOK_PurityOK +
+         Metastasis_TERT_VAFOK_PurityOK +
+         Metastasis_WT_VAFOK_PurityOK)/7 -
+      NMP_WT_VAFOK_PurityOK,
+    
+    #Metastases, confirmed metastatic primaries, and unconfirmed with TERT/ATRX vs NonMetPri
+    Metastatic_Likely_vs_NonMetPri_WT = 
+      (MetastaticPrimaryUnconfirmed_ATRX_VAFOK_PurityOK +
+         MetastaticPrimaryUnconfirmed_TERT_VAFOK_PurityOK +
+         MetastaticPrimaryConfirmed_ATRX_VAFOK_PurityOK +
+         MetastaticPrimaryConfirmed_TERT_VAFOK_PurityOK +
+         MetastaticPrimaryConfirmed_WT_VAFOK_PurityOK +
+         Metastasis_ATRX_VAFOK_PurityOK +
+         Metastasis_TERT_VAFOK_PurityOK +
+         Metastasis_WT_VAFOK_PurityOK)/8 -
+      NMP_WT_VAFOK_PurityOK,
+  
+    #Metastasis and confirmed or unconfirmed metastatic primaries vs NonMetPri
+    Metastatic_All_vs_NonMetPri_WT = 
+      (MetastaticPrimaryUnconfirmed_ATRX_VAFOK_PurityOK +
+         MetastaticPrimaryUnconfirmed_TERT_VAFLow_PurityOK +
+         MetastaticPrimaryUnconfirmed_TERT_VAFOK_PurityOK +
+         MetastaticPrimaryUnconfirmed_WT_VAFOK_PurityOK +
+         MetastaticPrimaryConfirmed_ATRX_VAFOK_PurityOK +
+         MetastaticPrimaryConfirmed_TERT_VAFLow_PurityOK +
+         MetastaticPrimaryConfirmed_TERT_VAFOK_PurityOK +
+         MetastaticPrimaryConfirmed_WT_VAFOK_PurityOK +
+         Metastasis_ATRX_VAFOK_PurityOK +
+         Metastasis_TERT_VAFOK_PurityOK +
+         Metastasis_WT_VAFOK_PurityOK)/11 -
+      NMP_WT_VAFOK_PurityOK,
     levels = colnames(design_mat))
   
   assign("contrast_matrix_genosampletype", contr_matrix, globalenv())
@@ -187,3 +261,166 @@ contrastdesign_to_memberlist <- function(contrast_name, contrast_matrix, design_
   return(membership)
 }
 message("Created contrast function contrastdesign_to_memberlist()")
+
+simplify_design_contrast <- function(contrast, design_matrix, contrast_matrix, contrast_order = NULL){
+  
+  participant_list <- 
+    contrastdesign_to_memberlist(contrast_name = contrast, 
+                                 design_matrix = design_matrix, 
+                                 contrast_matrix = contrast_matrix)
+  
+  if(!all(participant_list$A5_ID == rownames(design_matrix))) { stop("Participant list order sanity check failed")}
+  
+  sex <- ifelse(design_matrix[,"sexmale"], "male", "female")
+  
+  differential_group <- participant_list$group
+  
+  simplified_design_mat <- model.matrix(~0 + differential_group + sex)
+  colnames(simplified_design_mat) <- gsub("differential_group","", colnames(simplified_design_mat))
+  rownames(simplified_design_mat) <- rownames(design_matrix)
+  
+  if (!is.null(contrast_order)) {
+    contrast_levels <- c(contrast_order, "non_participant")
+  } else
+  {
+    contrast_levels <- c(setdiff(unique(differential_group),"non_participant"), "non_participant")
+  }
+  
+  
+  contrast_string <- setNames(paste(contrast_levels[[1]],contrast_levels[[2]], sep=" - "), contrast)
+  
+  simplified_contrast_matrix <- rlang::inject(makeContrasts(!!!contrast_string,  levels = colnames(simplified_design_mat)))
+  
+  return(list(contrast_matrix = simplified_contrast_matrix, design_matrix = simplified_design_mat))
+  
+}
+
+
+
+#############
+## RECODING #
+#############
+
+contrast_recode = list(
+  TERT_PriMet_vs_NonMetPri_WT = 
+    c(MetastaticPrimaryUnconfirmed_TERT_VAFOK_PurityOK = "Primary_TERT",
+      MetastaticPrimaryConfirmed_TERT_VAFOK_PurityOK = "Primary_TERT",
+      Metastasis_TERT_VAFOK_PurityOK = "Metastasis_TERT",
+      NMP_WT_VAFOK_PurityOK = "NMP"),
+  
+  
+  ATRX_PriMet_vs_NonMetPri_WT = 
+    c(SFU_ATRX_VAFOK_PurityOK = "Primary_ATRX",
+      MetastaticPrimaryUnconfirmed_ATRX_VAFOK_PurityOK = "Primary_ATRX",
+      MetastaticPrimaryConfirmed_ATRX_VAFOK_PurityOK = "Primary_ATRX",
+      Metastasis_ATRX_VAFOK_PurityOK = "Metastasis_ATRX",
+      NMP_WT_VAFOK_PurityOK = "NMP"),
+  
+  
+  #All-TERT vs Non-TERT
+  TERT_All_vs_NonTERT = 
+    c(MetastaticPrimaryUnconfirmed_TERT_VAFOK_PurityOK = "Primary_TERT",
+      MetastaticPrimaryConfirmed_TERT_VAFOK_PurityOK = "Primary_TERT",
+      Metastasis_TERT_VAFOK_PurityOK = "Metastasis_TERT",
+      NMP_WT_VAFOK_PurityOK = "Primary_WT",
+      SFU_ATRX_VAFOK_PurityOK  = "Primary_ATRX",
+      SFU_WT_VAFOK_PurityOK = "Primary_WT",
+      MetastaticPrimaryUnconfirmed_WT_VAFOK_PurityOK = "Primary_WT",
+      MetastaticPrimaryUnconfirmed_ATRX_VAFOK_PurityOK = "Primary_ATRX",
+      MetastaticPrimaryConfirmed_ATRX_VAFOK_PurityOK = "Primary_ATRX",
+      MetastaticPrimaryConfirmed_WT_VAFOK_PurityOK = "Primary_WT",
+      Metastasis_ATRX_VAFOK_PurityOK = "Metastasis_ATRX",
+      Metastasis_WT_VAFOK_PurityOK = "Metastasis_WT"),
+  
+  #All-ATRX vs Non-ATRX
+  ATRX_All_vs_NonATRX = 
+    c(SFU_ATRX_VAFOK_PurityOK = "Primary_ATRX",
+      MetastaticPrimaryUnconfirmed_ATRX_VAFOK_PurityOK = "Primary_ATRX",
+      MetastaticPrimaryConfirmed_ATRX_VAFOK_PurityOK = "Primary_ATRX",
+      Metastasis_ATRX_VAFOK_PurityOK = "Metastasis_ATRX",
+      NMP_WT_VAFOK_PurityOK = "Primary_WT",
+      SFU_WT_VAFOK_PurityOK = "Primary_WT",
+      MetastaticPrimaryUnconfirmed_TERT_VAFLow_PurityOK  = "Primary_TERT",
+      MetastaticPrimaryUnconfirmed_TERT_VAFOK_PurityOK  = "Primary_TERT",
+      MetastaticPrimaryUnconfirmed_WT_VAFOK_PurityOK  = "Primary_WT",
+      MetastaticPrimaryConfirmed_TERT_VAFLow_PurityOK  = "Primary_TERT",
+      MetastaticPrimaryConfirmed_TERT_VAFOK_PurityOK  = "Primary_TERT",
+      MetastaticPrimaryConfirmed_WT_VAFOK_PurityOK  = "Primary_WT",
+      Metastasis_TERT_VAFOK_PurityOK = "Metastasis_TERT",
+      Metastasis_WT_VAFOK_PurityOK = "Metastasis_WT"),
+  
+  #All-TERT vs All-ATRX
+  ATRX_All_vs_TERT_All = 
+    c(SFU_ATRX_VAFOK_PurityOK = "Primary_ATRX",
+      MetastaticPrimaryUnconfirmed_ATRX_VAFOK_PurityOK = "Primary_ATRX",
+      MetastaticPrimaryConfirmed_ATRX_VAFOK_PurityOK = "Primary_ATRX",
+      Metastasis_ATRX_VAFOK_PurityOK = "Metastasis_ATRX",
+      MetastaticPrimaryUnconfirmed_TERT_VAFOK_PurityOK  = "Primary_TERT",
+      MetastaticPrimaryConfirmed_TERT_VAFOK_PurityOK  = "Primary_TERT",
+      Metastasis_TERT_VAFOK_PurityOK = "Metastasis_TERT"),
+  
+  Metastatic_Confirmed_vs_NonMetPri_WT = 
+    c(MetastaticPrimaryConfirmed_ATRX_VAFOK_PurityOK = "MetastaticPrimary_ATRX",
+      MetastaticPrimaryConfirmed_TERT_VAFLow_PurityOK  = "MetastaticPrimary_TERT",
+      MetastaticPrimaryConfirmed_TERT_VAFOK_PurityOK  = "MetastaticPrimary_TERT",
+      MetastaticPrimaryConfirmed_WT_VAFOK_PurityOK  = "MetastaticPrimary_WT",
+      Metastasis_ATRX_VAFOK_PurityOK = "Metastasis_ATRX",
+      Metastasis_TERT_VAFOK_PurityOK = "Metastasis_TERT",
+      Metastasis_WT_VAFOK_PurityOK = "Metastasis_WT",
+      NMP_WT_VAFOK_PurityOK = "NMP"),
+  
+  #Metastases, confirmed metastatic primaries, and unconfirmed with TERT/ATRX vs NonMetPri
+  Metastatic_Likely_vs_NonMetPri_WT = 
+    c(MetastaticPrimaryUnconfirmed_ATRX_VAFOK_PurityOK = "MetastaticPrimary_ATRX",
+      MetastaticPrimaryUnconfirmed_TERT_VAFOK_PurityOK = "MetastaticPrimary_TERT",
+      MetastaticPrimaryConfirmed_ATRX_VAFOK_PurityOK = "MetastaticPrimary_ATRX",
+      MetastaticPrimaryConfirmed_TERT_VAFOK_PurityOK = "MetastaticPrimary_TERT",
+      MetastaticPrimaryConfirmed_WT_VAFOK_PurityOK = "MetastaticPrimary_WT",
+      Metastasis_ATRX_VAFOK_PurityOK = "Metastasis_ATRX",
+      Metastasis_TERT_VAFOK_PurityOK = "Metastasis_TERT",
+      Metastasis_WT_VAFOK_PurityOK = "Metastasis_WT",
+      NMP_WT_VAFOK_PurityOK = "NMP"),
+  
+  #Metastasis and confirmed or unconfirmed metastatic primaries vs NonMetPri
+  Metastatic_All_vs_NonMetPri_WT = 
+    c(MetastaticPrimaryUnconfirmed_ATRX_VAFOK_PurityOK = "MetastaticPrimary_ATRX",
+      MetastaticPrimaryUnconfirmed_TERT_VAFLow_PurityOK = "MetastaticPrimary_TERT",
+      MetastaticPrimaryUnconfirmed_TERT_VAFOK_PurityOK = "MetastaticPrimary_TERT",
+      MetastaticPrimaryUnconfirmed_WT_VAFOK_PurityOK = "MetastaticPrimary_WT",
+      MetastaticPrimaryConfirmed_ATRX_VAFOK_PurityOK = "MetastaticPrimary_ATRX",
+      MetastaticPrimaryConfirmed_TERT_VAFLow_PurityOK = "MetastaticPrimary_TERT",
+      MetastaticPrimaryConfirmed_TERT_VAFOK_PurityOK = "MetastaticPrimary_TERT",
+      MetastaticPrimaryConfirmed_WT_VAFOK_PurityOK = "MetastaticPrimary_WT",
+      Metastasis_ATRX_VAFOK_PurityOK = "Metastasis_ATRX",
+      Metastasis_TERT_VAFOK_PurityOK = "Metastasis_TERT",
+      Metastasis_WT_VAFOK_PurityOK = "Metastasis_WT",
+      NMP_WT_VAFOK_PurityOK = "NMP"))
+
+
+recoded_contrast_strings = c(
+  #All-TERT vs NonMetPri
+  TERT_PriMet_vs_NonMetPri_WT = "(Primary_TERT + Metastasis_TERT)/2 - NMP",
+  
+  #All-ATRX vs NonMetPri
+  ATRX_PriMet_vs_NonMetPri_WT = "(Primary_ATRX + Metastasis_ATRX)/2 - NMP",
+  
+  #All-TERT vs Non-TERT
+  TERT_All_vs_NonTERT = "(Primary_TERT + Metastasis_TERT)/2 - (Primary_WT + Primary_ATRX + Metastasis_ATRX + Metastasis_WT)/4",    
+  
+  #All-ATRX vs Non-ATRX
+  ATRX_All_vs_NonATRX = "(Primary_ATRX + Metastasis_ATRX)/2 - (Primary_WT + Primary_TERT + Metastasis_TERT + Metastasis_WT)/4",    
+  
+  #All-TERT vs All-ATRX
+  ATRX_All_vs_TERT_All = "(Primary_ATRX + Metastasis_ATRX)/2 - (Primary_TERT + Metastasis_TERT)/2",
+  
+  #Metastasis Only vs NonMetPri
+  Metastasis_Only_vs_NonMetPri_WT = "(Metastasis_ATRX_VAFOK_PurityOK + Metastasis_TERT_VAFOK_PurityOK + Metastasis_WT_VAFOK_PurityOK)/3 - NMP_WT_VAFOK_PurityOK",    
+  
+  #Metastasis and confirmed metastatic primaries vs NonMetPri
+  Metastatic_Confirmed_vs_NonMetPri_WT = "(MetastaticPrimary_ATRX + MetastaticPrimary_TERT + MetastaticPrimary_WT + Metastasis_ATRX + Metastasis_TERT + Metastasis_WT)/6 - NMP",    
+  
+  #Metastases, confirmed metastatic primaries, and unconfirmed with TERT/ATRX vs NonMetPri
+  Metastatic_Likely_vs_NonMetPri_WT = "(MetastaticPrimary_ATRX + MetastaticPrimary_TERT + MetastaticPrimary_WT + Metastasis_ATRX + Metastasis_TERT + Metastasis_WT)/6 - NMP",  
+  
+  #Metastasis and confirmed or unconfirmed metastatic primaries vs NonMetPri
+  Metastatic_All_vs_NonMetPri_WT = "(MetastaticPrimary_ATRX + MetastaticPrimary_TERT + MetastaticPrimary_WT + Metastasis_ATRX + Metastasis_TERT + Metastasis_WT)/6 - NMP")

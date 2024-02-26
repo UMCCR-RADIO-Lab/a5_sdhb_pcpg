@@ -82,7 +82,7 @@ smallrna_tcga_comete_a5_dge <- smallrna_tcga_comete_a5_dge[keep.exprs,, keep.lib
 # Apply TMM normalisation to the DGElist
 smallrna_tcga_comete_a5_dge <- calcNormFactors(smallrna_tcga_comete_a5_dge)
 # Convert the TMM counts to log2 CPMs
-smallrna_tcga_comete_a5_lcpm <- cpm(smallrna_tcga_comete_a5_dge, log = T)
+smallrna_tcga_comete_a5_lcpm <- edgeR::cpm(smallrna_tcga_comete_a5_dge, log = T)
 
 # Sanity check for ordering
 if(sum(smallrna_tcga_comete_a5_anno$Sample == rownames(smallrna_tcga_comete_a5_dge$samples)) != 
@@ -96,7 +96,10 @@ colnames(design) <- gsub("Genotype| ","", colnames(design))
 rownames(design) <- rownames(smallrna_tcga_comete_a5_dge$samples)
 
 # Remove the library specific batch effects
-smallrna_tcga_comete_a5_lcpm.batch_removed <- removeBatchEffect(smallrna_tcga_comete_a5_lcpm, batch=smallrna_tcga_comete_a5_anno$Dataset, batch2 = smallrna_tcga_comete_a5_anno$Sex, design = design)
+smallrna_tcga_comete_a5_lcpm.batch_removed <- removeBatchEffect(smallrna_tcga_comete_a5_lcpm, 
+                                                                batch=smallrna_tcga_comete_a5_anno$Dataset, 
+                                                                batch2 = smallrna_tcga_comete_a5_anno$Sex, 
+                                                                design = design)
 
 message("Loaded objects into global environment: 
           smallrna_tcga_comete_a5_dge (pre-batch correction feature counts as a DGEList object),

@@ -65,10 +65,10 @@ a5_anno.meth <- a5_anno %>%
   arrange(A5_ID) %>% 
   filter(!is.na(A5_ID))
 
-#Update annotation based on imaging review
-a5_anno.meth <- a5_anno.meth %>% 
-  mutate(Primary_Location_Simplified=replace(
-    Primary_Location_Simplified, A5_ID=="E185-1", "Extraadrenal_thoracic"))
+# #Update annotation based on imaging review
+# a5_anno.meth <- a5_anno.meth %>% 
+#   mutate(Primary_Location_Simplified=replace(
+#     Primary_Location_Simplified, A5_ID=="E185-1", "Extraadrenal_thoracic"))
 
 a5_anno.meth <- a5_anno.meth %>% 
   mutate(Primary_Location_Base=gsub("_abdominal|_thoracic|_bladder|_cardiac|_[Ll]eft|_[Rr]ight",
@@ -79,7 +79,7 @@ plot_shape_location <- c("Extraadrenal"=19,
                          "Adrenal"=17, 
                          "Unspecified"=8,
                          "Head_neck"=3,
-                         "Extraadrenal_aortic"=4)
+                         "Extraadrenal_mediastinum"=4)
 
 samples.exclude <- a5_anno.meth %>% filter(Exclude=="Y") %>% pull(A5_ID)
 samples.hn <- a5_anno.meth %>% filter(Primary_Location_Base == "Head_neck") %>% pull(A5_ID)
@@ -335,6 +335,25 @@ if(quickload_dmr)
     for(contrast in available_contrasts){
       message("Processing contrast:", contrast)
       plots_expr[[comparison]][[contrast]] <- list()
+      
+      # make a design matrix 
+      if (contrast %in% names(contrast_recode))
+      {
+        differential_group <- factor(dplyr::recode(a5_anno.meth.nohn_noex$differential_group,!!!contrast_recode[[contrast]]))
+      } else {
+        differential_group <- factor(a5_anno.meth.nohn_noex$differential_group)
+      }
+      
+      sex <- a5_anno.meth.nohn_noex$Gender
+      
+      design_mat <- model.matrix(~0 + differential_group + sex)
+      colnames(design_mat) <- gsub("differential_group","", colnames(design_mat))
+      rownames(design_mat) <- a5_anno.meth.nohn_noex$A5_ID
+      
+      contr_matrix <- rlang:::inject(
+        makeContrasts(!!!recoded_contrast_strings[contrast], levels = colnames(design_mat)))
+      
+      
       
       contrast_membership <- contrastdesign_to_memberlist(contrast_name = contrast, 
                                                           contrast_matrix = contrast_matrix,
