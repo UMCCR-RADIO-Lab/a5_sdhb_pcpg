@@ -70,9 +70,6 @@ shrink_legend <- theme(legend.key.size = unit(0.5,"cm"), legend.position = "top"
 ##########
 
 source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
-location_cols[["Extraadrenal (abdominal/thoracic)"]] <-  location_cols[["Extraadrenal"]]
-location_cols[["Extraadrenal (mediastinum)"]] <-  location_cols[["Extraadrenal_mediastinum"]]
-location_cols[["Extraadrenal (bladder)"]] <-  location_cols[["Extraadrenal_bladder"]]
 
 ###################
 # Sample Ordering #
@@ -88,24 +85,6 @@ a5_anno.use$TERT_ATRX_Mutation <- factor(as.character(a5_anno.use$TERT_ATRX_Muta
 # a5_anno.use$PublicationID <- factor(as.character(a5_anno.use$PublicationID), 
 #                      levels=unique(as.character(a5_anno.use$`PublicationID`))[order(as.numeric(gsub("E([0-9]{3})-([0-4])","\\1",unique(as.character(a5_anno.use$`PublicationID`)))),
 #                                                                      as.numeric(gsub("E([0-9]{3})-([0-4])","\\2",unique(as.character(a5_anno.use$`PublicationID`)))))])
-
-a5_anno.use <- a5_anno.use %>% 
-  mutate(Primary_Location_Simplified=dplyr::recode(Primary_Location_Simplified,
-                                                   "Extraadrenal_abdominal"="Extraadrenal (abdominal/thoracic)",
-                                                   "Extraadrenal_thoracic"="Extraadrenal (abdominal/thoracic)",
-                                                   "Extraadrenal_thoracic_cardiac"="Extraadrenal (abdominal/thoracic)",
-                                                   "Extraadrenal_bladder"="Extraadrenal (bladder)",
-                                                   "Extraadrenal_thoracic_mediastinum"="Extraadrenal (mediastinum)",
-                                                   "Adrenal_left"="Adrenal",
-                                                   "Adrenal_right"="Adrenal",
-                                                   "Head_neck"="Head and neck"),
-         Primary_Location_Simplified=factor(Primary_Location_Simplified,
-                                            levels=c("Extraadrenal (abdominal/thoracic)",
-                                                     "Extraadrenal (bladder)",
-                                                     "Adrenal",
-                                                     "Unspecified",
-                                                     "Extraadrenal (mediastinum)",
-                                                     "Head and neck")))
 
 a5_anno.use <- a5_anno.use %>% group_by(`Patient ID`) %>% 
   mutate(max_clinical=case_when(any(differential_group_sampletype_strict=="Metastasis") ~ "Metastasis",
@@ -301,38 +280,6 @@ ggLocation <- ggplot() +
     name = "Anatomical Location (Primary)",
     values = location_cols)  
 
-##################
-# Head And Neck  #
-##################
-# 
-# plot.data.handn <- a5_anno.use %>% dplyr::select(A5_ID, PublicationID,  `Patient ID`, Primary_Location_Simplified) %>%  
-#   mutate(TumourLocation=case_when(
-#     Primary_Location_Simplified=="Head_neck" ~ "Head and Neck PGL",  
-#     Primary_Location_Simplified=="Extraadrenal_thoracic_mediastinum" ~ "Mediastinal PGL",  
-#     Primary_Location_Simplified=="Unspecified" ~ "No Data",  
-#     TRUE ~ "PCC/PGL"))
-# plot.data.handn$TumourLocation <- factor(plot.data.handn$TumourLocation, 
-#                                          levels = c("PCC/PGL", "Head and Neck PGL", 
-#                                                     "Mediastinal PGL", "No Data"))
-# 
-# 
-# ggHandN <- ggplot() + 
-#   geom_tile(data=plot.data.handn, mapping=aes(x=PublicationID, y="Tumour Location", fill=TumourLocation), width=0.8,height=0.8) +
-#   theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank()) + labs(fill="Tumour Location") +
-#   scale_x_discrete(drop=F) +
-#   scale_fill_manual(values=as.character(c("PCC/PGL"=ColorPalette[["LightBrown2"]], 
-#                                           "Head and Neck PGL"=ColorPalette[["DarkBrown2"]],
-#                                           "Mediastinal PGL"=ColorPalette[["DarkBrown1"]],
-#                                           "No Data"=ColorPalette[["DarkGrey2"]])))
-# 
-# ggHandN.monotone <- ggplot() + 
-#   geom_tile(data=plot.data.handn, mapping=aes(x=PublicationID, y="Tumour Location", fill=TumourLocation), width=0.8,height=0.8) +
-#   theme_bw() + theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1), panel.grid = element_blank()) + labs(fill="Tumour Location") +
-#   scale_x_discrete(drop=F) +
-#   scale_fill_manual(values=as.character(c("PCC/PGL"=ColorPalette[["DarkGrey2"]], 
-#                                           "Head and Neck PGL"=ColorPalette[["LightGrey1"]],
-#                                           "Mediastinal PGL"="black",
-#                                           "No Data"=ColorPalette[["LemonWhite2"]])))
 
 #########################
 # Catecholamine profile #

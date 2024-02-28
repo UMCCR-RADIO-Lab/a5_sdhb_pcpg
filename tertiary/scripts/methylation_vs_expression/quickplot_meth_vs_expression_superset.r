@@ -35,16 +35,8 @@ source("./tertiary/scripts/data_mergers/combine_tcga_flynn_a5_wts_data.r")
 
 sample_anno <- wts_tcga_flynn_a5_anno %>% 
   filter(Sample %in% intersect(wts_tcga_flynn_a5_anno$Sample, meth_tcga_comete_a5_450k_anno$Sample)) %>%
-  mutate(subtype=dplyr::recode(new_naming,
-                               "A5 - Extraadrenal"="C1A1 (SDHx)",
-                               "A5 - NF1"="C2A (Kinase)",
-                               "A5 - Adrenal"="C1A1 (SDHx)",
-                               "A5 - Head_neck"="C1A2 (SDHx-HN)",
-                               "A5 - VHL"="C1B1 (VHL)",
-                               "A5 - Extraadrenal_mediastinum"="C1A2 (SDHx-HN)",
-                               "A5 - Unspecified"="C1A1 (SDHx)",
-                               "C2B2 (MAML)"="C2B2 (MAML3)"),
-         Malignancy=replace_na(Malignancy, "Unknown")) 
+  mutate(Malignancy=replace_na(Malignancy, "Unknown")) %>%
+  dplyr::rename("subtype"="new_naming")
 
 ######################
 # Compute M/B-values #

@@ -419,7 +419,7 @@ data_loader_a5_snrna <- function(quickload=T,
           A5_ID %in% c("P018-PGL1", "P018-PGL3", "E018") ~ "PC_or_PGL"),
         Major_Cluster = case_when(
           A5_ID %in% c("E240", "E243") ~ "Normal", 
-          A5_ID %in% c("P018-PGL1", "P018-PGL3", "E018") ~ "Sympathetic"),
+          A5_ID %in% c("P018-PGL1", "P018-PGL3", "E018") ~ "Chromaffin"),
         `Patient ID` = gsub("-.+", "", A5_ID),
         PublicationID = A5_ID,
         Primary_Location_Simplified = gsub("AT-PGL",

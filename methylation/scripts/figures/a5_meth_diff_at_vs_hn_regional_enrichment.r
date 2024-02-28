@@ -30,7 +30,7 @@ source("./a5/methylation/scripts/a5_methylation_analysis_v2.r")
 # Annotate DM TopTable with probe data #
 ########################################
 
-top_table <- diff_meth_result[["hn"]][["Parasympathetic_vs_Sympathetic"]][["top_control2_adj"]]
+top_table <- diff_meth_result[["hn"]][["Non_chromaffin_vs_Chromaffin"]][["top_control2_adj"]]
 
 top_table <- top_table %>% as_tibble(rownames = "Name") %>% 
   left_join(epic_array_annotation_hg38 %>% 
@@ -92,11 +92,11 @@ plot_data <- plot_data %>% inner_join(a5_anno %>% dplyr::select(A5_ID, different
 ########
 
 beta_delta <- plot_data %>% 
-  filter(differential_group_anatomy %in% c("Abdominal_Thoracic", "Head_Neck")) %>% 
+  filter(differential_group_anatomy %in% c("Abdominal_Thoracic", "Head_neck")) %>% 
   group_by(Name, differential_group_anatomy) %>% 
   summarise(mean_beta=mean(beta)) %>% 
   pivot_wider(id_cols = "Name", names_from = differential_group_anatomy, values_from = mean_beta) %>% 
-  mutate(beta_delta = Abdominal_Thoracic - Head_Neck) %>% 
+  mutate(beta_delta = Abdominal_Thoracic - Head_neck) %>% 
   dplyr::select(Name, beta_delta)
 
 
@@ -107,7 +107,7 @@ beta_delta <- plot_data %>%
 plot_data <- plot_data %>% 
   mutate(`Tumour Location`=dplyr::recode(differential_group_anatomy, 
                                          "Abdominal_Thoracic"="Abdominal/Thoracic",
-                                         "Head_Neck"="Head and neck"))
+                                         "Head_neck"="Head and neck"))
 
 ########
 # Finalise plot data

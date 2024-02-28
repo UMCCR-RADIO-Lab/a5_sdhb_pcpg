@@ -52,10 +52,10 @@ add_differential_groups <- function(sample_annotation) {
   ###########
   
   sample_annotation <- sample_annotation %>%  mutate(differential_group_anatomy = case_when(
-    Primary_Location_Simplified=="Normal" ~ "Normal",
-    Primary_Location_Simplified=="Head_neck" & grepl("Parasympathetic", Major_Cluster) ~ "Head_Neck",
-    Primary_Location_Simplified=="Extraadrenal_thoracic_mediastinum" ~ "Mediastinum",
-    Primary_Location_Simplified!="Head_neck" & grepl("Sympathetic", Major_Cluster) ~ "Abdominal_Thoracic",
+    Primary_Location_Simplified == "Normal" ~ "Normal",
+    Primary_Location_Simplified == "Head_neck" & grepl("Non_chromaffin", Major_Cluster) ~ "Head_neck",
+    Primary_Location_Simplified == "Extraadrenal_thoracic" & grepl("Non_chromaffin", Major_Cluster) ~ "Thoracic_non_chromaffin",
+    Primary_Location_Simplified != "Head_neck" & grepl("Chromaffin", Major_Cluster) ~ "Abdominal_Thoracic",
     TRUE ~ "Ambiguous"
   ))
   

@@ -16,15 +16,15 @@ data_loader_a5_clinical_anno(google_account = "aidan.flynn@umccr-radio-lab.page"
 
 a5_anno.use <- a5_anno %>% filter(Exclude=="N") %>% 
   mutate(differential_group_anatomy=case_when(
-    A5_ID == "E185-1" ~ "Head_Neck",
+    A5_ID == "E185-1" ~ "Head_neck",
     A5_ID == "E129-1" ~ "Abdominal_Thoracic",
     A5_ID == "E128-1" ~ "Abdominal_Thoracic",
-    A5_ID %in% c("E148-1","E155-1") ~ "Head_Neck",
+    A5_ID %in% c("E148-1","E155-1") ~ "Head_neck",
     TRUE ~ differential_group_anatomy)) %>% 
   mutate(differential_group_anatomy=
            dplyr::case_match(differential_group_anatomy, 
                          "Abdominal_Thoracic" ~ "Abdominal/Thoracic", 
-                         "Head_Neck" ~ "Head and Neck/Aortic")) %>% 
+                         "Head_neck" ~ "Head and Neck/Aortic")) %>% 
   mutate(MetastaticLineage=case_when(
     differential_group_sampletype_strict %in% c("Metastatic primary", "Metastasis") ~ "Confirmed",
     differential_group_sampletype_strict %in% c("Primary (metastasis reported)") ~ "Unconfirmed",

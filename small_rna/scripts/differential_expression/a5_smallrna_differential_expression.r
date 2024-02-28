@@ -6,7 +6,6 @@
 #' ---
 
 #+ knitr_options, echo=FALSE
-#################
 # Knitr options #
 #################
 
@@ -351,9 +350,9 @@ plotSA(efit, main="Final model: Mean-variance trend")
 smallrna_de_fits[["SDHB"]] <- efit
 
 # get top genes 
-smallrna_top_tables[["SDHB"]][["Parasympathetic_vs_Sympathetic"]] <- 
+smallrna_top_tables[["SDHB"]][["Non_chromaffin_vs_Chromaffin"]] <- 
   topTable(efit, 
-           coef = "Parasympathetic_vs_Sympathetic", 
+           coef = "Non_chromaffin_vs_Chromaffin", 
            number = Inf, 
            sort.by = "P") %>% 
   rownames_to_column(var = "Gene")
@@ -384,7 +383,7 @@ knitr::knit_expand(text="\n\n# Top 1000 DE genes - HN vs abdo/thoracic\n\n") %>%
 #+ de_hnabdo_summary_print, eval=output_tables, echo=FALSE
 if(output_tables)
 {
-  DT::datatable(data = smallrna_top_tables[["SDHB"]][["Parasympathetic_vs_Sympathetic"]] %>% 
+  DT::datatable(data = smallrna_top_tables[["SDHB"]][["Non_chromaffin_vs_Chromaffin"]] %>% 
                   filter(abs(logFC)>1, 
                          adj.P.Val<0.05) %>% 
                   slice_min(n = 1000, 
@@ -410,7 +409,7 @@ knitr::knit_expand(text="\n\n# Boxplots of Top 20 DE genes - H/N vs abdo/thoraci
 
 #+ de_hnabdo_boxplots_code, eval=output_plots, echo=FALSE
 if(output_plots){
-  gene_list <- smallrna_top_tables[["SDHB"]][["Parasympathetic_vs_Sympathetic"]] %>% 
+  gene_list <- smallrna_top_tables[["SDHB"]][["Non_chromaffin_vs_Chromaffin"]] %>% 
     filter(abs(logFC)>1, adj.P.Val<0.05) %>% 
     slice_min(n = 20, order_by = adj.P.Val) %>% 
     pull(Gene)
@@ -427,7 +426,7 @@ if(output_plots){
     mutate(Primary_Location_Simplified=gsub("_abdominal|_thoracic|_bladder|_[Ll]eft|_[Rr]ight",
                                             "",
                                             Primary_Location_Simplified),
-           Major_Cluster_simple=gsub(" [(].+|Parasympathetic/",
+           Major_Cluster_simple=gsub(" [(].+|Non_chromaffin/",
                                      "",
                                      Major_Cluster),
            Gene=gsub("ENSG[0-9.]+_","",Gene))
@@ -457,7 +456,7 @@ knitr::knit_expand(text="\n\n# Annotated heatmap of top 100 genes - H/N vs abdo/
 #+ de_hnabdo_heatmap_print, eval=output_plots, echo=FALSE, fig.height=20, fig.width=15
 
 if(output_plots){
-  GOI <- smallrna_top_tables[["SDHB"]][["Parasympathetic_vs_Sympathetic"]] %>% 
+  GOI <- smallrna_top_tables[["SDHB"]][["Non_chromaffin_vs_Chromaffin"]] %>% 
     filter(adj.P.Val < 0.05) %>% 
     arrange(desc(abs(logFC))) %>% 
     dplyr::pull(Gene)

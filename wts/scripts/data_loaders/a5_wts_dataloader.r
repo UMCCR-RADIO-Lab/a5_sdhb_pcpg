@@ -68,9 +68,9 @@ data_loader_a5_wts_counts <- function(count_file_dir=NULL, count_file_pattern=".
   # Anatomy groups
   #######
   
-  #Select head/neck+aortic tumours
+  #Select head/neck
   samples_hn <- a5_anno %>% 
-    filter(differential_group_anatomy == "Head_Neck") %>% 
+    filter(differential_group_anatomy == "Head_neck") %>% 
     pull(A5_ID)
   
   #Select abdo_thoracic tumours
@@ -79,8 +79,8 @@ data_loader_a5_wts_counts <- function(count_file_dir=NULL, count_file_pattern=".
     pull(A5_ID)
   
   #Select samples of unclear origin tumours based on UMAP
-  samples_mediastinum <- a5_anno %>% 
-    filter(differential_group_anatomy == "Mediastinum") %>% 
+  samples_thoracic_non_chromaffin <- a5_anno %>% 
+    filter(differential_group_anatomy == "Thoracic_non_chromaffin") %>% 
     pull(A5_ID)
   
   #Select samples of unclear origin tumours based on UMAP
@@ -152,8 +152,8 @@ data_loader_a5_wts_counts <- function(count_file_dir=NULL, count_file_pattern=".
                           - all: All profiled samples
                           - qc_ok: Excluded samples removed (",toString(exclude_base),")
                           - SDHB: QC_OK with non-SDHB samples removed (",toString(exclude_genotype),")
-                          - SDHB_abdothoracic: Abdominal/thoracic based on clinical and UMAP annotation (aortic and ambiguous cases excluded:",toString(samples_ambiguous),")
-                          - SDHB_HN: Head and neck based on clinical and UMAP annotation (aortic and ambiguous cases excluded)"
+                          - SDHB_abdothoracic: Abdominal/thoracic based on clinical and UMAP annotation (thoracic_non_chromaffin and ambiguous cases excluded:",toString(samples_ambiguous),toString(samples_thoracic_non_chromaffin),")
+                          - SDHB_HN: Head and neck based on clinical and UMAP annotation (thoracic_non_chromaffin and ambiguous cases excluded)"
           )
   
   message("Completed A5 WTS data loader.")

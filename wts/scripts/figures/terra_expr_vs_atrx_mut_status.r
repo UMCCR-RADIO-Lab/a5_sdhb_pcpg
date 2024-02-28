@@ -86,16 +86,14 @@ if (!("TERT_ATRX_Mutation_Event" %in% colnames(a5_anno)))
 plot_data <- a5th.summary.rna %>% dplyr::rename(A5_ID=PID) %>% 
   inner_join(a5_anno %>%  
   dplyr::select(A5_ID, `Patient ID`, TERT_ATRX_Mutation, TERT_ATRX_Mutation_Event,
-                telhunter_log2_telcontentratio, Primary_Location_Simplified , 
+                telhunter_log2_telcontentratio, cell_of_origin , 
                 differential_group_sampletype_strict, c_circle_result) %>% 
     mutate(c_circle_result = recode(c_circle_result, "Positive - Low"="Positive"),
            c_circle_result=factor(c_circle_result, levels=c("No data","Negative",  "Positive"))) %>% 
-    mutate(Primary_Location_Simplified = case_when(Primary_Location_Simplified %in% c("Head_neck", "Extraadrenal_thoracic_mediastinum") ~ "Head and neck/mediastinum",
-                                                   !(Primary_Location_Simplified %in% c("Head_neck", "Extraadrenal_thoracic_mediastinum")) ~ "Abdominal/Thoracic/Adrenal"))%>% 
   arrange(TERT_ATRX_Mutation, c_circle_result, differential_group_sampletype_strict))
 
 t_test_data <- plot_data  %>% 
-  filter(Primary_Location_Simplified == "Abdominal/Thoracic/Adrenal") %>%
+  filter(cell_of_origin == "Chromaffin") %>%
   group_by(`Patient ID`, TERT_ATRX_Mutation) %>% 
   summarise(tel_content=mean(tel_content)) 
 
@@ -119,13 +117,13 @@ ggplot(plot_data ,aes(y=as.numeric(tel_content),
                            yend=c(220,240),
                            x=c(0.6,0.6), 
                            xend=c(2.4,3.4),
-                           Primary_Location_Simplified = "Abdominal/Thoracic/Adrenal"),
+                           cell_of_origin = factor("Chromaffin", levels=levels(plot_data$cell_of_origin))),
                mapping=aes(x=x,y=y,xend=xend,yend=yend, color=NULL,fill=NULL,group=NULL)) +
   geom_text(data=tibble(y=c(230,250),
                         x=c(1.4,2), 
                         label=c(paste0("p=",round(t_result_atrx_vs_tert$p.value,3)), 
                                 paste0("p=",round(t_result_atrx_vs_wt$p.value,3))),
-                        Primary_Location_Simplified = "Abdominal/Thoracic/Adrenal"),
+                        cell_of_origin = factor("Chromaffin", levels=levels(plot_data$cell_of_origin))),
                mapping=aes(x=x,y=y,label=label, color=NULL,fill=NULL,group=NULL)) +
   #geom_text(aes(label=A5_ID)) + 
   #scale_fill_manual(values = sampletype_strict_cols) +
@@ -142,7 +140,7 @@ ggplot(plot_data ,aes(y=as.numeric(tel_content),
   theme(legend.position = "bottom") +
   guides(fill = guide_legend(override.aes = list(shape=21)),
          color = guide_legend(override.aes = list(shape=1, linetype=c(0,0,0)))) +
-  facet_grid(~Primary_Location_Simplified, scales="free_x", space="free_x") +
+  facet_grid(~cell_of_origin, scales="free_x", space="free_x") +
   ylab("TERRA Content") +
   xlab("")
 
@@ -152,7 +150,7 @@ ggplot(plot_data ,aes(y=as.numeric(tel_content),
 ########
 
 t_test_data <- plot_data  %>% 
-  filter(Primary_Location_Simplified == "Abdominal/Thoracic/Adrenal") %>%
+  filter(cell_of_origin == "Chromaffin") %>%
   group_by(`Patient ID`, c_circle_result) %>% 
   summarise(tel_content=mean(tel_content)) 
 
@@ -173,12 +171,12 @@ ggplot(plot_data  %>% filter(c_circle_result != "No data"),aes(y=as.numeric(tel_
                            yend=c(220),
                            x=c(0.6), 
                            xend=c(2.4),
-                           Primary_Location_Simplified = "Abdominal/Thoracic/Adrenal"),
+                           cell_of_origin = factor("Chromaffin", levels=levels(plot_data$cell_of_origin))),
                mapping=aes(x=x,y=y,xend=xend,yend=yend, color=NULL,fill=NULL,group=NULL)) +
   geom_text(data=tibble(y=c(230),
                         x=c(1.4), 
                         label=c(paste0("p=",round(t_result_pos_vs_neg$p.value,3))),
-                        Primary_Location_Simplified = "Abdominal/Thoracic/Adrenal"),
+                        cell_of_origin = factor("Chromaffin", levels=levels(plot_data$cell_of_origin))),
             mapping=aes(x=x,y=y,label=label, color=NULL,fill=NULL,group=NULL)) +
   #geom_text(aes(label=A5_ID)) + 
   #scale_fill_manual(values = sampletype_strict_cols) +
@@ -192,7 +190,7 @@ ggplot(plot_data  %>% filter(c_circle_result != "No data"),aes(y=as.numeric(tel_
   theme(legend.position = "bottom") +
   guides(fill = guide_legend(override.aes = list(shape=21)),
          color = guide_legend(override.aes = list(shape=1, linetype=c(0,0,0)))) +
-  facet_grid(~Primary_Location_Simplified, scales="free_x", space="free_x") +
+  facet_grid(~cell_of_origin, scales="free_x", space="free_x") +
   ylab("TERRA Content") +
   xlab("")
 

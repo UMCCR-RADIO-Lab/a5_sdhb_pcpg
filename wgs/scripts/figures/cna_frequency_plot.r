@@ -141,25 +141,22 @@ seg_window_overlap_df <-
   purrr::map(.x=seg_window_overlap, .f=GenomicRanges::as.data.frame) 
 
 
-count_members <- function(chrom_segs, grouping_feature, permitted_anatomical_groups) { 
+count_members <- function(chrom_segs, grouping_feature, permitted_anatomical_groups, permitted_cell_of_origin) {
   segs_annotated <- 
     chrom_segs %>%
     mutate(Class=factor(as.character(Class, levels=cn_event_types)),
            Class=forcats::fct_drop(Class)) %>% 
     dplyr::select(seqnames,  start, end, A5_ID, Class) %>% 
     inner_join(a5_anno %>%  
-                 dplyr::select(A5_ID, differential_group_anatomy, !!sym(grouping_feature)) %>% 
-                 mutate(differential_group_anatomy = case_match(differential_group_anatomy,
-                                                                "Abdominal_Thoracic" ~ "Adrenal/extraadrenal (abdominal/thoracic)",
-                                                                "Head_Neck" ~ "Head and neck/mediastinum",
-                                                                "Mediastinum" ~ "Head and neck/mediastinum",
-                                                                .default = differential_group_anatomy),
-                        differential_group_anatomy = case_when(A5_ID == "E185-1" ~ "Head and neck/mediastinum",
-                                                               A5_ID == "E128-1" ~ "Adrenal/extraadrenal (abdominal/thoracic)",
-                                                               TRUE ~ differential_group_anatomy),
-                        differential_group_anatomy = factor(as.character(differential_group_anatomy), 
-                                                            levels=c("Adrenal/extraadrenal (abdominal/thoracic)","Head and neck/mediastinum")))) %>% 
-    filter(differential_group_anatomy %in% permitted_anatomical_groups) %>% 
+                 dplyr::select(A5_ID, differential_group_anatomy, cell_of_origin, !!sym(grouping_feature))) 
+  
+  if(!is.null(permitted_anatomical_groups))  {
+    segs_annotated <-   segs_annotated %>% filter(differential_group_anatomy %in% permitted_anatomical_groups) }
+  
+  if(!is.null(permitted_cell_of_origin))  {
+    segs_annotated <-   segs_annotated %>% filter(cell_of_origin %in% permitted_cell_of_origin) }
+    
+  segs_annotated <- segs_annotated %>% 
     distinct() %>% 
     group_by(seqnames, start, end, A5_ID) %>% 
     slice_max(order_by = Class) %>% #select one classification for the segment
@@ -188,8 +185,10 @@ count_members <- function(chrom_segs, grouping_feature, permitted_anatomical_gro
 
 seg_counts_anatomy <- seg_window_overlap_df %>%  
   purrr:::map(.f = ~count_members(.x, 
-                                  grouping_feature="differential_group_anatomy", 
-                                  permitted_anatomical_groups=c("Adrenal/extraadrenal (abdominal/thoracic)", "Head and neck/mediastinum")))  
+                                  grouping_feature="cell_of_origin",
+                                  permitted_anatomical_groups=NULL,
+                                  permitted_cell_of_origin=NULL)
+                                  )  
 
 seg_counts_anatomy <- bind_rows(seg_counts_anatomy)
 
@@ -207,7 +206,7 @@ names(x_breaks) <- chr_offsets$chromosome
 
 gg_cna_freq_anatomy <- ggplot(plot_data, 
        aes(x=start_offset, y=proportion, fill= Class,color= Class)) + geom_col() + 
-  facet_wrap("differential_group_anatomy", ncol=1) +
+  facet_wrap("cell_of_origin", ncol=1) +
   geom_vline(data=chr_offsets, aes(xintercept=offset)) +
   scale_color_manual(values=cna_palette) +
   scale_fill_manual(values=cna_palette) +
@@ -219,7 +218,7 @@ plot_data_flip <- plot_data %>% mutate(proportion=ifelse(Class %in% c("Loss", "C
 
 gg_cna_freq_anatomy_flip <- ggplot(plot_data_flip  %>%  filter(Class %in% c("Gain","Loss", "CNLOH")), #, "Subclonal Loss"
                                     aes(x=start_offset, y=proportion, fill= Class,color= Class)) + geom_col() + 
-  facet_wrap("differential_group_anatomy", ncol=1) +
+  facet_wrap("cell_of_origin", ncol=1) +
   geom_vline(data=chr_offsets, aes(xintercept=offset)) +
   scale_color_manual(values=cna_palette) +
   scale_fill_manual(values=cna_palette) +
@@ -238,7 +237,8 @@ gg_cna_freq_anatomy_flip <- ggplot(plot_data_flip  %>%  filter(Class %in% c("Gai
 seg_counts_sampletype <- seg_window_overlap_df %>%  
   purrr:::map(.f = ~count_members(.x, 
                                   grouping_feature="differential_group_sampletype_strict",
-                                  permitted_anatomical_groups=c("Abdominal_Thoracic")))  
+                                  permitted_anatomical_groups=NULL,
+                                  permitted_cell_of_origin="Chromaffin"))  
 
 seg_counts_sampletype <- bind_rows(seg_counts_sampletype)
 

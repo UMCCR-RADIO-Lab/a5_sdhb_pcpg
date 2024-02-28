@@ -52,16 +52,7 @@ plot_data <- tibble(Sample=names(n_high_meth),
                     n_probes=n_high_meth, 
                     pcnt_probes=(n_high_meth/nrow(meth_tcga_comete_a5_450k_bval.batch_removed))*100) %>% 
   inner_join(meth_tcga_comete_a5_450k_anno) %>% 
-  mutate(subtype=dplyr::recode(new_naming,
-                               "A5 - Extraadrenal"="C1A1 (SDHx)",
-                               "A5 - NF1"="C2A (Kinase)",
-                               "A5 - Adrenal"="C1A1 (SDHx)",
-                               "A5 - Head_neck"="C1A2 (SDHx-HN)",
-                               "A5 - VHL"="C1B1 (VHL)",
-                               "A5 - Extraadrenal_cardiac"="C1A1 (SDHx)",
-                               "A5 - Extraadrenal_mediastinal"="C1A2 (SDHx-HN)",
-                               "A5 - Unspecified"="C1A1 (SDHx)",
-                               "C2B2 (MAML)"="C2B2 (MAML3)")) %>% 
+  dplyr::rename("subtype"="new_naming") %>%
   filter(!(subtype %in% c("Normal","C2C (Cortical admixture)"))) %>% 
   mutate(label = ifelse(Sample %in% c("E229-1","E229-2"), Sample, NA))
 

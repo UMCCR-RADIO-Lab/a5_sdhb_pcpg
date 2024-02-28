@@ -30,16 +30,13 @@ plot_data <- a5_anno %>%
                                                               "Primary (metastasis reported)",
                                                               "Non-metastatic local recurrence",
                                                               "Primary (short follow up)",
-                                                              "Non-metastatic primary")),
-         Primary_Location_Simplified = case_when(Primary_Location_Simplified %in% c("Head_neck", "Extraadrenal_thoracic_mediastinum") ~ "Head and neck/mediastinum",
-                                                 !(Primary_Location_Simplified %in% c("Head_neck", "Extraadrenal_thoracic_mediastinum")) ~ "Abdominal/Thoracic/Adrenal")) %>%   
-  filter(Exclude == "N") %>% 
+                                                              "Non-metastatic primary"))) %>%   
   arrange(TERT_ATRX_Mutation, `Patient ID`, differential_group_sampletype_strict)
   
          
 ##t-test
 
-t_test_data <- plot_data %>% filter(Primary_Location_Simplified == "Abdominal/Thoracic/Adrenal") %>%   
+t_test_data <- plot_data %>% filter(cell_of_origin == "Chromaffin") %>%   
   group_by(`Patient ID`, TERT_ATRX_Mutation) %>% 
   filter(A5_ID != "E167-1") %>% 
   summarise(wgs_tmb=mean(wgs_tmb)) 
@@ -66,7 +63,7 @@ gg_bottom <- ggplot(plot_data,
   theme(axis.text.x = element_text(angle=45, vjust = 1,hjust=1)) +
   ylab("TMB") +
   xlab("") + 
-  facet_grid(~Primary_Location_Simplified, space="free_x", scales = "free_x") +
+  facet_grid(~cell_of_origin, space="free_x", scales = "free_x") +
   coord_cartesian(ylim=c(0,5))
 
 
@@ -75,21 +72,25 @@ gg_top <- ggplot(plot_data,
   geom_boxplot(outlier.alpha = 0) + 
   geom_point(mapping = aes(color=differential_group_sampletype_strict),position = jp) + 
   geom_path(mapping=aes(group=`Patient ID`), position = jp, linetype=2) +
-  geom_segment(data=tibble(y=c(745,753,748),yend=c(745,753,748),x=c(0.6,1.6,0.6), xend=c(2.4,3.4,3.4),Primary_Location_Simplified = "Abdominal/Thoracic/Adrenal"),
+  geom_segment(data=tibble(y=c(745,753,748),
+                           yend=c(745,753,748),
+                           x=c(0.6,1.6,0.6), 
+                           xend=c(2.4,3.4,3.4),
+                           cell_of_origin = factor("Chromaffin", levels=levels(plot_data$cell_of_origin))),
                mapping=aes(x=x,y=y,xend=xend,yend=yend, color=NULL,fill=NULL,group=NULL)) +
   geom_text(data=tibble(y=c(746,754,749),
                         x=c(1.4,2.6,2), 
                         label=c(paste0("p=",(round(t_result_atrx_vs_tert$p.value,4))), 
                                 paste0("p=",round(t_result_tert_vs_wt$p.value,6)),
                                 paste0("p=",as.character(round(t_result_atrx_vs_wt$p.value,6)))),
-                        Primary_Location_Simplified = "Abdominal/Thoracic/Adrenal"),
+                        cell_of_origin = factor("Chromaffin", levels=levels(plot_data$cell_of_origin))),
             mapping=aes(x=x,y=y,label=label, color=NULL,fill=NULL,group=NULL)) +
   scale_color_manual(values = sampletype_strict_cols) +
   theme_bw() +
   theme(axis.text.x = element_text(angle=45, vjust = 1,hjust=1)) +
   ylab("TMB") +
   xlab("") + 
-  facet_grid(~Primary_Location_Simplified, space="free_x", scales = "free_x") +
+  facet_grid(~cell_of_origin, space="free_x", scales = "free_x") +
   coord_cartesian(ylim=c(735,755)) + 
   scale_y_continuous(breaks = c(735,740,745,750,755))
 

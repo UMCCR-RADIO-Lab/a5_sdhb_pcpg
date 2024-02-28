@@ -81,15 +81,14 @@ if (!("TERT_ATRX_Mutation_Event" %in% colnames(a5_anno)))
 
 plot_data <- a5_anno %>%  
               dplyr::select(A5_ID, `Patient ID`, TERT_ATRX_Mutation, TERT_ATRX_Mutation_Event,
-                            telhunter_log2_telcontentratio, Primary_Location_Simplified , 
-                            differential_group_sampletype_strict, c_circle_result, Primary_Location_Simplified) %>% 
+                            telhunter_log2_telcontentratio, cell_of_origin , 
+                            differential_group_sampletype_strict, c_circle_result) %>% 
               mutate(c_circle_result = recode(c_circle_result, "Positive - Low"="Positive"),
                      c_circle_result=factor(c_circle_result, levels=c("No data","Negative", "Positive"))) %>% 
-  mutate(Primary_Location_Simplified = case_when(Primary_Location_Simplified %in% c("Head_neck", "Extraadrenal_thoracic_mediastinum") ~ "Head and neck/mediastinum",
-                                                 !(Primary_Location_Simplified %in% c("Head_neck", "Extraadrenal_thoracic_mediastinum")) ~ "Abdominal/Thoracic/Adrenal")) %>% 
-  arrange(TERT_ATRX_Mutation, c_circle_result, differential_group_sampletype_strict) 
+  arrange(TERT_ATRX_Mutation, c_circle_result, differential_group_sampletype_strict) %>% 
+  mutate(telhunter_log2_telcontentratio = as.numeric(telhunter_log2_telcontentratio))
 
-t_test_data <- plot_data %>% filter(Primary_Location_Simplified == "Abdominal/Thoracic/Adrenal") %>%   
+t_test_data <- plot_data %>% filter(cell_of_origin == "Chromaffin") %>%   
   group_by(`Patient ID`, TERT_ATRX_Mutation) %>% 
   summarise(telhunter_log2_telcontentratio=mean(telhunter_log2_telcontentratio)) 
 
@@ -114,14 +113,18 @@ ggplot(plot_data ,aes(y=as.numeric(telhunter_log2_telcontentratio),
   geom_boxplot(aes(color=NULL,fill=NULL, group=NULL), color="lightgrey",outlier.alpha = 0) +
   geom_point(position=pj, size=3, stroke=1, shape=20) + 
   geom_path(position=pj, alpha=0.3, size=0.5, color="black", linetype=2) +
-  geom_segment(data=tibble(y=c(1.7,1.85,2),yend=c(1.7,1.85,2),x=c(0.6,1.6,0.6), xend=c(2.4,3.4,3.4),Primary_Location_Simplified = "Abdominal/Thoracic/Adrenal"),
+  geom_segment(data=tibble(y=c(1.7,1.85,2),
+                           yend=c(1.7,1.85,2),
+                           x=c(0.6,1.6,0.6), 
+                           xend=c(2.4,3.4,3.4), 
+                           cell_of_origin = "Chromaffin"),
                mapping=aes(x=x,y=y,xend=xend,yend=yend, color=NULL,fill=NULL,group=NULL)) +
   geom_text(data=tibble(y=c(1.78,1.91,2.08),
                         x=c(1.4,2.6,2), 
                         label=c(paste0("p=",(round(t_result_atrx_vs_tert$p.value,4))), 
                                 paste0("p=",round(t_result_tert_vs_wt$p.value,3)),
                                 paste0("p=",as.character(round(t_result_atrx_vs_wt$p.value,6)))),
-                        Primary_Location_Simplified = "Abdominal/Thoracic/Adrenal"),
+                        cell_of_origin = "Chromaffin"),
             mapping=aes(x=x,y=y,label=label, color=NULL,fill=NULL,group=NULL)) +
   #geom_text(aes(label=A5_ID)) + 
   #scale_fill_manual(values = sampletype_strict_cols) +
@@ -139,14 +142,11 @@ ggplot(plot_data ,aes(y=as.numeric(telhunter_log2_telcontentratio),
   guides(fill = guide_legend(override.aes = list(shape=21)),
          color = guide_legend(override.aes = list(shape=1, linetype=c(0,0,0)))) +
   ylab("Tumour/Normal Telomere Content Ratio (log2)") +
-  facet_grid(~Primary_Location_Simplified, scales="free_x", space="free_x") +
+  facet_grid(~cell_of_origin, scales="free_x", space="free_x") +
   xlab("")
 
 
-
-
-
-t_test_data <- plot_data %>% filter(Primary_Location_Simplified == "Abdominal/Thoracic/Adrenal") %>%   
+t_test_data <- plot_data %>% filter(cell_of_origin == "Chromaffin") %>%   
   group_by(`Patient ID`, c_circle_result) %>% 
   summarise(telhunter_log2_telcontentratio=mean(telhunter_log2_telcontentratio)) 
 
@@ -160,12 +160,12 @@ ggplot(plot_data %>%
   geom_boxplot(aes(x=c_circle_result), color="lightgrey",outlier.alpha = 0) +
   geom_point(aes(x=c_circle_result, color=TERT_ATRX_Mutation), position=pj, size=3, stroke=1.5, shape=20) + 
   geom_path(aes(x=c_circle_result, group=`Patient ID`), position=pj, alpha=0.3, size=0.5, color="black", linetype=2) +
-  geom_segment(data=tibble(y=c(1.7),yend=c(1.7),x=c(0.6,1.6), xend=c(2.4),Primary_Location_Simplified = "Abdominal/Thoracic/Adrenal"),
+  geom_segment(data=tibble(y=c(1.7),yend=c(1.7),x=c(0.6,1.6), xend=c(2.4), cell_of_origin = "Chromaffin"),
                mapping=aes(x=x,y=y,xend=xend,yend=yend, color=NULL,fill=NULL,group=NULL)) +
   geom_text(data=tibble(y=c(1.78),
                         x=c(1.4),
                         label=c(paste0("p=",as.character(round(t_result_pos_vs_neg$p.value,6)))),
-                        Primary_Location_Simplified = "Abdominal/Thoracic/Adrenal"),
+                        cell_of_origin = "Chromaffin"),
             mapping=aes(x=x,y=y,label=label, color=NULL,fill=NULL,group=NULL)) +
   #geom_text(aes(label=A5_ID)) + 
   #scale_fill_manual(values = sampletype_strict_cols) +
@@ -180,5 +180,5 @@ ggplot(plot_data %>%
   # guides(fill = guide_legend(override.aes = list(shape=21, linetype=c(0,0,0), color="white")),
   #        color = guide_legend(override.aes = list(shape=1, linetype=c(0,0,0)))) +
   ylab("Tumour/Normal Telomere Content Ratio (log2)") +
-  facet_grid(~Primary_Location_Simplified, scales="free_x", space="free_x") +
+  facet_grid(~cell_of_origin, scales="free_x", space="free_x") +
   xlab("C-circle status")

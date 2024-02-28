@@ -43,24 +43,19 @@ assay_groups <- upset_data %>%
   mutate(n_assay_combo=n())
 
 assay_combo_by_anatomy <- a5_anno %>% filter(Exclude=="N") %>% 
-  dplyr::select(A5_ID, Primary_Location_Simplified) %>% 
-  mutate(Primary_Location_Simplified=
-           dplyr::recode(Primary_Location_Simplified, "Adrenal_left"="Adrenal",
-                         "Adrenal_right"="Adrenal",
-                         "Head_neck"="Head and neck",
-                         "Extraadrenal_abdominal"="Extraadrenal",
-                         "Extraadrenal_thoracic"="Extraadrenal",
-                         "Extraadrenal_thoracic_cardiac"="Extraadrenal",
-                         "Extraadrenal_abdominal"="Extraadrenal",
-                         "Extraadrenal_bladder"="Extraadrenal",
-                         "Extraadrenal_thoracic_mediastinum"="Extraadrenal")) %>% 
+  dplyr::select(A5_ID, primary_location_plotting ) %>% 
+  mutate(primary_location_plotting =
+           case_match(primary_location_plotting, 
+                         "Extraadrenal (abdominal/thoracic)" ~ "Extraadrenal",
+                         "Extraadrenal (bladder)" ~ "Extraadrenal",
+                      .default= primary_location_plotting)) %>% 
   inner_join(assay_groups) %>% 
-  group_by(Assay, Primary_Location_Simplified, n_assay_combo) %>% dplyr::count(name="n_samples")
+  group_by(Assay, primary_location_plotting, n_assay_combo) %>% dplyr::count(name="n_samples")
 
-assay_combo_by_anatomy <- assay_combo_by_anatomy %>% arrange(-n_assay_combo, Assay, Primary_Location_Simplified) %>% 
+assay_combo_by_anatomy <- assay_combo_by_anatomy %>% arrange(-n_assay_combo, Assay, primary_location_plotting) %>% 
   mutate(Assay=factor(Assay, levels=unique(.$Assay)))
 
-gg_assay_by_anatomy <- ggplot(assay_combo_by_anatomy, aes(x=Assay, y=n_samples, fill=Primary_Location_Simplified)) + 
+gg_assay_by_anatomy <- ggplot(assay_combo_by_anatomy, aes(x=Assay, y=n_samples, fill=primary_location_plotting)) + 
   geom_col(position = position_dodge()) +
   scale_fill_manual(values = location_cols, name="Anatomical Location\n(Primary)") + 
   theme_bw() +

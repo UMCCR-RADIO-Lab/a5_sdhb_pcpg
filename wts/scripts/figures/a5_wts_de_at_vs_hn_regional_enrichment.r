@@ -50,7 +50,7 @@ cytoband_gr <- GenomicRanges::makeGRangesFromDataFrame(cytoband,
 # Annotate DE TopTable with cytoband data #
 ###########################################
 
-top_table <- wts_top_tables[["Parasympathetic_vs_Sympathetic"]][["Parasympathetic_vs_Sympathetic"]] 
+top_table <- wts_top_tables[["Non_chromaffin_vs_Chromaffin"]][["Non_chromaffin_vs_Chromaffin"]] 
 
 top_table <- top_table %>% 
   separate(Gene, into=c("ensembl_gene_id", "gene_symbol"), 
@@ -194,7 +194,7 @@ plot_data <- plot_data %>% mutate(cytoband=paste0(chromosome_name,cytoband)) %>%
 plot_data <- plot_data %>% 
   mutate(`Tumour Location`=dplyr::recode(differential_group_anatomy, 
                                          "Abdominal_Thoracic"="Abdominal/Thoracic",
-                                         "Head_Neck"="Head and neck"))
+                                         "Head_neck"="Head and neck"))
 
 ##################
 # Generate Plots #

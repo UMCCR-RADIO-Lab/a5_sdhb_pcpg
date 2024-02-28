@@ -69,9 +69,9 @@ plot_volcano_dmr <- function(tt, n_label, ranking_stat="Fisher", meandiff_cutoff
   
 }
 
-gg_expr <- plot_volcano_expr(wts_top_tables[["Parasympathetic_vs_Sympathetic"]][["Parasympathetic_vs_Sympathetic"]], 30) + ggtitle("Head and Neck vs Abdo-thoracic")
+gg_expr <- plot_volcano_expr(wts_top_tables[["Non_chromaffin_vs_Chromaffin"]][["Non_chromaffin_vs_Chromaffin"]], 30) + ggtitle("Head and Neck vs Abdo-thoracic")
 
-gg_dmr <- plot_volcano_dmr(GenomicRanges::as.data.frame(dmr_lists[["hn"]][["Parasympathetic_vs_Sympathetic"]]), 30) + ggtitle("Head and Neck vs Abdo-thoracic")
+gg_dmr <- plot_volcano_dmr(GenomicRanges::as.data.frame(dmr_lists[["hn"]][["Non_chromaffin_vs_Chromaffin"]]), 30) + ggtitle("Head and Neck vs Abdo-thoracic")
 
 
 gg_composed <- gg_expr + gg_dmr + plot_layout(guides = "collect")  & theme(aspect.ratio = 1)

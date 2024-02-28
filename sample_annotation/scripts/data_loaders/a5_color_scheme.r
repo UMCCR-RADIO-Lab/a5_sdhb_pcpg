@@ -130,13 +130,14 @@ sampletype_strict_cols <- c(`Non-metastatic primary` = ColorPalette[["DarkGreen2
 location_cols = c("Adrenal"=ColorPalette[["LightGreen1"]], 
                   "Extraadrenal"=ColorPalette[["DarkBlue1"]], 
                   "Head_neck"=ColorPalette[["LightOrange1"]], 
-                  "Extraadrenal_mediastinum"=ColorPalette[["DarkRed1"]], 
+                  "Thoracic_non_chromaffin"=ColorPalette[["DarkRed1"]], 
                   "Metastasis"=ColorPalette[["Purple3"]], 
-                  "Unspecified"=ColorPalette[["DarkGrey1"]])
+                  "Ambiguous"=ColorPalette[["DarkGrey1"]])
 location_cols[["Head and neck"]] <- location_cols[["Head_neck"]] 
 location_cols[["Extraadrenal_bladder"]] = "#99cccc"
 location_cols[["Extraadrenal (abdominal/thoracic)"]] <-  location_cols[["Extraadrenal"]]
-location_cols[["Extraadrenal (mediastinum)"]] <-  location_cols[["Extraadrenal_mediastinum"]]
+location_cols[["Abdominal_Thoracic"]] <-  location_cols[["Extraadrenal"]]
+location_cols[["Thoracic (non-chromaffin)"]] <-  location_cols[["Thoracic_non_chromaffin"]]
 location_cols[["Extraadrenal (bladder)"]] <-  location_cols[["Extraadrenal_bladder"]]
 
 driver_cols <- c(ATRX=ColorPalette[["DarkBlue1"]], 

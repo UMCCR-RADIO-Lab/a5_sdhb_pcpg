@@ -35,16 +35,8 @@ inner_join(wts_tcga_flynn_a5_anno) %>%
   left_join(hgnc_to_ensgid)
 
 exp <- exp %>%
-  mutate(subtype=dplyr::recode(new_naming,
-                              "A5 - Extraadrenal"="C1A1 (SDHx)",
-                              "A5 - NF1"="C2A (Kinase)",
-                              "A5 - Adrenal"="C1A1 (SDHx)",
-                              "A5 - Head_neck"="C1A2 (SDHx-HN)",
-                              "A5 - VHL"="C1B1 (VHL)",
-                              "A5 - Extraadrenal_mediastinum"="C1A2 (SDHx-HN)",
-                              "A5 - Unspecified"="C1A1 (SDHx)",
-                              "C2B2 (MAML)"="C2B2 (MAML3)"),
-         Malignancy=replace_na(Malignancy, "Unknown")) 
+  mutate(Malignancy=replace_na(Malignancy, "Unknown")) %>% 
+  dplyr::rename("subtype"="new_naming") 
 
 ########
 # Plot #

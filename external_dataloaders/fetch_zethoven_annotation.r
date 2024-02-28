@@ -34,7 +34,8 @@ fetch_zethoven_annotation <- function(datasets=NULL)
     left_join(zethoven_cluster_naming %>% 
                 dplyr::select(final, historical_b_variant) %>% 
                 dplyr::rename(new_naming=final), 
-              by=c("Cluster"="historical_b_variant"))
+              by=c("Cluster"="historical_b_variant")) %>% mutate(
+                new_naming=dplyr::recode(new_naming, "C2B2 (MAML)"="C2B2 (MAML3)"))
   
   return(zethoven_annotation)
 }

@@ -17,7 +17,7 @@ swap_position <- function(Sample_ID, position_data, new_x, new_y)
   
   swap_reciever_primarylocation <- position_data %>% 
     filter(A5_ID==Sample_ID) %>% 
-    pull(Primary_Location_Simplified) %>% 
+    pull(primary_location_plotting) %>% 
     as.character()
   
   swap_donor_differential_group_sampletype_strict <- position_data %>% 
@@ -65,32 +65,13 @@ if(!exists("a5_anno"))
 ##########
 
 source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
-location_cols[["Extraadrenal (abdominal/thoracic)"]] <-  location_cols[["Extraadrenal"]]
-location_cols[["Extraadrenal (mediastinum)"]] <-  location_cols[["Extraadrenal_mediastinum"]]
-location_cols[["Extraadrenal (bladder)"]] <-  location_cols[["Extraadrenal_bladder"]]
 
 ################################
 # Prepare data for waffle plot #
 ################################
 
-waffle_data <- a5_anno %>% filter(Exclude != "Y") %>%  
-  mutate(Primary_Location_Simplified=dplyr::recode(Primary_Location_Simplified,
-                                                   "Extraadrenal_abdominal"="Extraadrenal (abdominal/thoracic)",
-                                                   "Extraadrenal_thoracic"="Extraadrenal (abdominal/thoracic)",
-                                                   "Extraadrenal_thoracic_cardiac"="Extraadrenal (abdominal/thoracic)",
-                                                   "Extraadrenal_bladder"="Extraadrenal (bladder)",
-                                                   "Extraadrenal_thoracic_mediastinum"="Extraadrenal (mediastinum)",
-                                                   "Adrenal_left"="Adrenal",
-                                                   "Adrenal_right"="Adrenal",
-                                                   "Head_neck"="Head and neck"),
-         Primary_Location_Simplified=factor(Primary_Location_Simplified,
-                                            levels=c("Extraadrenal (abdominal/thoracic)",
-                                                     "Extraadrenal (bladder)",
-                                                     "Extraadrenal (mediastinum)",
-                                                     "Adrenal",
-                                                     "Head and neck",
-                                                     "Unspecified"))) %>% 
-  dplyr::select(A5_ID, `Patient ID`, differential_group_sampletype_strict, Primary_Location_Simplified) %>% 
+waffle_data <- a5_anno %>% 
+  dplyr::select(A5_ID, `Patient ID`, differential_group_sampletype_strict, primary_location_plotting) %>% 
   group_by(`Patient ID`) %>% 
   mutate(group=ifelse(n()>1, `Patient ID`, NA))
 
@@ -108,7 +89,7 @@ waffle_squares <- waffle_data %>% group_by(differential_group_sampletype_strict)
 n_samples=(a5_anno %>% filter(Exclude=="N") %>% nrow())
 waffle_dots <- waffle_data %>% 
   ungroup() %>% 
-  arrange(differential_group_sampletype_strict, Primary_Location_Simplified) %>% 
+  arrange(differential_group_sampletype_strict, primary_location_plotting) %>% 
   mutate(y_pos=rep(1:10,10)[1:n_samples], 
          x_pos=rep(1:10,each=10)[1:n_samples]) 
 
@@ -166,7 +147,7 @@ waffle_dots_unpinned_values <-
   waffle_dots %>% 
     filter(is.na(group)) %>% 
     dplyr::select(-x_pos,-y_pos) %>% 
-    arrange(differential_group_sampletype_strict, Primary_Location_Simplified)
+    arrange(differential_group_sampletype_strict, primary_location_plotting)
 
 #Filter rows without a "required" location, isolate locations and sort  
 waffle_dots_unpinned_locations <- 
@@ -198,7 +179,7 @@ waffle_dots <-
 ggplot( ) +
   geom_waffle(data = waffle_squares, mapping = aes(fill = differential_group_sampletype_strict, values = n), n_rows = 10, size = 0.33, colour = "white", flip = FALSE, radius = unit(4, "pt")) +
   geom_point(data=waffle_dots, mapping = aes(x=x_pos,y=y_pos), color="black", size=4) +
-  geom_point(data=waffle_dots, mapping = aes(x=x_pos,y=y_pos, color=Primary_Location_Simplified), size=3) +
+  geom_point(data=waffle_dots, mapping = aes(x=x_pos,y=y_pos, color=primary_location_plotting), size=3) +
   geom_line(data=waffle_dots %>% filter(A5_ID != "E159-2"), mapping = aes(x=x_pos,y=y_pos, group=`Patient ID`)) +
   geom_line(data=waffle_dots %>% filter(A5_ID %in% c("E159-2","E159-3")), 
             mapping = aes(x=x_pos,y=y_pos, group=`Patient ID`),

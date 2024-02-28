@@ -41,6 +41,41 @@ data_loader_a5_clinical_anno <- function(google_account=NULL,
                        floor(lubridate::interval(lubridate::my(paste("01", `Year of birth`,sep="-")),
                                                  lubridate::dmy(`Date of resection (DD/MM/YYYY)`)) 
                              / lubridate::years(1)))
+  
+  a5_anno <- a5_anno %>% 
+    mutate(primary_location_plotting = case_match(Primary_Location_Simplified,
+      "Head_neck" ~ "Head and neck",
+      "Extraadrenal_abdominal" ~ "Extraadrenal (abdominal/thoracic)",
+      "Extraadrenal_thoracic" ~ "Extraadrenal (abdominal/thoracic)",
+      "Extraadrenal_bladder" ~ "Extraadrenal (bladder)",
+      "Adrenal" ~ "Adrenal",
+      "Adrenal_right" ~ "Adrenal",
+      "Adrenal_left" ~ "Adrenal" 
+    ),
+    primary_location_plotting = factor(primary_location_plotting, 
+                                       levels = c("Adrenal", "Extraadrenal (abdominal/thoracic)", 
+                                                  "Extraadrenal (bladder)", "Head and neck")),
+    cell_of_origin = case_when(
+      Primary_Location_Simplified == "Normal" ~ "Chromaffin",
+      Primary_Location_Simplified == "Head_neck" & grepl("Non_chromaffin", Major_Cluster) ~ "Non_chromaffin",
+      Primary_Location_Simplified == "Extraadrenal_thoracic" & grepl("Non_chromaffin", Major_Cluster) ~ "Non_chromaffin",
+      Primary_Location_Simplified != "Head_neck" & grepl("Chromaffin", Major_Cluster) ~ "Chromaffin",
+      TRUE ~ "Ambiguous"
+    ),
+    cell_of_origin = factor(cell_of_origin, levels = c("Chromaffin","Non_chromaffin","Ambiguous")))
+  
+  a5_anno <- a5_anno %>% 
+    mutate(structural_variant_count = as.numeric(structural_variant_count),
+           wgs_tmb = as.numeric(wgs_tmb),
+           Largest_primary_dimensions_cm = as.numeric(Largest_primary_dimensions_cm),
+           Age_first_dx = as.numeric(Age_first_dx),
+           telhunter_log2_telcontentratio = as.numeric(telhunter_log2_telcontentratio),
+           telhunter_RNA_telcontent = as.numeric(telhunter_RNA_telcontent),
+           TERT_purity_adj_vaf = as.numeric(TERT_purity_adj_vaf),
+           ATRX_purity_adj_vaf = as.numeric(ATRX_purity_adj_vaf),
+           sample_purity = as.numeric(sample_purity),
+           MKI67_log2_cpm = as.numeric(MKI67_log2_cpm)
+           )
  
   assign(x = "a5_anno", value = a5_anno, envir = globalenv())
   message("Loaded clinical annotation into the global environment as a5_anno")
@@ -61,12 +96,22 @@ a5_to_zethoven_anno_format <- function(a5_anno) {
         tumour_metastasised == "No" ~ "Benign",
         TRUE ~ NA_character_
       ),
-      Cluster = paste(
+      Cluster = case_match(A5_ID, 
+                           "E185-1" ~ "A5 - Head_neck",
+                           "E128-1" ~ "A5 - Abdominal_Thoracic",
+                           .default =paste(
         "A5",
-        gsub("_abdominal|_thoracic|_bladder|_cardiac|_[Ll]eft|_[Rr]ight", "", Primary_Location_Simplified),
+        differential_group_anatomy,
         sep = " - "
-      ),
-      new_naming = Cluster
+      )),
+      new_naming = dplyr::recode(Cluster,
+                                         "A5 - Head_neck"="C1A2 (SDHx-HN)",
+                                         "A5 - Abdominal_Thoracic"="C1A1 (SDHx)",
+                                         "A5 - Thoracic_non_chromaffin"="C1A2 (SDHx-HN)",
+                                         "A5 - Extraadrenal"="C1A1 (SDHx)",
+                                         "A5 - NF1"="C2A (Kinase)",
+                                         "A5 - Adrenal"="C1A1 (SDHx)",
+                                         "A5 - VHL"="C1B1 (VHL)")
     ) %>%
     dplyr::rename(Sample = A5_ID) %>%
     dplyr::select(

@@ -88,38 +88,30 @@ ggplot(plot_data %>%
 # Super-set PNMT Example #
 ##########################
 
-# cat_path_genes <- tibble(ensgid=c("ENSG00000180176", "ENSG00000132437","ENSG00000123454","ENSG00000141744"), 
-# symbol=c("TH", "DDC","DBH","PNMT"))
+# cat_path_genes <- tibble(ensgid=c("ENSG00000180176", "ENSG00000132437","ENSG00000123454","ENSG00000141744"),
+#                          symbol=c("TH", "DDC","DBH","PNMT"))
 # 
-# plot_data <- wts_tcga_flynn_a5_lcpm.batch_removed %>% 
-#   as_tibble(rownames = "ensgid") %>% 
+# plot_data <- wts_tcga_flynn_a5_lcpm.batch_removed %>%
+#   as_tibble(rownames = "ensgid") %>%
 #   inner_join(cat_path_genes) %>%
-#   pivot_longer(cols = c(-ensgid,-symbol), names_to = "Sample", values_to = "log2_cpm") %>% 
-#   group_by(symbol) %>% mutate(log2_cpm_z=(log2_cpm-mean(log2_cpm))/sd(log2_cpm)) %>% 
-#   inner_join(wts_tcga_flynn_a5_anno %>% 
-#                dplyr::select(Sample, new_naming, Dataset)) %>% 
-#   mutate(symbol=factor(symbol, levels=rev(c("TH","DDC","DBH","PNMT", "SLC6A2")))) %>% 
-#   mutate(subtype=dplyr::recode(new_naming,
-#                                "A5 - Extraadrenal"="C1A1 (SDHx)",
-#                                "A5 - NF1"="C2A (Kinase)",
-#                                "A5 - Adrenal"="C1A1 (SDHx)",
-#                                "A5 - Head_neck"="C1A2 (SDHx-HN)",
-#                                "A5 - VHL"="C1B1 (VHL)",
-#                                "A5 - Extraadrenal_mediastinum"="C1A2 (SDHx-HN)",
-#                                "A5 - Unspecified"="C1A1 (SDHx)",
-#                                "C2B2 (MAML)"="C2B2 (MAML3)")) %>% 
-#   arrange(symbol, Sample) %>% 
+#   pivot_longer(cols = c(-ensgid,-symbol), names_to = "Sample", values_to = "log2_cpm") %>%
+#   group_by(symbol) %>% mutate(log2_cpm_z=(log2_cpm-mean(log2_cpm))/sd(log2_cpm)) %>%
+#   inner_join(wts_tcga_flynn_a5_anno %>%
+#                dplyr::select(Sample, new_naming, Dataset)) %>%
+#   mutate(symbol=factor(symbol, levels=rev(c("TH","DDC","DBH","PNMT", "SLC6A2")))) %>%
+#   dplyr::rename("subtype"="new_naming") %>%
+#   arrange(symbol, Sample) %>%
 #   filter(subtype %in% c("C1A1 (SDHx)", "C1A2 (SDHx-HN)","C2A (Kinase)"), Dataset %in% c("TCGA", "A5"))
-#                                    
-# ggplot(plot_data, 
-#        aes(y=symbol, 
-#            x=log2_cpm_z, 
+# 
+# ggplot(plot_data,
+#        aes(y=symbol,
+#            x=log2_cpm_z,
 #            color=subtype,
-#            group=Sample)) + 
+#            group=Sample)) +
 #   geom_point() +
 #   geom_path(alpha=0.5,linetype="22") +
 #   scale_color_manual(values = subtype_cols) +
-#   #ggrepel::geom_text_repel(nudge_y = 0.2) +       
+#   #ggrepel::geom_text_repel(nudge_y = 0.2) +
 #   #geom_text(nudge_y = 0.2) +
 #   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
 #   theme_bw()

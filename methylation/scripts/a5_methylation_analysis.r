@@ -250,7 +250,7 @@ design_matrices[["hn_vs_abdo"]] <- design_matrix_hn
 # BACON inflation adjustment
 #####
 # library(bacon)
-# current_coef <- "Parasympathetic_vs_Sympathetic"
+# current_coef <- "Non_chromaffin_vs_Chromaffin"
 # z_score_t_geno <- zscoreT(x = geno_fit2$t, 
 #                           df=max(geno_fit2$df.total))
 # bc_geno <- bacon(teststatistics = z_score_t_geno, niter = as.integer(5000),nburnin = as.integer(1000))

@@ -110,15 +110,7 @@ ggplot(plot_data,
 #   inner_join(wts_tcga_flynn_a5_anno %>% 
 #                dplyr::select(Sample, new_naming, Dataset)) %>% 
 #   mutate(symbol=factor(symbol, levels=rev(c("TH","DDC","DBH","PNMT", "SLC6A2")))) %>% 
-#   mutate(subtype=dplyr::recode(new_naming,
-#                                "A5 - Extraadrenal"="C1A1 (SDHx)",
-#                                "A5 - NF1"="C2A (Kinase)",
-#                                "A5 - Adrenal"="C1A1 (SDHx)",
-#                                "A5 - Head_neck"="C1A2 (SDHx-HN)",
-#                                "A5 - VHL"="C1B1 (VHL)",
-#                                "A5 - Extraadrenal_mediastinum"="C1A2 (SDHx-HN)",
-#                                "A5 - Unspecified"="C1A1 (SDHx)",
-#                                "C2B2 (MAML)"="C2B2 (MAML3)")) %>% 
+#   dplyr::rename("subtype"="new_naming") %>%
 #   arrange(symbol, Sample) %>% 
 #   filter(subtype %in% c("C1A1 (SDHx)", "C1A2 (SDHx-HN)","C2A (Kinase)"), Dataset %in% c("TCGA", "A5"))
 #                                    

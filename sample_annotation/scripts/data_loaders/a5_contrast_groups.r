@@ -29,8 +29,8 @@ make_hn_vs_abdominothoracic_contrasts <- function(sample_anno, exclude_samples=N
   rownames(design_mat) <- sample_anno$A5_ID
   
   contr_matrix <- makeContrasts(
-    Parasympathetic_vs_Sympathetic = (ATRX_Abdominal_Thoracic + TERT_Abdominal_Thoracic + WT_Abdominal_Thoracic)/3 - (WT_Head_Neck),
-    Parasympathetic_vs_Sympathetic_WT = (WT_Abdominal_Thoracic) - (WT_Head_Neck),
+    Non_chromaffin_vs_Chromaffin = (ATRX_Abdominal_Thoracic + TERT_Abdominal_Thoracic + WT_Abdominal_Thoracic)/3 - (WT_Head_neck),
+    Non_chromaffin_vs_Chromaffin_WT = (WT_Abdominal_Thoracic) - (WT_Head_neck),
     levels = colnames(design_mat))
   
   assign("contrast_matrix_hn", contr_matrix, globalenv())

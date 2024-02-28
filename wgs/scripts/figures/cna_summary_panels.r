@@ -42,37 +42,28 @@ plot_data <- a5_anno %>%
   inner_join(genome_altered_stats) %>% 
   dplyr::select(A5_ID, `Patient ID`, 
                 differential_group_sampletype_strict, 
-                differential_group_anatomy, 
+                cell_of_origin,
                 `sample_ploidy`, pcnt_altered, 
                 structural_variant_count) 
 
 plot_data <- plot_data %>% 
   mutate(WGD=ifelse(as.numeric(`sample_ploidy`) > 3.2,"Yes","No"),
          WGD=factor(as.character(WGD), levels=c("Yes","No")),
-         differential_group_anatomy = case_match(differential_group_anatomy,
-                                                 "Abdominal_Thoracic" ~ "Adrenal/extraadrenal (abdominal/thoracic)",
-                                                 "Head_Neck" ~ "Head and neck/mediastinum",
-                                                 "Mediastinum" ~ "Head and neck/mediastinum",
-                                                 .default = differential_group_anatomy),
-         differential_group_anatomy = case_when(A5_ID == "E185-1" ~ "Head and neck/mediastinum",
-                                                A5_ID == "E128-1" ~ "Adrenal/extraadrenal (abdominal/thoracic)",
-                                                TRUE ~ differential_group_anatomy),
-         differential_group_anatomy = factor(as.character(differential_group_anatomy), 
-                                             levels=c("Adrenal/extraadrenal (abdominal/thoracic)","Head and neck/mediastinum")),
          clinical_class = case_match(as.character(differential_group_sampletype_strict),
-                                                           "Non-metastatic primary" ~ "Non-metastatic primary/Primary (short follow up)" , 
-                                                           "Primary (short follow up)" ~ "Non-metastatic primary/Primary (short follow up)",  
-                                                           "Primary (metastasis reported)" ~ "Primary (metastasis reported)",
+                                     "Non-metastatic primary" ~ "Non-metastatic primary/Primary (short follow up)" , 
+                                     "Primary (short follow up)" ~ "Non-metastatic primary/Primary (short follow up)",  
+                                     "Primary (metastasis reported)" ~ "Primary (metastasis reported)",
                                      "Local recurrence (metastasis reported)" ~ "Primary (metastasis reported)",
-                                                           "Metastatic primary" ~ "Metastatic primary/Metastasis",
+                                     "Metastatic primary" ~ "Metastatic primary/Metastasis",
                                      "Metastatic local recurrence" ~ "Metastatic primary/Metastasis",
-                                                           "Metastasis" ~ "Metastatic primary/Metastasis",
-                                                           .default = differential_group_sampletype_strict),
+                                     "Metastasis" ~ "Metastatic primary/Metastasis",
+                                     .default = differential_group_sampletype_strict),
          clinical_class = factor(clinical_class, 
-                                                       levels=c("Non-metastatic primary/Primary (short follow up)",
-                                                                "Primary (metastasis reported)",
-                                                                "Metastatic primary/Metastasis"))) %>% 
-  inner_join(genome_altered_stats) %>%  arrange(differential_group_anatomy, clinical_class,  pcnt_altered)
+                                 levels=c("Non-metastatic primary/Primary (short follow up)",
+                                          "Primary (metastasis reported)",
+                                          "Metastatic primary/Metastasis"))) %>% 
+  inner_join(genome_altered_stats) %>%  
+  arrange(cell_of_origin, clinical_class,  pcnt_altered) 
 
 SampleOrder.A5_ID <- plot_data$A5_ID 
   
@@ -81,7 +72,7 @@ plot_data$A5_ID <- factor(as.character(plot_data$A5_ID), levels=SampleOrder.A5_I
 
 
 gg_cna_seg <- ggplot(a5_seg_keep_wgd_norm %>%  
-                       inner_join(plot_data %>%  dplyr::select(A5_ID, clinical_class, differential_group_anatomy)) %>% 
+                       inner_join(plot_data %>%  dplyr::select(A5_ID, clinical_class, cell_of_origin)) %>% 
                        filter(Class %in% c("Gain","Loss", "CNLOH", "Chromothripsis", "Subclonal Loss")) %>%  
                        mutate(A5_ID = factor(A5_ID, levels=SampleOrder.A5_ID)), 
                    aes(y=A5_ID, yend=A5_ID, x=start_offset, xend=end_offset, color=Class)) + 
@@ -92,7 +83,7 @@ gg_cna_seg <- ggplot(a5_seg_keep_wgd_norm %>%
   scale_x_continuous(breaks = chr_offsets$offset+(chr_offsets$chr_size/2), labels = chr_offsets$chromosome, expand=c(0,0)) +
   scale_color_manual(values=cna_palette) + 
   ylab("Copy Number") + 
-  facet_grid(rows="differential_group_anatomy", scale = "free_y", space="free") 
+  facet_grid(rows="cell_of_origin", scale = "free_y", space="free") 
 
 gg_sampletype_rug <- ggplot(plot_data, aes(x="clinical_class", y=A5_ID, fill=clinical_class)) +
   geom_tile(height=0.8) +
@@ -102,16 +93,7 @@ gg_sampletype_rug <- ggplot(plot_data, aes(x="clinical_class", y=A5_ID, fill=cli
   theme_bw() +
   theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1),
         panel.grid = element_blank())  + 
-  facet_grid(rows="differential_group_anatomy", scale = "free_y", space="free", switch = "y") 
-
-gg_anatomy_rug <- ggplot(plot_data, aes(x="differential_group_anatomy", y=A5_ID, fill=differential_group_anatomy)) +
-  geom_tile(height=0.8) +
-  scale_fill_manual(values=c("Head and neck/mediastinum"=location_cols[["Head_neck"]], 
-                             "Adrenal/extraadrenal (abdominal/thoracic)"=location_cols[["Extraadrenal"]])) + 
-  theme_bw() +
-  theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1),
-        panel.grid = element_blank())  + 
-  facet_grid(rows="differential_group_anatomy", scale = "free_y", space="free") 
+  facet_grid(rows="cell_of_origin", scale = "free_y", space="free", switch = "y") 
 
 gg_wgd_rug <- ggplot(plot_data, aes(x="WGD", y=A5_ID, fill=WGD)) +
   geom_tile(height=0.8) +
@@ -119,22 +101,21 @@ gg_wgd_rug <- ggplot(plot_data, aes(x="WGD", y=A5_ID, fill=WGD)) +
   theme_bw() +
   theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1),
         panel.grid = element_blank())  + 
-  facet_grid(rows="differential_group_anatomy", scale = "free_y", space="free") 
+  facet_grid(rows="cell_of_origin", scale = "free_y", space="free") 
 
 gg_pcnt_altered <- ggplot(plot_data, aes(x=pcnt_altered, y=A5_ID)) +
   geom_col(width = 0.7) + theme_bw() +
   theme(axis.text.x = element_text(angle=45, vjust = 1,hjust=1))  + 
-  facet_grid(rows="differential_group_anatomy", scale = "free_y", space="free") 
+  facet_grid(rows="cell_of_origin", scale = "free_y", space="free") 
 
 gg_sv_count <- ggplot(plot_data, aes(x=structural_variant_count, y=A5_ID)) +
   geom_col(width = 0.7) + theme_bw() + 
   scale_x_log10(minor_breaks=c(seq(1,9,1), seq(10,90,10), seq(100,900,100), seq(1000,10000,1000))) +
   theme(axis.text.x = element_text(angle=45, vjust = 1,hjust=1))  + 
-  facet_grid(rows="differential_group_anatomy", scale = "free_y", space="free") 
+  facet_grid(rows="cell_of_origin", scale = "free_y", space="free") 
 
 gg_cna_freq_anatomy_flip + nox + theme(plot.margin = margin(6,0,0,0)) +
 gg_sampletype_rug + noy + zero_margin  +
-  #gg_anatomy_rug + noy + zero_margin + no_strip +
   gg_wgd_rug + noy + zero_margin + no_strip +
   gg_cna_seg +noy + theme(plot.margin = margin(0,0,6,0)) + no_strip +
   gg_pcnt_altered + noy + zero_margin + no_strip +

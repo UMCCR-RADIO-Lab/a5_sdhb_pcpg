@@ -135,7 +135,7 @@ source("./a5/wts/scripts/differential_expression/a5_wts_differential_expression.
 # GO Terms #
 ############
 
-GOI <- purrr::map(.x = c(wts_top_tables$Parasympathetic_vs_Sympathetic, wts_top_tables$genosampletype), .f = \(tt) { tt %>% filter(adj.P.Val < 0.05) %>% pull(ensembl_gene_id) }) %>% 
+GOI <- purrr::map(.x = c(wts_top_tables$Non_chromaffin_vs_Chromaffin, wts_top_tables$genosampletype), .f = \(tt) { tt %>% filter(adj.P.Val < 0.05) %>% pull(ensembl_gene_id) }) %>% 
   purrr::reduce(.f = c) %>% unique()
 
 goterms <- ensgid_to_goterm_from_biomart(ens_gids = gsub("[.][0-9]{1,2}_.+$","",GOI), 
@@ -344,12 +344,12 @@ for (contrast in c("Metastatic_All_vs_NonMetPri_WT", "TERT_PriMet_vs_NonMetPri_W
 }
 
 
-gg_volcano_go_parasymp <- list()
-gg_volcano_geneset_parasymp <- list()
-for (contrast in c("Parasympathetic_vs_Sympathetic"))
+gg_volcano_go_nonchromaffin <- list()
+gg_volcano_geneset_nonvschromaffin <- list()
+for (contrast in c("Non_chromaffin_vs_Chromaffin"))
 {
   
-  plot_data_base <- wts_top_tables[["Parasympathetic_vs_Sympathetic"]][[contrast]] %>% 
+  plot_data_base <- wts_top_tables[["Non_chromaffin_vs_Chromaffin"]][[contrast]] %>% 
     left_join(gene_geneset_lookup) %>% 
     left_join(goterms) %>% 
     mutate(gene_symbol = ifelse(grepl("^A[CL][0-9]", gene_symbol), 
@@ -358,7 +358,7 @@ for (contrast in c("Parasympathetic_vs_Sympathetic"))
   
   plot_data <- plot_data_base %>% mutate(parent_go_term = factor(as.character(parent_go_term), levels=c(go_levels, "Not significant")))
   col_set = setNames(c26[1:length(go_levels)], go_levels)
-  gg_volcano_go_parasymp[[contrast]] <- 
+  gg_volcano_go_nonvschromaffin[[contrast]] <- 
     plot_volcano(tt = plot_data, 
                  padj_cutoff = padj_cutoff,
                  lfc_cutoff = lfc_cutoff,
@@ -370,7 +370,7 @@ for (contrast in c("Parasympathetic_vs_Sympathetic"))
                                          GeneSet = factor(as.character(GeneSet), levels=c(unique(GeneSet), "Not significant")))
   col_set = setNames(c26[1:length(unique(plot_data$GeneSet))], unique(plot_data$GeneSet))
   col_set[["None"]] = "grey50"
-  gg_volcano_geneset_parasymp[[contrast]] <- 
+  gg_volcano_geneset_nonvschromaffin[[contrast]] <- 
     plot_volcano(tt = plot_data, 
                  n_label = 30, 
                  padj_cutoff = padj_cutoff,

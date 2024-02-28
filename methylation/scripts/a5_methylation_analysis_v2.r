@@ -70,19 +70,14 @@ a5_anno.meth <- a5_anno %>%
 #   mutate(Primary_Location_Simplified=replace(
 #     Primary_Location_Simplified, A5_ID=="E185-1", "Extraadrenal_thoracic"))
 
-a5_anno.meth <- a5_anno.meth %>% 
-  mutate(Primary_Location_Base=gsub("_abdominal|_thoracic|_bladder|_cardiac|_[Ll]eft|_[Rr]ight",
-                                    "",
-                                    Primary_Location_Simplified))
-
-plot_shape_location <- c("Extraadrenal"=19,
-                         "Adrenal"=17, 
+plot_shape_location <- c("Abdominal_Thoracic"=19,
+                         "Ambiguous"=17, 
                          "Unspecified"=8,
                          "Head_neck"=3,
-                         "Extraadrenal_mediastinum"=4)
+                         "Thoracic_non_chromaffin"=4)
 
 samples.exclude <- a5_anno.meth %>% filter(Exclude=="Y") %>% pull(A5_ID)
-samples.hn <- a5_anno.meth %>% filter(Primary_Location_Base == "Head_neck") %>% pull(A5_ID)
+samples.hn <- a5_anno.meth %>% filter(differential_group_anatomy  == "Head_neck") %>% pull(A5_ID)
 
 a5_anno.meth.noex <- a5_anno.meth %>% filter(!(A5_ID %in% samples.exclude))
 
@@ -1211,18 +1206,18 @@ ggplot(go_summary.sig %>%
 #   mutate(percent=(Total/nrow(m_vals_z))*100) 
 # 
 # gg_pos_neg <- ggplot(outliers, 
-#                      aes(x=A5_ID,y=n_outliers, fill=Primary_Location_Base)) + 
+#                      aes(x=A5_ID,y=n_outliers, fill=differential_group_anatomy)) + 
 #   geom_col() + 
 #   facet_wrap("direction", nrow = 2, scales = "free_y") + 
 #   theme_bw() +
 #   theme(axis.text.x = element_text(angle=90, hjust=1, vjust=0.5, size=7)) 
 # 
-# gg_total <- ggplot(outliers, aes(x=A5_ID,y=Total, fill=Primary_Location_Base)) + 
+# gg_total <- ggplot(outliers, aes(x=A5_ID,y=Total, fill=differential_group_anatomy)) + 
 #   geom_col() + 
 #   theme_bw() +
 #   theme(axis.text.x = element_text(angle=90, hjust=1, vjust=0.5, size=7))
 # 
-# gg_percent <- ggplot(outliers, aes(x=A5_ID,y=percent, fill=Primary_Location_Base)) + 
+# gg_percent <- ggplot(outliers, aes(x=A5_ID,y=percent, fill=differential_group_anatomy)) + 
 #   geom_col() + 
 #   theme_bw() +
 #   theme(axis.text.x = element_text(angle=90, hjust=1, vjust=0.5, size=7))
@@ -1289,12 +1284,12 @@ ggplot(go_summary.sig %>%
 # 
 # 
 # plot.data <- probe_data %>%  
-#   inner_join(a5_anno.meth %>%  dplyr::select(A5_ID, Primary_Location_Base, differential_group)) %>% 
+#   inner_join(a5_anno.meth %>%  dplyr::select(A5_ID, differential_group_anatomy, differential_group)) %>% 
 #   inner_join(data.frame(A5_ID=names(group), group=group)) %>% mutate(group=replace_na(group, "other"))
 # 
 # ggplot(plot.data, aes(x=group, y=b_val)) + 
 #   geom_boxplot() +
-#   geom_jitter(mapping=aes(color=differential_group, shape=Primary_Location_Base), width = 0.2) + 
+#   geom_jitter(mapping=aes(color=differential_group, shape=differential_group_anatomy), width = 0.2) + 
 #   scale_color_manual(values = differential_group_colors) + facet_wrap("probe_id") + 
 #   theme_bw() + 
 #   theme(axis.text.x = element_text(angle=90, vjust =0.5, hjust=1))
@@ -1306,7 +1301,7 @@ ggplot(go_summary.sig %>%
 #   geom_segment(mapping=aes(xend=participation, y=b_val+b_sd,yend=b_val-b_sd), 
 #                position = position_jitter(seed = 10, width = jitter_width), alpha=0.05) +
 #   scale_color_manual(values = differential_group_colors) + 
-#   geom_point(mapping=aes(color=differential_group, shape=Primary_Location_Base),
+#   geom_point(mapping=aes(color=differential_group, shape=differential_group_anatomy),
 #              position = position_jitter(seed = 10, width = jitter_width)) +
 #   ggrepel::geom_text_repel(aes(label=label), position = position_jitter(seed = 10, width = jitter_width)) +
 #   theme_bw() + 

@@ -263,20 +263,6 @@ star.excl <- names(star)[(star - mean(star))/sd(star) >2]
 #Genotypes other than SDHB
 not_sdhb.excl <- genotype_subtype_anno$Sample[genotype_subtype_anno$Genotype!="SDHB"]
 
-# library(umap)
-# meth_umap <- umap(t(meth_input[,meth_tcga_comete_a5_27k_anno$new_naming!="Normal"]))
-# plot.data <- data.frame(meth_umap$layout) %>%  
-#   tibble::rownames_to_column("Sample") %>% 
-#   left_join(meth_tcga_comete_a5_27k_anno %>% 
-#               mutate(new_naming=case_when(
-#                 new_naming %in% c("A5 - Adrenal","A5 - Extraadrenal") ~ "SDHx",
-#                 new_naming %in% c("A5 - Head_neck","A5 - Extraadrenal_mediastinum") ~ "SDHx-HN",
-#                 TRUE ~ new_naming
-#               )))
-# ggplot(plot.data, aes(x=X1, y=X2, color=new_naming, shape=Dataset)) + 
-#   geom_point() + 
-#   geom_text(aes(label=label)) +
-#   scale_color_manual(values = subtype_cols)
 
 #########################
 # Dataset configuration #
