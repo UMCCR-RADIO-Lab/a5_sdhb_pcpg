@@ -97,7 +97,7 @@ a5_anno.meth.nohn_noex <-  a5_anno.meth %>% filter(!(A5_ID %in% c(samples.hn, sa
 
 source("./sample_annotation/scripts/data_loaders/a5_contrast_groups.r")
 
-make_hn_vs_abdominothoracic_contrasts(sample_anno = a5_anno.meth.noex,
+make_chromaffin_vs_nonchromaffin_contrasts(sample_anno = a5_anno.meth.noex,
                                       exclude_samples = c("E185-1", "E167-2", "E135-1", "E166-1",  "E166-2", "E188-1"))
 
 make_genotype_sampletype_contrasts(sample_anno = a5_anno.meth.nohn_noex, 

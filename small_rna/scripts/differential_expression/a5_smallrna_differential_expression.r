@@ -285,7 +285,7 @@ smallrna_top_tables <- list()
 
 #Generates contrast_matrix_hn and design_matrix_hn
 #Exclude chr14 outlier group samples
-make_hn_vs_abdominothoracic_contrasts(sample_anno = a5_anno %>% 
+make_chromaffin_vs_nonchromaffin_contrasts(sample_anno = a5_anno %>% 
                                         filter(A5_ID %in% colnames(a5_smallrna_lcpm_list$SDHB)),
                                       exclude_samples=c("E143-1", "E143-2","E143-3", "E168-1", "E188-1"))
 

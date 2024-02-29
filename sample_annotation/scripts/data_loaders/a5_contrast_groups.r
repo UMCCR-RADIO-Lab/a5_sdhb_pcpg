@@ -9,7 +9,7 @@
 library(rlang)
 
 #Creates contrast and design matrices for head/neck versus abdothoracic comparisons
-make_hn_vs_abdominothoracic_contrasts <- function(sample_anno, exclude_samples=NULL)
+make_chromaffin_vs_nonchromaffin_contrasts <- function(sample_anno, exclude_samples=NULL)
 {
   differential_group_anatomy <- sample_anno$differential_group_anatomy
   differential_group_driver <- sample_anno$TERT_ATRX_Mutation
@@ -39,7 +39,7 @@ make_hn_vs_abdominothoracic_contrasts <- function(sample_anno, exclude_samples=N
   message("Added contrast matrix 'contrast_matrix_hn' to the global environment")
   message("Added design matrix 'design_matrix_hn' to the global environment")
 }
-message("Created contrast function make_hn_vs_abdominothoracic_contrasts()")
+message("Created contrast function make_chromaffin_vs_nonchromaffin_contrasts()")
 
 #Creates contrast and design matrices for comparisons between ATRX/TERT/WT plus 
 # metastatic/non-metastatic samples
