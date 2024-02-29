@@ -22,187 +22,177 @@ message("quickload_diff_meth: ", quickload_diff_meth)
 message("quickload_gsea: ", quickload_gsea) 
 message("quickload_dmr: ", quickload_dmr)
 
-###########
-# Imports #
-###########
-
-#Modified version of gometh from missmethyl to use an offline cache for KEGG pathways
-source("./a5/methylation/scripts/go_meth_offline.r")
-
-#Plotting helper functions
-source("/g/data/pq08/projects/ppgl/a5/methylation/scripts/helpers/plot_methylation.r")
-
-###############
-# DataLoaders #
-###############
-
-#load clinical annotation
-source("./a5/sample_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r")
-data_loader_a5_clinical_anno(google_account="aidan.flynn@umccr-radio-lab.page", use_cache=T)
-
-#load array data
-source("./a5/methylation/scripts/data_loaders/a5_methylation_dataloader.r")
-data_loader_a5_methylation_array(quickload = T, output_qc = F, normalisation="functional")
-
-#######################
-# Colours and Themes #
-#######################
-
-source("./a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
-
-blank_theme <- theme_bw(base_size = 18)+
-  theme(panel.grid=element_blank(),
-        strip.background = element_blank())
-
-###################
-# Make annotation #
-###################
-
-# reorder clinical data in same order as arrays
-a5_anno.meth <- a5_anno %>% 
-  mutate(A5_ID=factor(A5_ID, 
-                      levels=colnames(a5_methylation_filtered))) %>% 
-  arrange(A5_ID) %>% 
-  filter(!is.na(A5_ID))
-
-# #Update annotation based on imaging review
-# a5_anno.meth <- a5_anno.meth %>% 
-#   mutate(Primary_Location_Simplified=replace(
-#     Primary_Location_Simplified, A5_ID=="E185-1", "Extraadrenal_thoracic"))
-
-plot_shape_location <- c("Abdominal_Thoracic"=19,
-                         "Ambiguous"=17, 
-                         "Unspecified"=8,
-                         "Head_neck"=3,
-                         "Thoracic_non_chromaffin"=4)
-
-samples.exclude <- a5_anno.meth %>% filter(Exclude=="Y") %>% pull(A5_ID)
-samples.hn <- a5_anno.meth %>% filter(differential_group_anatomy  == "Head_neck") %>% pull(A5_ID)
-
-a5_anno.meth.noex <- a5_anno.meth %>% filter(!(A5_ID %in% samples.exclude))
-
-a5_anno.meth.nohn_noex <-  a5_anno.meth %>% filter(!(A5_ID %in% c(samples.hn, samples.exclude)))
-
-
-
-#####################################
-# Make contrast and design matrices #
-#####################################
-
-source("./a5/sample_annotation/scripts/data_loaders/a5_contrast_groups.r")
-
-make_hn_vs_abdominothoracic_contrasts(sample_anno = a5_anno.meth.noex,
-                                    exclude_samples = c()) # "E135-1", "E185-1", "E167-2","E166-1",  "E188-1"
-
-make_genotype_sampletype_contrasts(sample_anno = a5_anno.meth.nohn_noex, 
-                                   exclude_samples = c()) # "E135-1", "E185-1", "E167-2","E166-1",  "E188-1"
-
-count_contrast_members(contrast_matrix_genosampletype, design_matrix_genosampletype)
-count_contrast_members(contrast_matrix_hn, design_matrix_hn)
-
-contrasts_to_use <- NULL
-
-####################
-# Compute M/B-values #
-####################
-
-# calculate M-values for statistical analysis
-m_vals <- getM(a5_methylation_filtered)
-b_vals <- getBeta(a5_methylation_filtered)
-
-################
-# MDS QC plots #
-################
-
-if (save_plots)
+if(!quickload_diff_meth | !quickload_gsea | !quickload_dmr)
 {
-  pdf(file = "methylation/results/plots/mds/a5_methylation_mds_dim1_2_3.pdf", onefile = T, width=10, height = 10)
-  for (dim_pair in list(c(1,2), c(2,3)))
+  ###########
+  # Imports #
+  ###########
+  
+  #Modified version of gometh from missmethyl to use an offline cache for KEGG pathways
+  source("./a5/methylation/scripts/go_meth_offline.r")
+  
+  #Plotting helper functions
+  source("/g/data/pq08/projects/ppgl/a5/methylation/scripts/helpers/plot_methylation.r")
+  
+  ###############
+  # DataLoaders #
+  ###############
+  
+  #load clinical annotation
+  source("./a5/sample_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r")
+  data_loader_a5_clinical_anno(google_account="aidan.flynn@umccr-radio-lab.page", use_cache=T)
+  
+  #load array data
+  source("./a5/methylation/scripts/data_loaders/a5_methylation_dataloader.r")
+  data_loader_a5_methylation_array(quickload = T, output_qc = F, normalisation="functional")
+  
+  #######################
+  # Colours and Themes #
+  #######################
+  
+  source("./a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
+  
+  blank_theme <- theme_bw(base_size = 18)+
+    theme(panel.grid=element_blank(),
+          strip.background = element_blank())
+  
+  ###################
+  # Make annotation #
+  ###################
+  
+  # reorder clinical data in same order as arrays
+  a5_anno.meth <- a5_anno %>% 
+    mutate(A5_ID=factor(A5_ID, 
+                        levels=colnames(a5_methylation_filtered))) %>% 
+    arrange(A5_ID) %>% 
+    filter(!is.na(A5_ID))
+  
+  # #Update annotation based on imaging review
+  # a5_anno.meth <- a5_anno.meth %>% 
+  #   mutate(Primary_Location_Simplified=replace(
+  #     Primary_Location_Simplified, A5_ID=="E185-1", "Extraadrenal_thoracic"))
+  
+  plot_shape_location <- c("Abdominal_Thoracic"=19,
+                           "Ambiguous"=17, 
+                           "Unspecified"=8,
+                           "Head_neck"=3,
+                           "Thoracic_non_chromaffin"=4)
+  
+  samples.exclude <- a5_anno.meth %>% filter(Exclude=="Y") %>% pull(A5_ID)
+  samples.hn <- a5_anno.meth %>% filter(differential_group_anatomy  == "Head_neck") %>% pull(A5_ID)
+  
+  a5_anno.meth.noex <- a5_anno.meth %>% filter(!(A5_ID %in% samples.exclude))
+  
+  a5_anno.meth.nohn_noex <-  a5_anno.meth %>% filter(!(A5_ID %in% c(samples.hn, samples.exclude)))
+  
+  
+  
+  #####################################
+  # Make contrast and design matrices #
+  #####################################
+  
+  source("./a5/sample_annotation/scripts/data_loaders/a5_contrast_groups.r")
+  
+  make_chromaffin_vs_nonchromaffin_contrasts(sample_anno = a5_anno.meth.noex,
+                                        exclude_samples = c()) # "E135-1", "E185-1", "E167-2","E166-1",  "E188-1"
+  
+  make_genotype_sampletype_contrasts(sample_anno = a5_anno.meth.nohn_noex, 
+                                     exclude_samples = c()) # "E135-1", "E185-1", "E167-2","E166-1",  "E188-1"
+  
+  count_contrast_members(contrast_matrix_genosampletype, design_matrix_genosampletype)
+  count_contrast_members(contrast_matrix_hn, design_matrix_hn)
+  
+  contrasts_to_use <- NULL
+  
+  ####################
+  # Compute M/B-values #
+  ####################
+  
+  # calculate M-values for statistical analysis
+  m_vals <- getM(a5_methylation_filtered)
+  b_vals <- getBeta(a5_methylation_filtered)
+  
+  ################
+  # MDS QC plots #
+  ################
+  
+  if (save_plots)
   {
-    mds <- plotMDS(m_vals, top=10000, gene.selection="common",
-                   col=pal[factor(targets$Sample_Group)],dim=dim_pair, plot=F)
-    
-    plot.data <- tibble(x = mds$x, 
-                        y =  mds$y, 
-                        A5_ID = colnames(mds$distance.matrix)) %>%
-      left_join(a5_anno) %>%
-      left_join(a5_methylation_targets %>% dplyr::select(A5_ID=Sample_Name, Batch=Sample_Group)) %>% 
-      dplyr::select(A5_ID,Batch, x, y, Gender, Batch, Primary_Location_Simplified, 
-                    TERT_ATRX_Mutation,is_primary_or_met, age_at_resection,
-                    chr_14_miRNA_outgroup) %>%
-      mutate(Patient = gsub("-.*", "", A5_ID)) 
-    
-    for (covar in c("Gender", "Batch", "Primary_Location_Simplified", "TERT_ATRX_Mutation",  "is_primary_or_met", "chr_14_miRNA_outgroup"))
+    pdf(file = "methylation/results/plots/mds/a5_methylation_mds_dim1_2_3.pdf", onefile = T, width=10, height = 10)
+    for (dim_pair in list(c(1,2), c(2,3)))
     {
-      print(ggplot(data = plot.data, aes(x = x, y = y,label= A5_ID)) +
-              geom_text() +
-              blank_theme +
-              theme(aspect.ratio=1) +
-              aes(colour = !!sym(covar)) +
-              labs(colour = covar, x= "MDS dim 1", y = "MDS dim 2") + ggtitle(paste(covar, "- Dims", dim_pair[[1]],"+", dim_pair[[2]])))
-    }
-  }
-  dev.off()
-}
-
-#################
-# UMAP QC plots #
-#################
-
-if (save_plots)
-{
-  seed_val <- 10
-  set.seed(seed_val)
-  for (nn in c(5,10,15,20))
-  {
-    umap_config <- umap.defaults
-    umap_config$n_neighbors=nn
-    umap_config$metric="euclidean"
-    umap <- umap(t(m_vals),config = umap_config)
-    
-    to_plot_umap <- data.frame(umap$layout) %>%
-      rownames_to_column("A5_ID") %>%
-      left_join(a5_anno) %>% 
-      left_join(a5_methylation_targets %>% dplyr::select(A5_ID=Sample_Name, Batch=Sample_Group)) %>% 
-      dplyr::select(
-        A5_ID, Batch, X1, X2,
-        Gender, Batch, Primary_Location_Simplified, TERT_ATRX_Mutation, 
-        is_primary_or_met, chr_14_miRNA_outgroup, Catecholamine_profile
-      ) %>%
-      mutate(Patient = gsub("-.*", "", A5_ID))
-    
-    
-    write.table(to_plot_umap,file=paste0("./a5/methylation/results/plots/umap/umap_mvals_allsamples_nn",nn,"seed", seed_val,".tsv"), sep="\t", row.names = F)
-    
-    pdf(paste0("./a5/methylation/results/plots/umap/umap_mvals_allsamples_nn",nn,"seed", seed_val,".pdf"), width = 15, height = 15, onefile = T)
-    for (covar in c("Gender", "Batch", "Primary_Location_Simplified", "TERT_ATRX_Mutation",  "is_primary_or_met", "chr_14_miRNA_outgroup", "Catecholamine_profile"))
-    {
-      print(   ggplot(data = to_plot_umap, aes(x = X1, y = X2, label=A5_ID, colour = !!sym(covar))) + 
-                 #geom_point() +
-                 geom_text()+
-                 #  geom_text_repel(color ="black",nudge_y = 0.5)+
-                 blank_theme+
-                 guides(label= F)+
-                 labs(shape ="", x= "UMAP 1", y = "UMAP 2", colour = covar)+
-                 theme(aspect.ratio=1) + ggtitle(paste0(covar, " - ", "nNeighbours=",umap_config$n_neighbors)))
+      mds <- plotMDS(m_vals, top=10000, gene.selection="common",
+                     col=pal[factor(targets$Sample_Group)],dim=dim_pair, plot=F)
+      
+      plot.data <- tibble(x = mds$x, 
+                          y =  mds$y, 
+                          A5_ID = colnames(mds$distance.matrix)) %>%
+        left_join(a5_anno) %>%
+        left_join(a5_methylation_targets %>% dplyr::select(A5_ID=Sample_Name, Batch=Sample_Group)) %>% 
+        dplyr::select(A5_ID,Batch, x, y, Gender, Batch, Primary_Location_Simplified, 
+                      TERT_ATRX_Mutation,is_primary_or_met, age_at_resection,
+                      chr_14_miRNA_outgroup) %>%
+        mutate(Patient = gsub("-.*", "", A5_ID)) 
+      
+      for (covar in c("Gender", "Batch", "Primary_Location_Simplified", "TERT_ATRX_Mutation",  "is_primary_or_met", "chr_14_miRNA_outgroup"))
+      {
+        print(ggplot(data = plot.data, aes(x = x, y = y,label= A5_ID)) +
+                geom_text() +
+                blank_theme +
+                theme(aspect.ratio=1) +
+                aes(colour = !!sym(covar)) +
+                labs(colour = covar, x= "MDS dim 1", y = "MDS dim 2") + ggtitle(paste(covar, "- Dims", dim_pair[[1]],"+", dim_pair[[2]])))
+      }
     }
     dev.off()
   }
+  
+  #################
+  # UMAP QC plots #
+  #################
+  
+  if (save_plots)
+  {
+    seed_val <- 10
+    set.seed(seed_val)
+    for (nn in c(5,10,15,20))
+    {
+      umap_config <- umap.defaults
+      umap_config$n_neighbors=nn
+      umap_config$metric="euclidean"
+      umap <- umap(t(m_vals),config = umap_config)
+      
+      to_plot_umap <- data.frame(umap$layout) %>%
+        rownames_to_column("A5_ID") %>%
+        left_join(a5_anno) %>% 
+        left_join(a5_methylation_targets %>% dplyr::select(A5_ID=Sample_Name, Batch=Sample_Group)) %>% 
+        dplyr::select(
+          A5_ID, Batch, X1, X2,
+          Gender, Batch, Primary_Location_Simplified, TERT_ATRX_Mutation, 
+          is_primary_or_met, chr_14_miRNA_outgroup, Catecholamine_profile
+        ) %>%
+        mutate(Patient = gsub("-.*", "", A5_ID))
+      
+      
+      write.table(to_plot_umap,file=paste0("./a5/methylation/results/plots/umap/umap_mvals_allsamples_nn",nn,"seed", seed_val,".tsv"), sep="\t", row.names = F)
+      
+      pdf(paste0("./a5/methylation/results/plots/umap/umap_mvals_allsamples_nn",nn,"seed", seed_val,".pdf"), width = 15, height = 15, onefile = T)
+      for (covar in c("Gender", "Batch", "Primary_Location_Simplified", "TERT_ATRX_Mutation",  "is_primary_or_met", "chr_14_miRNA_outgroup", "Catecholamine_profile"))
+      {
+        print(   ggplot(data = to_plot_umap, aes(x = X1, y = X2, label=A5_ID, colour = !!sym(covar))) + 
+                   #geom_point() +
+                   geom_text()+
+                   #  geom_text_repel(color ="black",nudge_y = 0.5)+
+                   blank_theme+
+                   guides(label= F)+
+                   labs(shape ="", x= "UMAP 1", y = "UMAP 2", colour = covar)+
+                   theme(aspect.ratio=1) + ggtitle(paste0(covar, " - ", "nNeighbours=",umap_config$n_neighbors)))
+      }
+      dev.off()
+    }
+  }
 }
 
-########################
-# B/M Density QC plots #
-########################
-
-#QC now generated by data-loader script
-
-# pdf("./a5/methylation/qc/Beta_M_values_filtered.pdf", width =10)
-# par(mfrow=c(1,2))
-# densityPlot(getBeta(a5_methylation_filtered), sampGroups=a5_methylation_targets$Sample_Group, main="Beta values",
-#             legend=FALSE, xlab="Beta values")
-# densityPlot(m_vals, sampGroups=a5_methylation_targets$Sample_Group, main="M-values",
-#             legend=FALSE, xlab="M values")
-# dev.off()
 
 #########################################
 ### Differential Methylation Analysis ###
@@ -579,100 +569,100 @@ if(quickload_gsea)
   saveRDS(gsea_result, "./a5/methylation/quickload_checkpoints/gsea_result.rds")
 }
 
-go_data <- .getGO()
-
-
-entrezid_to_ensgidsymbol <- function(entrez_id)
-{
-  ids <- suppressMessages(AnnotationDbi::select(org.Hs.eg.db::org.Hs.eg.db, keys=entrez_id,   
-                                                columns=c("ENTREZID","SYMBOL","GENENAME","ENSEMBL"), keytype="ENTREZID")) %>% 
-    mutate(ensgid_symbol=paste(ENSEMBL, SYMBOL, sep="_")) %>% group_by(ENTREZID) %>% 
-    summarise(ensgid_symbol = paste(ensgid_symbol, collapse="|"))
-  return(ids$ensgid_symbol[match(entrez_id, ids$ENTREZID)])
-}
-
-goterm_to_ensgidsymbol <- function(go_data,goterm)
-{
-  go_id <- go_data$idTable[go_data$idTable$TERM == goterm,]$GOID
-  if(length(go_id) > 0) {
-    entrez_id <- go_data$idList[[go_id]]
-    ids <- entrezid_to_ensgidsymbol(entrez_id)
-    return(ids)  
-  } else {
-    return(NULL)
-  }
-}
-
-go_summary <- NULL
-kegg_summary <- NULL
-for (comparison in c("hn","genosampletype")) {
-  message("Processing comparison: ", comparison)
-  
-  contrast_matrix <- get(paste0("contrast_matrix_", comparison))
-  available_contrasts <- dimnames(contrast_matrix)$Contrasts
-  
-  
-  if(!is.null(contrasts_to_use))
-  {
-    available_contrasts <- intersect(available_contrasts, contrasts_to_use)
-  } else {
-    available_contrasts <- intersect(available_contrasts, names(gsea_result[[comparison]]))
-  }
-  
-  for(contrast in available_contrasts){
-    for (region in c("body", "promoter"))
-    {
-      contrast_sig_genes <- entrezid_to_ensgidsymbol(gsea_result[[comparison]][[contrast]]$sig_cpg_genes_entrezid)
-      
-      go_summary <- bind_rows(go_summary, 
-                              gsea_result[[comparison]][[contrast]][["gsa"]][[region]][["GO"]] %>% 
-                                rowwise() %>% 
-                                mutate(comparison=comparison,
-                                       contrast=
-                                         contrast,
-                                       region=region,
-                                       contrast_sig_genes=list(contrast_sig_genes))) 
-      
-      kegg_summary <- bind_rows(kegg_summary, 
-                                gsea_result[[comparison]][[contrast]][["gsa"]][[region]][["KEGG"]] %>% 
-                                  mutate(comparison=comparison,contrast=contrast,region=region)) 
-      
-    }
-  }
-}
-
-
-go_summary.sig <- go_summary  %>% 
-  filter(FDR < 0.05, N < 200)
-
-go_summary.sig$go_genes <- vector(mode = "list", length=nrow(go_summary.sig))
-go_summary.sig$go_intersect <- vector(mode = "list", length=nrow(go_summary.sig))
-for (i in 1:nrow(go_summary.sig))
-{
-  ensgids <- goterm_to_ensgidsymbol(go_data, go_summary.sig$TERM[i])
-  if (!is.null(ensgids)) {
-    go_summary.sig$go_genes[[i]] = ensgids
-    go_summary.sig$go_intersect[[i]] = list(intersect(go_summary.sig$go_genes[[i]],
-                                                      go_summary.sig$contrast_sig_genes[[i]]))
-  }
-}
-
-ggplot(go_summary.sig %>% 
-         filter(comparison=="hn") %>%  group_by(TERM) %>% mutate(sum_fdr=sum(-log10(FDR))) %>% arrange(sum_fdr) %>% 
-         mutate(TERM=factor(TERM,levels=unique(.$TERM))), 
-       aes(x=TERM, y=-log10(FDR), fill=region)) + geom_col() + 
-  theme_bw() + 
-  coord_flip() 
-
-ggplot(go_summary.sig %>% 
-         filter(FDR < 0.05, 
-                comparison=="genosampletype", 
-                N < 300) %>%  group_by(TERM) %>% mutate(sum_fdr=sum(-log10(FDR))) %>% arrange(sum_fdr) %>% 
-         mutate(TERM=factor(TERM,levels=unique(.$TERM))), 
-       aes(x=TERM, y=-log10(FDR), fill=region)) + geom_col() + 
-  theme_bw() + 
-  coord_flip() +
-  facet_wrap("contrast")
+# go_data <- .getGO()
+# 
+# 
+# entrezid_to_ensgidsymbol <- function(entrez_id)
+# {
+#   ids <- suppressMessages(AnnotationDbi::select(org.Hs.eg.db::org.Hs.eg.db, keys=entrez_id,   
+#                                                 columns=c("ENTREZID","SYMBOL","GENENAME","ENSEMBL"), keytype="ENTREZID")) %>% 
+#     mutate(ensgid_symbol=paste(ENSEMBL, SYMBOL, sep="_")) %>% group_by(ENTREZID) %>% 
+#     summarise(ensgid_symbol = paste(ensgid_symbol, collapse="|"))
+#   return(ids$ensgid_symbol[match(entrez_id, ids$ENTREZID)])
+# }
+# 
+# goterm_to_ensgidsymbol <- function(go_data,goterm)
+# {
+#   go_id <- go_data$idTable[go_data$idTable$TERM == goterm,]$GOID
+#   if(length(go_id) > 0) {
+#     entrez_id <- go_data$idList[[go_id]]
+#     ids <- entrezid_to_ensgidsymbol(entrez_id)
+#     return(ids)  
+#   } else {
+#     return(NULL)
+#   }
+# }
+# 
+# go_summary <- NULL
+# kegg_summary <- NULL
+# for (comparison in c("hn","genosampletype")) {
+#   message("Processing comparison: ", comparison)
+#   
+#   contrast_matrix <- get(paste0("contrast_matrix_", comparison))
+#   available_contrasts <- dimnames(contrast_matrix)$Contrasts
+#   
+#   
+#   if(!is.null(contrasts_to_use))
+#   {
+#     available_contrasts <- intersect(available_contrasts, contrasts_to_use)
+#   } else {
+#     available_contrasts <- intersect(available_contrasts, names(gsea_result[[comparison]]))
+#   }
+#   
+#   for(contrast in available_contrasts){
+#     for (region in c("body", "promoter"))
+#     {
+#       contrast_sig_genes <- entrezid_to_ensgidsymbol(gsea_result[[comparison]][[contrast]]$sig_cpg_genes_entrezid)
+#       
+#       go_summary <- bind_rows(go_summary, 
+#                               gsea_result[[comparison]][[contrast]][["gsa"]][[region]][["GO"]] %>% 
+#                                 rowwise() %>% 
+#                                 mutate(comparison=comparison,
+#                                        contrast=
+#                                          contrast,
+#                                        region=region,
+#                                        contrast_sig_genes=list(contrast_sig_genes))) 
+#       
+#       kegg_summary <- bind_rows(kegg_summary, 
+#                                 gsea_result[[comparison]][[contrast]][["gsa"]][[region]][["KEGG"]] %>% 
+#                                   mutate(comparison=comparison,contrast=contrast,region=region)) 
+#       
+#     }
+#   }
+# }
+# 
+# 
+# go_summary.sig <- go_summary  %>% 
+#   filter(FDR < 0.05, N < 200)
+# 
+# go_summary.sig$go_genes <- vector(mode = "list", length=nrow(go_summary.sig))
+# go_summary.sig$go_intersect <- vector(mode = "list", length=nrow(go_summary.sig))
+# for (i in 1:nrow(go_summary.sig))
+# {
+#   ensgids <- goterm_to_ensgidsymbol(go_data, go_summary.sig$TERM[i])
+#   if (!is.null(ensgids)) {
+#     go_summary.sig$go_genes[[i]] = ensgids
+#     go_summary.sig$go_intersect[[i]] = list(intersect(go_summary.sig$go_genes[[i]],
+#                                                       go_summary.sig$contrast_sig_genes[[i]]))
+#   }
+# }
+# 
+# ggplot(go_summary.sig %>% 
+#          filter(comparison=="hn") %>%  group_by(TERM) %>% mutate(sum_fdr=sum(-log10(FDR))) %>% arrange(sum_fdr) %>% 
+#          mutate(TERM=factor(TERM,levels=unique(.$TERM))), 
+#        aes(x=TERM, y=-log10(FDR), fill=region)) + geom_col() + 
+#   theme_bw() + 
+#   coord_flip() 
+# 
+# ggplot(go_summary.sig %>% 
+#          filter(FDR < 0.05, 
+#                 comparison=="genosampletype", 
+#                 N < 300) %>%  group_by(TERM) %>% mutate(sum_fdr=sum(-log10(FDR))) %>% arrange(sum_fdr) %>% 
+#          mutate(TERM=factor(TERM,levels=unique(.$TERM))), 
+#        aes(x=TERM, y=-log10(FDR), fill=region)) + geom_col() + 
+#   theme_bw() + 
+#   coord_flip() +
+#   facet_wrap("contrast")
 
 
 
