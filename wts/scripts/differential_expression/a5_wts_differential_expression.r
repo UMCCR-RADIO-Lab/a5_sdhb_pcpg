@@ -321,13 +321,12 @@ if(output_qc)
 wts_de_fits <- list()
 wts_top_tables <- list()
 
-
 #####################
 # Contrast Matrices #
 #####################
 
 #Generates contrast_matrix_hn and design_matrix_hn
-make_hn_vs_abdominothoracic_contrasts(sample_anno = a5_anno %>% 
+make_chromaffin_vs_nonchromaffin_contrasts(sample_anno = a5_anno %>% 
                                         filter(A5_ID %in% colnames(a5_wts_dge_list$SDHB)) %>% 
                                         mutate(A5_ID = factor(A5_ID, levels=colnames(a5_wts_dge_list$SDHB))) %>% 
                                         arrange(A5_ID) %>% 
@@ -430,6 +429,7 @@ for (contrast in dimnames(contrast_matrix_hn)$Contrasts)
   tt$GO_name[is.na(tt$GO_name) & tt$adj.P.Val < go_pval_cutoff] <- "None"
   
   wts_top_tables[["Non_chromaffin_vs_Chromaffin"]][[contrast]] <-  tt
+  
 }
 
 
@@ -930,7 +930,8 @@ knitr::knit_expand(text="\n\n### 'TERT vs Rest' and 'ATRX vs Rest' significant g
 
 #+ AT_DE_TERTATRX_venn_print_header, eval=output_plots, echo=FALSE
 if(output_plots) {
-  vennDiagram(sum.fit[,c("ATRX_PriMet_vs_NonMetPri_WT","TERT_PriMet_vs_NonMetPri_WT")], circle.col=c("turquoise", "salmon"))
+  vennDiagram(cbind(decideTests(wts_de_fits[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]], lfc = 1, adjust.method = "BH", p.value = 0.05),
+                    decideTests(wts_de_fits[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]], lfc = 1, adjust.method = "BH", p.value = 0.05)), circle.col=c("turquoise", "salmon"))
 }
 #+ AT_DE_volcano_header, eval=output_plots, echo=FALSE, results='asis'
 
