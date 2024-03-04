@@ -167,7 +167,7 @@ data_loader_a5_smallrna <- function(genome_version="hg38", exclude_samples=c(), 
                           - all: All profiled samples
                           - qc_ok: Excluded samples removed (",toString(exclude_base),")
                           - SDHB: QC_OK with non-SDHB samples removed (",toString(exclude_genotype),")
-                          - SDHB_abdothoracic: Abdominal/thoracic based on clinical and UMAP annotation (thoracic_non_chromaffin and ambiguous cases excluded:",toString(c(thoracic_non_chromaffin,samples_ambiguous)),")
+                          - SDHB_abdothoracic: Abdominal/thoracic based on clinical and UMAP annotation (thoracic_non_chromaffin and ambiguous cases excluded:",toString(c(samples_thoracic_non_chromaffin,samples_ambiguous)),")
                           - SDHB_HN: Head and neck based on clinical and UMAP annotation (thoracic_non_chromaffin and ambiguous cases excluded)"
           )
   

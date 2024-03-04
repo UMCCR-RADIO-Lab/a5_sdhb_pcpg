@@ -350,7 +350,7 @@ plotSA(efit, main="Final model: Mean-variance trend")
 smallrna_de_fits[["SDHB"]] <- efit
 
 # get top genes 
-smallrna_top_tables[["SDHB"]][["Non_chromaffin_vs_Chromaffin"]] <- 
+smallrna_top_tables[["Non_chromaffin_vs_Chromaffin"]][["Non_chromaffin_vs_Chromaffin"]] <- 
   topTable(efit, 
            coef = "Non_chromaffin_vs_Chromaffin", 
            number = Inf, 
@@ -383,7 +383,7 @@ knitr::knit_expand(text="\n\n# Top 1000 DE genes - HN vs abdo/thoracic\n\n") %>%
 #+ de_hnabdo_summary_print, eval=output_tables, echo=FALSE
 if(output_tables)
 {
-  DT::datatable(data = smallrna_top_tables[["SDHB"]][["Non_chromaffin_vs_Chromaffin"]] %>% 
+  DT::datatable(data = smallrna_top_tables[["Non_chromaffin_vs_Chromaffin"]][["Non_chromaffin_vs_Chromaffin"]] %>% 
                   filter(abs(logFC)>1, 
                          adj.P.Val<0.05) %>% 
                   slice_min(n = 1000, 
@@ -409,7 +409,7 @@ knitr::knit_expand(text="\n\n# Boxplots of Top 20 DE genes - H/N vs abdo/thoraci
 
 #+ de_hnabdo_boxplots_code, eval=output_plots, echo=FALSE
 if(output_plots){
-  gene_list <- smallrna_top_tables[["SDHB"]][["Non_chromaffin_vs_Chromaffin"]] %>% 
+  gene_list <- smallrna_top_tables[["Non_chromaffin_vs_Chromaffin"]][["Non_chromaffin_vs_Chromaffin"]] %>% 
     filter(abs(logFC)>1, adj.P.Val<0.05) %>% 
     slice_min(n = 20, order_by = adj.P.Val) %>% 
     pull(Gene)
@@ -456,12 +456,16 @@ knitr::knit_expand(text="\n\n# Annotated heatmap of top 100 genes - H/N vs abdo/
 #+ de_hnabdo_heatmap_print, eval=output_plots, echo=FALSE, fig.height=20, fig.width=15
 
 if(output_plots){
-  GOI <- smallrna_top_tables[["SDHB"]][["Non_chromaffin_vs_Chromaffin"]] %>% 
+  n_genes <- 20
+  
+  GOI <- smallrna_top_tables[["Non_chromaffin_vs_Chromaffin"]][["Non_chromaffin_vs_Chromaffin"]] %>% 
     filter(adj.P.Val < 0.05) %>% 
-    arrange(desc(abs(logFC))) %>% 
+    arrange(desc(logFC)) %>% 
     dplyr::pull(Gene)
   
-  plot.data <- a5_smallrna_lcpm_list[["SDHB"]][GOI,] %>% 
+  GOI_plot <- c(GOI[1:floor(n_genes/2)], GOI[(length(GOI)-floor(n_genes/2)):length(GOI)])
+  
+  plot.data <- a5_smallrna_lcpm_list[["SDHB"]][GOI_plot,] %>% 
     data.frame(check.names = F) %>% 
     tibble::rownames_to_column("Gene") 
   rownames(plot.data) <-plot.data$Gene
@@ -470,13 +474,10 @@ if(output_plots){
   
   hm.annot.data.col <- a5_anno %>% 
     filter(A5_ID %in% sample.order) %>% 
-    dplyr::select(A5_ID, Primary_Location_Simplified, 
+    dplyr::select(A5_ID, differential_group_anatomy, 
                   TERT_ATRX_Mutation, differential_group_purity, 
                   differential_group_anatomy, Catecholamine_profile, 
-                  differential_group_sampletype) %>%
-    mutate(Primary_Location_Simplified=gsub("_abdominal|_thoracic|_bladder|_[Ll]eft|_[Rr]ight",
-                                            "",
-                                            Primary_Location_Simplified))
+                  differential_group_sampletype)
   
   hm.annot.data.col <- hm.annot.data.col[match(sample.order, hm.annot.data.col$A5_ID),]
   
@@ -486,16 +487,9 @@ if(output_plots){
     show_legend = TRUE,
     col = list(
       "differential_group_sampletype" = specimen_type_cols,
-      "differential_group_anatomy" = setNames(
-        RColorBrewer::brewer.pal(
-          n = length(unique(hm.annot.data.col$differential_group_anatomy)),
-          name = "Set1"),unique(hm.annot.data.col$differential_group_anatomy)),
+      "differential_group_anatomy" =location_cols,
       "TERT_ATRX_Mutation" = driver_cols,
-      "Primary_Location_Simplified" = setNames(
-        RColorBrewer::brewer.pal(
-          n = length(unique(hm.annot.data.col$Primary_Location_Simplified)),
-          name = "Set1"),
-        unique(hm.annot.data.col$Primary_Location_Simplified)),
+      "primary_location_plotting" = location_cols,
       "Catecholamine_profile" = setNames(
         RColorBrewer::brewer.pal(
           n = length(unique(hm.annot.data.col$Catecholamine_profile)),
@@ -520,7 +514,7 @@ if(output_plots){
                                    show_legend = TRUE,
                                    col=list("Chromosome"=setNames(
                                               chrom_cols,
-                                              unique(plot.data$Chr)))
+                                              unique(plot.data$Chr))[1:length(unique(plot.data$Chr))])
   )
   
   rownames(plot.data) <-  plot.data$Gene
@@ -528,7 +522,7 @@ if(output_plots){
   hm <- Heatmap(t(scale(t(plot.data %>% dplyr::select(-Gene, -Chr)))),
                 #col = col_fun,
                 #row_split = plot.data$source,
-                #column_split = a5_anno.smallrna.nohn_noex$genotype_groups,
+                column_split = hm.annot.data.col$differential_group_anatomy,
                 #width = ncol(bulk_heatmap_deg)*unit(2, "mm"),
                 #height = ncol(bulk_heatmap_deg)*unit(4, "mm"),
                 row_gap = unit(2, "mm"),
@@ -537,7 +531,7 @@ if(output_plots){
                 top_annotation = hm.annot.col,
                 left_annotation = hm.annot.row,
                 column_title_rot = 90,
-                cluster_columns = TRUE,
+                cluster_columns = FALSE,
                 #show_column_dend = FALSE,
                 cluster_column_slices = FALSE,
                 cluster_rows = TRUE,
@@ -572,8 +566,9 @@ knitr::knit_expand(text="Make a design matrix with biological groups:\n\n* {{pas
 count_contrast_members(contrast_matrix_genosampletype, design_matrix_genosampletype) %>% 
   knitr::kable(caption = "Contrast group member counts")
 
-useful_contrasts <- c("TERT_All_vs_NonTERT",
-                      "ATRX_All_vs_NonATRX",
+useful_contrasts <- c("TERT_PriMet_vs_NonMetPri_WT",
+                      "ATRX_PriMet_vs_NonMetPri_WT",
+                      "ATRX_All_vs_TERT_All",
                       "Metastatic_All_vs_NonMetPri_WT")
 
 #+ AT_DE_contrasts_print, echo=FALSE
@@ -591,55 +586,89 @@ counts_dge <- a5_smallrna_dge_list$SDHB_abdothoracic
 counts_anno <- a5_anno %>% filter(A5_ID %in% colnames(a5_smallrna_dge_list[["SDHB_abdothoracic"]]))
 counts_anno <- counts_anno[match(colnames(counts_dge), counts_anno$A5_ID),]
 
-# voom transform
-
-par(mfrow=c(1,2))
-v <- voom(counts_dge, design_matrix_genosampletype, plot=TRUE)
-
-# estimate correlation between samples from the same patient  
-file_hashes <- purrr::map(list(a5_smallrna_dge_list[["SDHB_abdothoracic"]]$counts, 
-                               design_matrix_genosampletype, 
-                               counts_anno), 
-                          digest::digest, algo = "md5")
-suffix <- paste(purrr::map(file_hashes, stringr::str_sub, start=25, end=32), collapse = "_")
-checkpoint_file <- paste0("./a5/small_rna/quickload_checkpoints/dupcor_",suffix,".rds")
-if(file.exists(checkpoint_file))
-{
-  dupcor <- readRDS(file = checkpoint_file)
-} else {
-  dupcor <- duplicateCorrelation(v, design_matrix_genosampletype, block=counts_anno$`Patient ID`)
-  saveRDS(object = dupcor, file = checkpoint_file)
+if(!all(counts_anno$A5_ID == rownames(design_matrix_genosampletype) & rownames(design_matrix_genosampletype) == colnames(counts_dge))) {
+  stop("Sanity check failed on annotation, design matrix, and expression matrix row/columns ordering")
 }
 
 
-# differential expression analysis, keeping track of samples that are correlated as they come from the same patient
-vfit <- lmFit(v, 
-              design_matrix_genosampletype, 
-              block=counts_anno$`Patient ID`, 
-              correlation=dupcor$consensus)
-vfit <- contrasts.fit(vfit, contrasts=contrast_matrix_genosampletype)
-efit <- eBayes(vfit)
-plotSA(efit, main="Final model: Mean-variance trend")
-
-smallrna_de_fits[["genosampletype"]] <- efit
-
-sum.fit <- decideTests(efit, lfc = 0.5, adjust.method = "BH", p.value = 0.05)
-summary(sum.fit) %>% knitr::kable(caption = "DE gene counts at adj.p<0.05 and LFC>0.5")
-
-smallrna_top_tables[["genosampletype"]] <- list()
-for (contrast in dimnames(contrast_matrix_genosampletype)$Contrasts)
+for (contrast in useful_contrasts)
 {
-  # get top ATRX signature genes 
-  smallrna_top_tables[["genosampletype"]][[contrast]] <- 
+  message("Processing contrast:", contrast)
+  # make a design matrix 
+  if (contrast %in% names(contrast_recode))
+  {
+    differential_group <- factor(dplyr::recode(counts_anno$differential_group,!!!contrast_recode[[contrast]]))
+  } else {
+    differential_group <- factor(counts_anno$differential_group)
+  }
+  
+  sex <- counts_anno$Gender
+  
+  design_mat <- model.matrix(~0 + differential_group + sex)
+  colnames(design_mat) <- gsub("differential_group","", colnames(design_mat))
+  rownames(design_mat) <- counts_anno$A5_ID
+  
+  contr_matrix <- rlang:::inject(
+    makeContrasts(!!!recoded_contrast_strings[contrast], levels = colnames(design_mat)))
+  
+  #######
+  # Perform fitting
+  #######
+  
+  # voom transform
+  
+  par(mfrow=c(1,2))
+  v <- voom(counts_dge, design_mat, plot=TRUE)
+  
+  # estimate correlation between samples from the same patient  
+  file_hashes <- purrr::map(list(a5_smallrna_dge_list[["SDHB_abdothoracic"]]$counts, 
+                                 design_mat, 
+                                 counts_anno), 
+                            digest::digest, algo = "md5")
+  suffix <- paste(purrr::map(file_hashes, stringr::str_sub, start=25, end=32), collapse = "_")
+  checkpoint_file <- paste0("./a5/small_rna/quickload_checkpoints/efit_",suffix,".rds")
+  if(file.exists(checkpoint_file))
+  {
+    efit <- readRDS(file = checkpoint_file)
+  } else {
+    
+    dupcor <- duplicateCorrelation(v, design_mat, block=counts_anno$`Patient ID`)
+    
+    # differential expression analysis, keeping track of samples that are correlated as they come from the same patient
+    vfit <- lmFit(v,
+                  design_mat,
+                  block=counts_anno$`Patient ID`,
+                  correlation=dupcor$consensus)
+    vfit <- contrasts.fit(vfit, contrasts=contr_matrix)
+    efit <- eBayes(vfit)
+    
+    
+    saveRDS(object = efit, file = checkpoint_file)
+  }
+  
+  plotSA(efit, main="Final model: Mean-variance trend")
+  
+  smallrna_de_fits[["genosampletype"]][[contrast]] <- efit
+  
+  sum.fit <- decideTests(efit, lfc = 1, adjust.method = "BH", p.value = 0.05)
+  
+  summary(sum.fit) %>% knitr::kable(caption = "DE small-RNA counts at adj.p<0.05 and LFC>0.5")
+  
+  #######
+  # Generate TopTable
+  #######
+
+  tt <- 
     topTable(efit, 
              coef = contrast, 
              number = Inf, 
              sort.by = "P") %>% 
-    rownames_to_column(var = "Gene") %>% 
-    mutate(gene_symbol = if_else(grepl(x = Gene, pattern = "_"), 
-                                 str_extract(Gene, pattern = '[^_]*$'),
-                                 Gene)) 
+    rownames_to_column(var = "Gene") 
+  
+  smallrna_top_tables[["genosampletype"]][[contrast]] <-  tt
+  
 }
+
 # Get the top TERT signature genes 
 
 
@@ -697,7 +726,7 @@ knitr::knit_expand(text="\nFiltered: Absolute-logFC >1, adj.P.Val < 0.05") %>% c
 
 #+ AT_DE_ATRXNonmet_toptables_print, eval=output_tables, echo=FALSE
 if(output_tables){
-  contrast = "ATRX_All_vs_NonATRX"
+  contrast = "ATRX_PriMet_vs_NonMetPri_WT"
   DT::datatable(data = smallrna_top_tables[["genosampletype"]][[contrast]] %>% filter(abs(logFC)>1, adj.P.Val<0.05) %>% slice_min(n = 1000, order_by = adj.P.Val) %>% 
                   mutate(across(.cols = c(logFC, AveExpr, t, 
                                           P.Value, adj.P.Val, B), round, 4)), 
@@ -711,7 +740,7 @@ knitr::knit_expand(text="\nFiltered: Absolute-logFC >1, adj.P.Val < 0.05") %>% c
 
 #+ AT_DE_TERTNonmet_toptables_print, eval=output_tables, echo=FALSE
 if(output_tables){
-  contrast = "TERT_All_vs_NonTERT"
+  contrast = "TERT_PriMet_vs_NonMetPri_WT"
   DT::datatable(data = smallrna_top_tables[["genosampletype"]][[contrast]] %>% filter(abs(logFC)>1, adj.P.Val<0.05) %>% slice_min(n = 1000, order_by = adj.P.Val) %>% 
                   mutate(across(.cols = c(logFC, AveExpr, t, 
                                           P.Value, adj.P.Val, B), round, 4)), 
@@ -728,7 +757,8 @@ knitr::knit_expand(text="\n\n### TERT and ATRX vs Non-Metastatic Primaries signi
 
 #+ AT_DE_TERTATRX_venn_print_header, eval=output_plots, echo=FALSE
 if(output_plots) {
-  vennDiagram(sum.fit[,c("ATRX_All_vs_NonATRX","TERT_All_vs_NonTERT")], circle.col=c("turquoise", "salmon"))
+  vennDiagram(cbind(decideTests(smallrna_de_fits[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]], lfc = 1, adjust.method = "BH", p.value = 0.05),
+                    decideTests(smallrna_de_fits[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]], lfc = 1, adjust.method = "BH", p.value = 0.05)), circle.col=c("turquoise", "salmon"))
 }
 #+ AT_DE_volcano_header, eval=output_plots, echo=FALSE, results='asis'
 
@@ -759,16 +789,16 @@ if(output_plots){
         segment.color = "grey",
         max.overlaps = Inf,
         size = 3,
-        aes(label=gene_symbol)) +
+        aes(label=Gene)) +
       theme_bw()
     
     return(volcano)
     
   }
   
-  tert <- plot_volcano(smallrna_top_tables[["genosampletype"]][["TERT_All_vs_NonTERT"]], 20) + ggtitle("TERT Mutant Vs Rest")
-  atrx <- plot_volcano(smallrna_top_tables[["genosampletype"]][["ATRX_All_vs_NonATRX"]], 20) + ggtitle("ATRX Mutant Vs Rest")
-  #tert_vs_atrx <- plot_volcano(smallrna_top_tables[["genosampletype"]][["ATRX_All_vs_TERT_All"]], 20) + ggtitle("TERT Vs ATRX")
+  tert <- plot_volcano(smallrna_top_tables[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]], 20) + ggtitle("TERT Mutant Vs non-met. primary")
+  atrx <- plot_volcano(smallrna_top_tables[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]], 20) + ggtitle("ATRX Mutant Vs non-met. primary")
+  tert_vs_atrx <- plot_volcano(smallrna_top_tables[["genosampletype"]][["ATRX_All_vs_TERT_All"]], 20) + ggtitle("TERT Vs ATRX")
   met_vs_nonmet <- plot_volcano(smallrna_top_tables[["genosampletype"]][["Metastatic_All_vs_NonMetPri_WT"]], 20) + ggtitle("All metastases vs non-metastatic primaries")
   
   tert + atrx + met_vs_nonmet + plot_layout(nrow=1, guides="collect")
@@ -782,12 +812,12 @@ knitr::knit_expand(text="\nGenes filtered for 'adj.P.Val < 0.05' and sorted by A
 
 #+ AT_DE_BoxPlots_print, eval=output_plots, echo=FALSE, fig.height=21, fig.width=18
 if(output_plots){
-  tert_top <- smallrna_top_tables[["genosampletype"]][["TERT_All_vs_NonTERT"]] %>% 
+  tert_top <- smallrna_top_tables[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]] %>% 
     filter(adj.P.Val < 0.05) %>% 
     arrange(desc(abs(logFC))) %>%  
     slice_head(n = 50) %>% pull(Gene)
   
-  atrx_top <- smallrna_top_tables[["genosampletype"]][["ATRX_All_vs_NonATRX"]] %>% 
+  atrx_top <- smallrna_top_tables[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]] %>% 
     filter(adj.P.Val < 0.05) %>% 
     arrange(desc(abs(logFC))) %>%  
     slice_head(n = 50) %>% 
@@ -799,7 +829,7 @@ if(output_plots){
     slice_head(n = 50) %>% 
     pull(Gene)
   
-  GOI <- c(met_top[1:min(length(met_top),10)], tert_top[1:min(length(tert_top),10)], atrx_top[1:min(length(atrx_top),10)])
+  GOI <- na.omit(c(met_top[1:min(length(met_top),10)], tert_top[1:min(length(tert_top),10)], atrx_top[1:min(length(atrx_top),10)]))
   
   top_logcpm <- a5_smallrna_lcpm_list[["SDHB_abdothoracic"]][GOI,, drop=F] %>% 
     as_tibble(rownames = "Gene") %>% 
@@ -846,13 +876,13 @@ if(output_plots){
   genes_per_group <- 50
   
   GOI <- bind_rows(
-    smallrna_top_tables[["genosampletype"]][["TERT_All_vs_NonTERT"]] %>% 
+    smallrna_top_tables[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]] %>% 
       filter(adj.P.Val < 0.05) %>% 
       arrange(desc(abs(logFC))) %>%  
       slice_head(n = genes_per_group) %>%  
       mutate(source="TERTvsRest") %>% 
       dplyr::select(source, Gene),
-    smallrna_top_tables[["genosampletype"]][["ATRX_All_vs_NonATRX"]] %>% 
+    smallrna_top_tables[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]] %>% 
       filter(adj.P.Val < 0.05) %>% 
       arrange(desc(abs(logFC))) %>% 
       slice_head(n = genes_per_group) %>% 
@@ -903,7 +933,7 @@ if(output_plots){
                                    col=list(
                                      "source"=setNames(
                                        RColorBrewer::brewer.pal(n=length(unique(plot.data$source)), name="Set3"),
-                                       unique(plot.data$source)), 
+                                       unique(plot.data$source))[1:length(unique(plot.data$source))], 
                                      "Chr"=setNames(
                                        chrom_cols,
                                        unique(plot.data$Chr)))
@@ -914,7 +944,7 @@ if(output_plots){
   Heatmap(t(scale(t(plot.data %>% dplyr::select(-Gene,-source, -Chr)))),
           #col = col_fun,
           row_split = plot.data$source,
-          #column_split = a5_anno.smallrna.nohn_noex$genotype_groups,
+          column_split = hm.annot.data.col$TERT_ATRX_Mutation,
           #width = ncol(bulk_heatmap_deg)*unit(2, "mm"),
           #height = ncol(bulk_heatmap_deg)*unit(4, "mm"),
           row_gap = unit(2, "mm"),
@@ -923,7 +953,7 @@ if(output_plots){
           top_annotation = hm.annot.col,
           left_annotation = hm.annot.row,
           column_title_rot = 90,
-          cluster_columns = TRUE,
+          #cluster_columns = TRUE,
           #show_column_dend = FALSE,
           cluster_column_slices = FALSE,
           cluster_rows = TRUE,
