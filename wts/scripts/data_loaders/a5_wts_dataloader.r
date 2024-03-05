@@ -6,8 +6,6 @@ library(biomaRt)
 library(org.Hs.eg.db)
 library(SummarizedExperiment)
 
-source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r")
-
 #Function to read and merge transcript count files from htseq 
 data_loader_a5_wts_counts <- function(count_file_dir=NULL, count_file_pattern=".gene.counts")
 {  
@@ -18,6 +16,7 @@ data_loader_a5_wts_counts <- function(count_file_dir=NULL, count_file_pattern=".
   #####################
   
   if(!exists("a5_anno")) {
+    source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r")
     data_loader_a5_clinical_anno(use_cache = T) }
   
   if(!("differential_group" %in% names(a5_anno))) {

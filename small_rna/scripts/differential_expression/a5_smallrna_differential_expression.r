@@ -41,7 +41,6 @@ library(ggplot2)
 # Import data loaders #
 #######################
 
-source("./a5/sample_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r")
 source("./a5/small_rna/scripts/data_loaders/a5_smallrna_seq_dataloader.r")
 
 source("./a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
@@ -55,8 +54,6 @@ source("./a5/sample_annotation/scripts/data_loaders/a5_contrast_groups.r")
 #############
 # Load data #
 #############
-
-data_loader_a5_clinical_anno("aidan.flynn@umccr-radio-lab.page", use_cache = T)
 
 # Read in the counts ----
 data_loader_a5_smallrna(genome_version="hg38")
