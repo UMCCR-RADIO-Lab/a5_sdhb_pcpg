@@ -8,7 +8,7 @@ setwd("/g/data/pq08/projects/ppgl")
 ################
 
 source("./a5/sample_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r")
-data_loader_a5_clinical_anno(google_account = "aidan.flynn@umccr-radio-lab.page", use_cache = F)
+data_loader_a5_clinical_anno(google_account = "aidan.flynn@umccr-radio-lab.page", use_cache = T)
 
 
 ########################
@@ -355,7 +355,7 @@ a5_anno_use <- a5_anno %>%
   filter(Exclude == "N") %>% 
   #mutate(multisample=n()>1) %>% 
   #filter(multisample | !is.na(non_surgical_therapy)) %>% 
-  filter(any(tumour_metastasised =="Yes")) %>% 
+  #filter(any(tumour_metastasised =="Yes")) %>% 
   #filter(!(non_surgical_therapy %in% c("Interferon","SSA"))) %>% 
   #filter(A5_ID != "E168-1") %>% #Unreliable information 
   mutate(tumour_metastasised = ifelse(A5_ID == "E159-2", "Yes", tumour_metastasised)) %>% 
@@ -393,24 +393,37 @@ swimmer_base <- purrr::map2(
   .y = names(swimmer_events), 
   .f = function(patient_anno, patient_id) {
     
-    if(is.na(patient_anno$metastasis_free_duration)) { 
-      return(data.frame(patient_id=patient_id, clinical_behaviour="Short follow up", end=1))
-    } 
+    last_sx <- patient_anno$sample_timepoint %>% ungroup() %>% 
+      slice_max(order_by = sx_date) %>% pull(sx_date) %>%  unique()
     
-    if(patient_anno$metastasis_free_duration == 0) { 
-      return(data.frame(patient_id=patient_id, clinical_behaviour="Metastatic Disease", end=patient_anno$followup_end_date))
-    } 
-    
-    if (patient_anno$metastasis_free_duration > patient_anno$followup_end_date){
-      return(data.frame(patient_id=patient_id, 
-                        clinical_behaviour=c("No Metastatic Disease", "Metastatic Disease"), 
-                        end=c(patient_anno$followup_end_date)))
+    return_table = NULL
+    if(patient_id == "E165") { 
+      #making an assumption that follow up duration was relative to surgery for this case
+      return_table <- data.frame(patient_id=patient_id, 
+                                 clinical_behaviour=c("Limited data","Metastatic Disease"), 
+                                 end=c(3650, (last_sx + patient_anno$followup_end_date)))
+    } else if(patient_anno$followup_end_date == 0) { 
+      last_sx <- patient_anno$sample_timepoint %>%
+        slice_max(order_by = sx_date) %>% pull(sx_date)
+      return_table <- data.frame(patient_id=patient_id, clinical_behaviour="Short follow up", end=last_sx)
+    } else if(patient_anno$metastasis_free_duration == 0) { 
+      return_table <- data.frame(patient_id=patient_id, clinical_behaviour="Metastatic Disease", end=patient_anno$followup_end_date)
+    } else {
+      return_table <- data.frame(patient_id=patient_id, 
+                                 clinical_behaviour=c("No Metastatic Disease", "Metastatic Disease"), 
+                                 end=c(patient_anno$metastasis_free_duration, patient_anno$followup_end_date))
     }
     
-    return(data.frame(patient_id=patient_id, 
-                      clinical_behaviour=c("No Metastatic Disease", "Metastatic Disease"), 
-                      end=c(patient_anno$metastasis_free_duration, patient_anno$followup_end_date)))
-    }) %>%  bind_rows()
+    if(!is.null(patient_anno$death_timepoint) && patient_anno$death_timepoint > patient_anno$followup_end_date) { 
+      return_table <- bind_rows(return_table,
+                                data.frame(patient_id=patient_id, 
+                                           clinical_behaviour="Limited data", 
+                                           end=patient_anno$death_timepoint))
+    }
+    
+    return(return_table)
+    
+  }) %>%  bind_rows()
 
 swimmer_sx <- purrr::map2(
   .x = swimmer_events, 
@@ -435,6 +448,16 @@ swimmer_sx <- purrr::map2(
                          time = patient_anno[["sample_timepoint"]][["sx_date"]]))
       }}
     
+    if ("additional_surgical_events" %in% names(patient_anno)) {
+      if (nrow(patient_anno[["additional_surgical_events"]]) > 0)
+      {
+        return_table <- return_table %>% 
+          add_row(tibble(patient_id = patient_id, 
+                         event = paste("Surgery - Not profiled"), 
+                         time = patient_anno[["additional_surgical_events"]][["start_date"]]))
+      }}
+    
+    return(return_table)
     
   }) %>%  bind_rows() %>% as.data.frame()
 
@@ -492,8 +515,9 @@ swimmer_plot <- swimmer_plot + swimmer_points(df_points= swimmer_sx,
                                               col='black')
 
 swimmer_plot <- swimmer_plot + 
-  scale_fill_manual(name="Clinical behaviour", values=c(`No Metastatic Disease`="#98ca8cff", `Metastatic Disease`="#de5353ff")) +
+  scale_fill_manual(name="Clinical behaviour", values=c(`No Metastatic Disease`="#98ca8cff", `Metastatic Disease`="#de5353ff",  "Limited data"="#e2e0d9ff", "Short follow up"="#f4e764ff")) +
   scale_color_manual(name="Treatment", values=c(CVD="#f4e764ff", `I131-MIBG`="#cadae8ff", `CAPE/TMZ`="#d6a097ff", Lutate="#efecdcff")) +
-  scale_shape_manual(name="Event", values=c("Death"=4,"Surgery - Metastasis"=8,"Surgery - Primary"=1, "Surgery - Recurrent"=3)) +
+  scale_shape_manual(name="Event", values=c("Death"=4,"Surgery - Metastasis"=8,"Surgery - Primary"=16, "Surgery - Recurrent"=3, "Surgery - Not profiled"=1)) +
   scale_size_manual(values=c("Day"=3, "Month"=1.5, "Year"=0.6))
 
+swimmer_plot
