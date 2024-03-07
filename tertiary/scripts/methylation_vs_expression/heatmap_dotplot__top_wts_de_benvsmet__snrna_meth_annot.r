@@ -35,6 +35,14 @@ mki67_cor <- c(cor_mat_rho$TERT_PriMet_vs_NonMetPri_WT["ENSG00000148773.14_MKI67
                cor_mat_rho$Metastatic_All_vs_NonMetPri_WT["ENSG00000148773.14_MKI67",])
 mki67_cor <- mki67_cor[!duplicated(names(mki67_cor))]
 
+#Assays
+gs4_auth("aidan.flynn@umccr-radio-lab.page")
+a5_assays <- read_sheet("1hnXdXI29KvvuLxsaTBID1-EbE7mTSk6bG05HcSFfhgo", 
+                        sheet="AssaysPerformed", 
+                        col_types = "c")
+
+snrna_samples <- a5_assays %>%  filter(`snRNA-Seq` == 1) %>%  pull(A5_ID)
+
 ##############
 # Annotation #
 ##############
@@ -195,8 +203,8 @@ GOI.plot <- GOI %>%
          Symbol_Label=ifelse(grepl("^A[CL][0-9]", Symbol), 
                              stringr::str_extract(string = Gene, pattern = "ENSG[0-9]+"), 
                              Symbol))#,
-         #Symbol=gsub("[*]$","", Symbol),
-         #Gene=gsub("[*]$","", Gene))
+#Symbol=gsub("[*]$","", Symbol),
+#Gene=gsub("[*]$","", Gene))
 
 # GOI.plot$source <- factor(GOI.plot$source, 
 #                      levels = c(#"Common",
@@ -218,21 +226,21 @@ GOI.plot <- GOI %>%
 strict_common_dmr = T
 
 dmr_genes <- purrr::map(.x = dmr_lists[["genosampletype"]], 
-           .f =  function (dmrs) {
-             dmrs %>% GenomicRanges::as.data.frame() %>% 
-               filter(Fisher < 0.05) %>% 
-               separate_rows(overlapping.genes, sep=", ") %>% 
-               filter(!is.na(overlapping.genes)) %>% 
-               pull(overlapping.genes) })
+                        .f =  function (dmrs) {
+                          dmrs %>% GenomicRanges::as.data.frame() %>% 
+                            filter(Fisher < 0.05) %>% 
+                            separate_rows(overlapping.genes, sep=", ") %>% 
+                            filter(!is.na(overlapping.genes)) %>% 
+                            pull(overlapping.genes) })
 
 GOI.plot$In_DMR <- "No"
 for (i in 1:nrow(GOI.plot))
 {
   if(GOI.plot$source[[i]] == "Common") {
     if (strict_common_dmr) {
-    if(GOI.plot$Symbol[i] %in% purrr::reduce(dmr_genes,intersect)) { GOI.plot$In_DMR[i] <- "Yes"} }
+      if(GOI.plot$Symbol[i] %in% purrr::reduce(dmr_genes,intersect)) { GOI.plot$In_DMR[i] <- "Yes"} }
     else {
-    if(GOI.plot$Symbol[i] %in% unlist(dmr_genes)) { GOI.plot$In_DMR[i] <- "Yes"}  }
+      if(GOI.plot$Symbol[i] %in% unlist(dmr_genes)) { GOI.plot$In_DMR[i] <- "Yes"}  }
   } else if(GOI.plot$source[[i]] == "ATRX_TERT_Met_vs_NMP") {
     if(GOI.plot$Symbol[i] %in% dmr_genes[["Metastatic_All_vs_NonMetPri_WT"]]) { GOI.plot$In_DMR[i] <- "Yes"} 
   } else if(GOI.plot$source[[i]] %in% c("ATRXvsTERT_ATRXvsNMP","ATRXvsTERT_TERTvsNMP")) {
@@ -251,7 +259,7 @@ for (i in 1:nrow(GOI.plot))
 
 plot_list <- list()
 
-for (contrast in unique(GOI.plot$source))#c("ATRXvsTERT_ATRXvsNMP", "ATRXvsTERT_TERTvsNMP")
+for (contrast in c("ATRXvsTERT_ATRXvsNMP", "ATRXvsTERT_TERTvsNMP"))#unique(GOI.plot$source)
 {
   
   plot_list[[contrast]] <- list()
@@ -285,6 +293,8 @@ for (contrast in unique(GOI.plot$source))#c("ATRXvsTERT_ATRXvsNMP", "ATRXvsTERT_
       keep_samples_extended <- a5_anno %>% 
         filter((differential_group_sampletype_strict %in%  c("Metastatic primary", "Metastasis" ) & TERT_ATRX_Mutation == "WT") |
                  TERT_ATRX_Mutation != "WT")  %>%  pull(A5_ID)
+      keep_samples_extended <- c(keep_samples_extended, snrna_samples)
+      
       
       set.seed(100)
       keep_samples_extended_variable <- 
@@ -312,13 +322,17 @@ for (contrast in unique(GOI.plot$source))#c("ATRXvsTERT_ATRXvsNMP", "ATRXvsTERT_
     
     plot.data <- plot.data %>%  mutate(gene_biotype = ifelse(grepl("[Pp]seudogene", gene_biotype), "pseudogene", gene_biotype))
     
+    
+    
     hm.annot.data.col <- a5_anno %>% 
       filter(A5_ID %in% sample.order) %>% 
       mutate(A5_ID=factor(A5_ID, levels=sample.order)) %>% 
       arrange(A5_ID) %>% 
       dplyr::select(A5_ID, TERT_ATRX_Mutation, 
                     differential_group_sampletype_strict) %>% 
-      left_join(contrast_membership) %>% dplyr::rename(contrast_group=group)
+      left_join(contrast_membership) %>% 
+      dplyr::rename(contrast_group=group) %>% 
+      mutate(snrna = A5_ID %in% snrna_samples)
     
     
     hm.annot.col = HeatmapAnnotation(
@@ -393,7 +407,7 @@ for (contrast in unique(GOI.plot$source))#c("ATRXvsTERT_ATRXvsNMP", "ATRXvsTERT_
     )
     
     plot_list[[contrast]][[mode]]  <- hm_bulk_gex + hm_snrna_dotplot_genotype + hm_snrna_dotplot
-
+    
   }
   
   
