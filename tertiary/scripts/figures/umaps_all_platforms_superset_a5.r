@@ -164,7 +164,7 @@ gg_tcga_a5_umap <- ggplot(mapping= aes(x=UMAP1,
                                        y=UMAP2, 
                                        color=new_naming, 
                                        shape=Dataset)) + 
-  geom_point(data = plot_data__umap__tcga_flynn_a5_comete %>% filter(Dataset == "A5"), alpha = 0.8, size=0.7) +
+  geom_point(data = plot_data__umap__tcga_flynn_a5_comete %>% filter(Dataset == "A5"), alpha = 0.8, size=0.7, color="black") +
   geom_point(data = plot_data__umap__tcga_flynn_a5_comete %>% filter(Dataset != "A5")) + 
   #Annotate sample count
   geom_text(data=plot_data__umap__tcga_flynn_a5_comete %>% 
@@ -197,8 +197,8 @@ gg_a5_umap <- ggplot(plot_data__umap__a5, aes(x=UMAP1, y=UMAP2, color=Primary_Lo
                         x_range=x_max-x_min, y_range = y_max-y_min) %>% 
               mutate(Label=paste0("n=",n), x_pos=x_max-(x_range*0.08), y_pos=y_max-(y_range*0.01)),
             aes(label=Label, x=x_pos, y=y_pos, shape=NULL), color="black") + 
-  geom_text_repel(data=plot_data__umap__a5 %>% 
-                    filter(Sample %in% c("E185-1")),#, "E129-1", "E128-1"
+  geom_text(data=plot_data__umap__a5 %>% 
+                    filter(Sample %in% c("E185-1","E128-1","E148-1","E155-1")),#, "E129-1", 
                   aes(label=Sample, shape=NULL), color="black") + 
   xlab("UMAP1") + ylab("UMAP2") + 
   labs(color="Primary site") + 
