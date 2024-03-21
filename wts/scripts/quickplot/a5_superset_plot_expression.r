@@ -29,7 +29,8 @@ exp <- wts_tcga_flynn_a5_lcpm.batch_removed[hgnc_to_ensgid$ensembl_gene_id,,drop
 as_tibble(rownames = "ensembl_gene_id") %>% 
 pivot_longer(cols = -ensembl_gene_id, 
              names_to = "Sample", 
-             values_to = "log2_cpm") %>% 
+             values_to = "log2_cpm") %>%
+  group_by(ensembl_gene_id) %>% 
   mutate(log2_cpm_z=(log2_cpm-mean(log2_cpm, na.rm=T))/sd(log2_cpm, na.rm=T)) %>% 
 inner_join(wts_tcga_flynn_a5_anno) %>% 
   left_join(hgnc_to_ensgid)
