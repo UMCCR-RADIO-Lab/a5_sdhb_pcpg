@@ -94,18 +94,43 @@ plot.data <- plot.data %>%
 
 plot.data <- plot.data %>% mutate(z_class = cut(log2cpm_z, breaks = c(-10,1,10), label=c("Z < 1","Z > 1")))
 
+plot.data <- plot.data %>%  mutate(TERT_ATRX_Mutation=ifelse(A5_ID == "E171-1", "WT", TERT_ATRX_Mutation))
+
 ########
 # Plot #
 ########
 
-gg_meth <- ggplot(plot.data, aes(y=b_val, x=z_class, color=TERT_ATRX_Mutation)) +
-  geom_boxplot(aes(color=NULL)) +
-  geom_jitter(width = 0.2) +
-  #geom_text(aes(label=A5_ID)) + 
+# gg_meth <- ggplot(plot.data, aes(y=b_val, x=z_class, color=TERT_ATRX_Mutation)) +
+#   geom_boxplot(aes(color=NULL)) +
+#   geom_jitter(width = 0.2) +
+#   #geom_text(aes(label=A5_ID)) + 
+#   scale_color_manual(values=driver_cols) +
+#   guides(color=guide_legend(override.aes = list(shape=19, label="", linewidth=c(0,0,0)))) +
+#   theme_bw() + 
+#   #theme(axis.text.x = element_text(angle=90, vjust =0.5, hjust=1)) + 
+#   ylab("Methylation (beta)") +
+#   xlab("TERT expression (log2 CPM, z-score)") +
+#   facet_wrap("probe_id", ncol=5) 
+
+gg_meth_vs_expr <- ggplot(plot.data %>% filter(probe_id %in% c("cg11625005(TSS1500)", "cg10767223(TSS1500)")), 
+                   aes(x=b_val, y=log2cpm, color=TERT_ATRX_Mutation)) +
+  geom_point() +
+  geom_text(aes(label=A5_ID)) + 
   scale_color_manual(values=driver_cols) +
   guides(color=guide_legend(override.aes = list(shape=19, label="", linewidth=c(0,0,0)))) +
   theme_bw() + 
   #theme(axis.text.x = element_text(angle=90, vjust =0.5, hjust=1)) + 
-  ylab("Methylation (beta)") +
-  xlab("TERT expression (log2 CPM, z-score)") +
-  facet_wrap("probe_id", ncol=5) 
+  xlab("Methylation (beta)") +
+  ylab("TERT expression (log2 CPM, z-score)") +
+  facet_wrap("probe_id", ncol=1) 
+
+gg_meth_density <- ggplot(plot.data %>% filter(probe_id %in% c("cg11625005(TSS1500)", "cg10767223(TSS1500)")), 
+       aes(x=b_val, color=TERT_ATRX_Mutation)) +
+  geom_density(adjust=0.8) +
+  #geom_text(aes(label=A5_ID)) + 
+  scale_color_manual(values=driver_cols) +
+  theme_bw() + 
+  #theme(axis.text.x = element_text(angle=90, vjust =0.5, hjust=1)) + 
+  facet_wrap("probe_id", ncol=1) 
+
+gg_meth_vs_expr + gg_meth_density + plot_layout(ncol = 1, heights=c(1.5,0.5))
