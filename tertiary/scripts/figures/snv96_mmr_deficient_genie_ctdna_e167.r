@@ -5,8 +5,8 @@ library(BSgenome.Hsapiens.UCSC.hg38)
 library(MutationalPatterns)
 library(tidyverse)
 
-genie <- read.delim("/g/data/pq08/databases/genie_r15/data_mutations_extended.txt")
-genie_meta <- read.delim("/g/data/pq08/databases/genie_r15/data_clinical_sample.txt", skip =4)
+genie <- read.delim("/g/data/pq08/databases/genie_r13/data_mutations_extended.txt")
+genie_meta <- read.delim("/g/data/pq08/databases/genie_r13/data_clinical_sample.txt", skip =4)
 ppgl_muts <- genie %>%  inner_join(genie_meta %>%  filter(ONCOTREE_CODE %in% c("PGNG","PHC")), by=c("Tumor_Sample_Barcode"="SAMPLE_ID"))
 
 
@@ -21,7 +21,7 @@ mmr_genes <- dna_repair_genes %>%
 #############
 
 dfci_case_muts <- ppgl_muts %>% 
-  filter(Tumor_Sample_Barcode %in% c("GENIE-DFCI-001077-11300","GENIE-UHN-OCT385593-ARC1")) %>% 
+  filter(Tumor_Sample_Barcode %in% c("GENIE-DFCI-001077-11300")) %>% 
   dplyr::select(Tumor_Sample_Barcode, Chromosome, Start_Position, End_Position, Reference_Allele, Tumor_Seq_Allele2) %>% 
   mutate(Chromosome = paste0("chr",Chromosome)) %>% 
   dplyr::rename("REF"=Reference_Allele, "ALT"=Tumor_Seq_Allele2) %>% 
@@ -52,7 +52,6 @@ genome(cttso_muts.gr) <- "hg19"
 
 snv_hg19 <- get_mut_type(list(
   DFCI=dfci_case_muts.gr[mcols(dfci_case_muts.gr)[["Tumor_Sample_Barcode"]] == "GENIE-DFCI-001077-11300",],
-  UHN=dfci_case_muts.gr[mcols(dfci_case_muts.gr)[["Tumor_Sample_Barcode"]] == "GENIE-UHN-OCT385593-ARC1",],
   ctTSO=cttso_muts.gr), type = "snv")
 mut_mat_hg19 <- mut_matrix(vcf_list = snv_hg19, ref_genome = BSgenome.Hsapiens.UCSC.hg19)
 
@@ -87,7 +86,7 @@ plot_data <- mut_mat %>%
   mutate(Alteration = stringr::str_extract(context,".>."),
          Alteration = factor(Alteration, levels=c("C>A","C>G","C>T","T>A","T>C","T>G")),
          context=gsub("\\[.>.\\]",".",context)) %>% 
-  mutate(Sample = factor(Sample, levels = c("E167-M1","E167-M2","DFCI", "UHN","ctTSO")))
+  mutate(Sample = factor(Sample, levels = c("E167-M1","E167-M2","DFCI","ctTSO")))
 
 gg_snv96 <- ggplot(plot_data, aes(x=context, y=count,fill=Alteration)) + 
   geom_col() + 
@@ -109,8 +108,15 @@ genie_mmr <- ppgl_muts %>%
   distinct()
   
 
-total_counts <- ppgl_muts %>% group_by(Tumor_Sample_Barcode) %>% dplyr::count() %>% left_join(genie_mmr %>%  group_by(Tumor_Sample_Barcode) %>%  summarise(Hugo_Symbol = paste(Hugo_Symbol, collapse = "+"))) %>% 
-  arrange(n) %>%  ungroup() %>% mutate(Tumor_Sample_Barcode = factor(Tumor_Sample_Barcode, levels=Tumor_Sample_Barcode))
+total_counts <- ppgl_muts %>% 
+  group_by(Tumor_Sample_Barcode) %>% 
+  dplyr::count() %>% 
+  left_join(genie_mmr %>%  
+              group_by(Tumor_Sample_Barcode) %>%  
+              summarise(Hugo_Symbol = unique(Hugo_Symbol))) %>% 
+  arrange(n) %>%  
+  ungroup() %>% 
+  mutate(Tumor_Sample_Barcode = factor(Tumor_Sample_Barcode, levels=Tumor_Sample_Barcode))
 
 gg_geniecounts <- ggplot(total_counts %>% 
                mutate(Hugo_Symbol=replace_na(Hugo_Symbol,"None")), 
