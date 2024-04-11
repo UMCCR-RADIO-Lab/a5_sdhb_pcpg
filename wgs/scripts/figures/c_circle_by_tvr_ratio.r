@@ -1,7 +1,7 @@
 ################################################
 # This script produces a plot of tumour/normal #
 # ratios for each TVR (that is significant by  #
-# ANOVA) versus C-Circle status.               #
+# t-test) versus C-Circle status.              #
 #                                              #
 # Author: Aidan Flynn                          #
 # Date: 04/08/2023                             #
