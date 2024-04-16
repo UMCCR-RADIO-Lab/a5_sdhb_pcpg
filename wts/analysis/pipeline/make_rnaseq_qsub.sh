@@ -1,5 +1,5 @@
 #!/bin/bash
-basedir="/g/data/pq08/projects/A5/wts"
+basedir="/g/data/pq08/projects/ppgl/a5/wts"
 fastq_dir="$basedir/data/fastq"
 gencode_gtf="/g/data/pq08/reference/GRCh38/gencode/gencode.v36.primary_assembly.annotation.gtf"
 gencode_fa="/g/data/pq08/reference/GRCh38/gencode/GRCh38_full_analysis_set_plus_decoy_hla.fa"

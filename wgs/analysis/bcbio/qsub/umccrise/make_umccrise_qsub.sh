@@ -22,4 +22,4 @@ cd ${basedir}/${d}
 umccrise final --genomes /g/data/pq08/reference/umccrise/genomes/
 " > run_umccrise_${d}.qsub
 
-done < <(ls /g/data/pq08/projects/A5/WGS/analysis/bcbio/ | grep "^E")
+done < <(ls ${basedir} | grep "^E")

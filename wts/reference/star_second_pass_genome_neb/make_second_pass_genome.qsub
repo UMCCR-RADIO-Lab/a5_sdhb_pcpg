@@ -8,7 +8,7 @@
 #PBS -m ae
 #PBS -M aidan.flynn@unimelb.edu.au
 
-basedir="/g/data/pq08/projects/A5/WTS"
+basedir="/g/data/pq08/projects/ppgl/a5/wts"
 threads=16
 module load star/2.7.9a
 

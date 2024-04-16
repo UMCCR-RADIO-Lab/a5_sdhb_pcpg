@@ -1,5 +1,5 @@
 #!/bin/bash
-basedir=/g/data/pq08/projects/A5/WGS/analysis
+basedir=/g/data/pq08/projects/ppgl/a5/wgs/analysis
 
 patient_ids=()
 tumour_ids=()
@@ -34,7 +34,7 @@ echo "
 #PBS -M aidan.flynn@unimelb.edu.au
 
 source /g/data/pq08/projects/flynna/software/miniconda3/etc/profile.d/conda.sh
-conda activate /g/data/pq08/projects/A5/software/circos_conda
+conda activate /g/data/pq08/projects/ppgl/a5/software/circos_conda
 
 
 hartwig_ref_dir=/g/data/pq08/reference/hartwig/hmf5/GRCh38
@@ -71,7 +71,7 @@ java -cp /g/data/pq08/software/linx/1.16/linx.jar com.hartwig.hmftools.linx.visu
 -plot_out \"\${linx_out_dir}/plot\" \
 -data_out \"\${linx_out_dir}/data\" \
 -vis_file_dir \"\${linx_out_dir}\" \
--circos /g/data/pq08/projects/A5/software/circos_conda/bin/circos \
+-circos /g/data/pq08/projects/ppgl/a5/software/circos_conda/bin/circos \
 -threads ${threads}  2> \${linx_out_dir}/${patient_id}-T0${tumour_id}.linxvis.error.log 1> \${linx_out_dir}/${patient_id}-T0${tumour_id}.linxvis.output.log
 " > "${qsub_dir}/run_linx_${patient_id}-T0${tumour_id}.qsub"
 done

@@ -2,7 +2,7 @@
 PatientIDs=()
 TumourIDs=()
 
-qsub_dir="/g/data/pq08/projects/A5/WGS/analysis/gridss/qsub"
+qsub_dir="/g/data/pq08/projects/ppgl/a5/wgs/analysis/gridss/qsub"
 
 while read -r bamfileprefix; 
 do
@@ -10,7 +10,7 @@ PatientID=$(sed -E "s/(E...)-(T..)/\1/" <<< "${bamfileprefix}");
 TumourID=$(sed -E "s/(E...)-(T..)/\2/" <<< "${bamfileprefix}");
 PatientIDs+=("${PatientID}");
 TumourIDs+=("${TumourID}");
-done < <(find /g/data/pq08/projects/A5/WGS/analysis/bcbio/E*/final -iname '*-T0*-ready.bam' | xargs -I {} basename {} | sed "s/-ready.bam//")
+done < <(find /g/data/pq08/projects/ppgl/a5/wgs/analysis/bcbio/E*/final -iname '*-T0*-ready.bam' | xargs -I {} basename {} | sed "s/-ready.bam//")
 
 for i in $(seq 0 1 $((${#PatientIDs[@]}-1 )));
 do
@@ -36,15 +36,15 @@ echo "
 
 
 source /g/data/pq08/projects/flynna/software/miniconda3/etc/profile.d/conda.sh
-conda activate /g/data/pq08/projects/A5/software/gridss_conda
+conda activate /g/data/pq08/projects/ppgl/a5/software/gridss_conda
 
 gridss_refdir=/g/data/pq08/reference/hartwig/hmf5/GRCh38
 ref_genome_fa=/g/data/pq08/local/bcbio/genomes/Hsapiens/hg38/seq/hg38.fa
 
-NormalBam=/g/data/pq08/projects/A5/WGS/analysis/bcbio/${PatientID}/final/${PatientID}-${NormalID}/${PatientID}-${NormalID}-ready.bam
-TumourBam=/g/data/pq08/projects/A5/WGS/analysis/bcbio/${PatientID}/final/${PatientID}-${TumourID}/${PatientID}-${TumourID}-ready.bam
+NormalBam=/g/data/pq08/projects/ppgl/a5/wgs/analysis/bcbio/${PatientID}/final/${PatientID}-${NormalID}/${PatientID}-${NormalID}-ready.bam
+TumourBam=/g/data/pq08/projects/ppgl/a5/wgs/analysis/bcbio/${PatientID}/final/${PatientID}-${TumourID}/${PatientID}-${TumourID}-ready.bam
 
-outDir=/g/data/pq08/projects/A5/WGS/analysis/gridss/${PatientID}-${TumourID}
+outDir=/g/data/pq08/projects/ppgl/a5/wgs/analysis/gridss/${PatientID}-${TumourID}
 outVCF=\${outDir}/${PatientID}-${TumourID}.gridss.driver.vcf.gz
 outVCFrepeatmasker=\${outDir}/${PatientID}-${TumourID}.gridss.repeatmasker.vcf.gz
 outVCFunfiltered=\${outDir}/${PatientID}-${TumourID}.gridss.unfiltered.vcf.gz
@@ -71,7 +71,7 @@ tabix \${outVCF} -p vcf
 gridss_annotate_vcf_repeatmasker \
 --output \${outVCFrepeatmasker} \
 --jar \${CONDA_PREFIX}/share/gridss-2.12.2-0/gridss.jar \
--w /g/data/pq08/projects/A5/WGS/analysis/gridss/E122-T01 \
+-w /g/data/pq08/projects/ppgl/a5/wgs/analysis/gridss/${PatientID}-${TumourID} \
 --rm \${CONDA_PREFIX}/bin/RepeatMasker \${outVCF}
 
 java -Xmx8G -Dsamjdk.create_index=true -Dsamjdk.use_async_io_read_samtools=true \

@@ -5,13 +5,13 @@
 from pathlib import Path
 from math import floor
 
-out_file="/g/data/pq08/projects/A5/WTS/reference/star_second_pass_genome_neb/A5_pooled_SJ_neb.out.tab"
+out_file="/g/data/pq08/projects/ppgl/a5/wts/reference/star_second_pass_genome_neb/A5_pooled_SJ_neb.out.tab"
 
 files_processed=0
 
 splice_dict = dict()
 
-for path in Path('/g/data/pq08/projects/A5/WTS/results/star/neb').rglob('*_SJ.out.tab'):
+for path in Path('/g/data/pq08/projects/ppgl/a5/wts/results/star/neb').rglob('*_SJ.out.tab'):
     
     files_processed += 1
     with open(path) as fh:
