@@ -1,10 +1,10 @@
 ###########################################
 # This script generates a jitter-box plot #
-# of Tumour Mutation Burden versus        #
-# clinical outcome/category               #
-#                                         #
+# of Largest primary size versus          #
+# TERT/ATRX status and presence of        #
+# metastatic disease                      #
 # Author: Aidan Flynn                     #
-# Date: 17/08/2023                        #
+# Date: 01/04/2024                        #
 ###########################################
 
 library(ggplot2)
@@ -47,22 +47,22 @@ comp_list <- combn(x = unique(plot_data$group), m = 2) %>%
            grepl("^Chromaffin",g2) & grepl("^Chromaffin",g1))
 
 t_results <- purrr::pmap(comp_list, .f = \(g1, g2) {
-    t_test_data <- plot_data %>% filter(group %in% c(g1, g2))
-
-    t_results[[paste(g1,g2,sep="_vs_")]] <- t.test(Largest_primary_dimensions_cm~group,  
-                                     t_test_data, 
-                                     alternative = c("two.sided"))
-    
-  }) %>% 
+  t_test_data <- plot_data %>% filter(group %in% c(g1, g2))
+  
+  return(t.test(Largest_primary_dimensions_cm~group,  
+                t_test_data, 
+                alternative = c("greater")))
+  
+}) %>% 
   setNames(paste(comp_list$g1, comp_list$g2, sep="_vs_"))
 
 
 sig_tests <- purrr::map2(.x = t_results, 
-            .y = names(t_results), 
-            .f = \(t_result, comparison) {
-              comp_members <- stringr::str_split_1(string = comparison, pattern = "_vs_")
-              df_result <- data.frame(group1=comp_members[[1]], group2 = comp_members[[2]], pval = t_result$p.value)
-              return(df_result)}) %>% bind_rows() %>% 
+                         .y = names(t_results), 
+                         .f = \(t_result, comparison) {
+                           comp_members <- stringr::str_split_1(string = comparison, pattern = "_vs_")
+                           df_result <- data.frame(group1=comp_members[[1]], group2 = comp_members[[2]], pval = t_result$p.value)
+                           return(df_result)}) %>% bind_rows() %>% 
   filter(pval < 0.05)
 
 sig_tests <- sig_tests %>% 
@@ -81,13 +81,13 @@ pvalue_lines_df <- tibble(y=seq(17, (17+(nrow(sig_tests)-1)), 1),
                           cell_of_origin = sig_tests$cell_of_origin)
 
 pvalue_text_df <- tibble(y=seq(17.5, (17.5+(nrow(sig_tests)-1)), 1),
-       x=as.numeric(sig_tests$group1_class)+((as.numeric(sig_tests$group2_class)-as.numeric(sig_tests$group1_class))/2), 
-       label=paste0("p=",(round(sig_tests$pval,4))),
-       cell_of_origin =  factor(sig_tests$cell_of_origin, levels=levels(plot_data$cell_of_origin)))
+                         x=as.numeric(sig_tests$group1_class)+((as.numeric(sig_tests$group2_class)-as.numeric(sig_tests$group1_class))/2), 
+                         label=paste0("p=",(round(sig_tests$pval,4))),
+                         cell_of_origin =  factor(sig_tests$cell_of_origin, levels=levels(plot_data$cell_of_origin)))
 
 jp = position_jitter(width = 0.1, seed=25)
 gg_primarysize <- ggplot(plot_data, 
-                    aes(x=class, y=Largest_primary_dimensions_cm)) + 
+                         aes(x=class, y=Largest_primary_dimensions_cm)) + 
   geom_boxplot(outlier.alpha = 0) + 
   geom_point(position = jp) + 
   geom_segment(data=pvalue_lines_df,
