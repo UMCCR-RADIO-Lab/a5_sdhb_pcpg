@@ -1,5 +1,5 @@
 #!/bin/bash
-basedir=/g/data/pq08/projects/A5/WGS/analysis
+basedir=/g/data/pq08/projects/ppgl/a5/wgs/analysis
 
 patient_ids=()
 tumour_ids=()
@@ -33,8 +33,8 @@ echo "
 #PBS -m ae
 #PBS -M aidan.flynn@unimelb.edu.au
 
-source /g/data/pq08/projects/flynna/software/miniconda3/etc/profile.d/conda.sh
-conda activate /g/data/pq08/projects/A5/software/circos_conda
+source /g/data/pq08/people/flynna/software/miniconda3/etc/profile.d/conda.sh
+conda activate /g/data/pq08/projects/ppgl/a5/software/circos_conda
 
 
 hartwig_ref_dir=/g/data/pq08/reference/hartwig/hmf5/GRCh38
@@ -68,8 +68,8 @@ java -Xmx4G -cp /g/data/pq08/software/purple/3.1/purple.jar com.hartwig.hmftools
 -in \${strelka_vcf} \
 -out \${strelka_vcf_ad} 2> \"\${purple_out_dir}/${patient_id}-T0${tumour_id}.purple.error.log\" 1> \"\${purple_out_dir}/${patient_id}-T0${tumour_id}.purple.output.log\"
 
-gripss_vcf=\"/g/data/pq08/projects/A5/WGS/analysis/gridss/${patient_id}-T0${tumour_id}/${patient_id}-T0${tumour_id}.gripss.somatic.vcf.gz\"
-gripss_filtered_vcf=\"/g/data/pq08/projects/A5/WGS/analysis/gridss/${patient_id}-T0${tumour_id}/${patient_id}-T0${tumour_id}.gripss.somatic.filtered.vcf.gz\"
+gripss_vcf=\"/g/data/pq08/projects/ppgl/a5/wgs/analysis/gridss/${patient_id}-T0${tumour_id}/${patient_id}-T0${tumour_id}.gripss.somatic.vcf.gz\"
+gripss_filtered_vcf=\"/g/data/pq08/projects/ppgl/a5/wgs/analysis/gridss/${patient_id}-T0${tumour_id}/${patient_id}-T0${tumour_id}.gripss.somatic.filtered.vcf.gz\"
 
 java -Xms8G -Xmx31G  -jar /g/data/pq08/software/purple/3.1/purple.jar \
 -reference ${patient_id}-B01 \
@@ -80,8 +80,8 @@ java -Xms8G -Xmx31G  -jar /g/data/pq08/software/purple/3.1/purple.jar \
 -somatic_vcf \"\${strelka_vcf_ad}\" \
 -structural_vcf \"\${gripss_filtered_vcf}\" \
 -sv_recovery_vcf \"\${gripss_vcf}\" \
--circos /g/data/pq08/projects/A5/software/circos_conda/bin/circos \
--ref_genome /g/data/pq08/projects/flynna/acquired_resist/reference/hg38.fa \
+-circos /g/data/pq08/projects/ppgl/a5/software/circos_conda/bin/circos \
+-ref_genome /g/data/pq08/people/flynna/acquired_resist/reference/hg38.fa \
 -somatic_hotspots \"\${hartwig_ref_dir}/knowledgebases/KnownHotspots.vcf.gz\" \
 -gc_profile \"\${hartwig_ref_dir}/gc/GC_profile.1000bp.cnp\" \
 -driver_gene_panel \"\${hartwig_ref_dir}/knowledgebases/DriverGenePanel.tsv\" \
