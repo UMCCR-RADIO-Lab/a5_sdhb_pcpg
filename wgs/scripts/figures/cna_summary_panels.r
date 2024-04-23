@@ -44,7 +44,8 @@ plot_data <- a5_anno %>%
                 differential_group_sampletype_strict, 
                 cell_of_origin,
                 `sample_ploidy`, pcnt_altered, 
-                structural_variant_count) 
+                structural_variant_count,
+                TERT_ATRX_Mutation) 
 
 plot_data <- plot_data %>% 
   mutate(WGD=ifelse(as.numeric(`sample_ploidy`) > 3.2,"Yes","No"),
@@ -61,9 +62,10 @@ plot_data <- plot_data %>%
          clinical_class = factor(clinical_class, 
                                  levels=c("Non-metastatic primary/Primary (short follow up)",
                                           "Primary (metastasis reported)",
-                                          "Metastatic primary/Metastasis"))) %>% 
+                                          "Metastatic primary/Metastasis")),
+         TERT_ATRX_Mutation = factor(TERT_ATRX_Mutation, levels=c("WT","ATRX","TERT"))) %>% 
   inner_join(genome_altered_stats) %>%  
-  arrange(cell_of_origin, clinical_class,  pcnt_altered) 
+  arrange(cell_of_origin, TERT_ATRX_Mutation, clinical_class,  pcnt_altered) 
 
 SampleOrder.A5_ID <- plot_data$A5_ID 
   
@@ -95,6 +97,14 @@ gg_sampletype_rug <- ggplot(plot_data, aes(x="clinical_class", y=A5_ID, fill=cli
         panel.grid = element_blank())  + 
   facet_grid(rows="cell_of_origin", scale = "free_y", space="free", switch = "y") 
 
+gg_tert_atrx_rug <- ggplot(plot_data, aes(x="TERT_ATRX", y=A5_ID, fill=TERT_ATRX_Mutation)) +
+  geom_tile(height=0.8) +
+  scale_fill_manual(values = driver_cols) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=90, vjust = 0.5,hjust=1),
+        panel.grid = element_blank())  + 
+  facet_grid(rows="cell_of_origin", scale = "free_y", space="free", switch = "y") 
+
 gg_wgd_rug <- ggplot(plot_data, aes(x="WGD", y=A5_ID, fill=WGD)) +
   geom_tile(height=0.8) +
   scale_fill_manual(values=c("Yes"="black", "No"="white")) + 
@@ -116,9 +126,10 @@ gg_sv_count <- ggplot(plot_data, aes(x=structural_variant_count, y=A5_ID)) +
 
 gg_cna_freq_anatomy_flip + nox + theme(plot.margin = margin(6,0,0,0)) +
 gg_sampletype_rug + noy + zero_margin  +
+  gg_tert_atrx_rug + noy + zero_margin + no_strip +
   gg_wgd_rug + noy + zero_margin + no_strip +
   gg_cna_seg +noy + theme(plot.margin = margin(0,0,6,0)) + no_strip +
   gg_pcnt_altered + noy + zero_margin + no_strip +
   gg_sv_count + noy  + zero_margin + no_strip +
-  plot_layout(guides="collect", widths = c(1,1,30,2,2), heights=c(1,3), design = "##A##\nBCDEF")
+  plot_layout(guides="collect", widths = c(1,1,1,30,2,2), heights=c(1,3), design = "###A##\nBCDEFG")
 
