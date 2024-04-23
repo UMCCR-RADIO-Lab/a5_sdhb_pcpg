@@ -36,9 +36,9 @@ A5_gene_cn_lossgain <- A5_gene_cn %>% mutate(A5_ID=gsub("T0", "", A5_ID)) %>%
   left_join(a5_anno %>%  dplyr::select(A5_ID,  PublicationID))
 
 source("/g/data/pq08/projects/ppgl/a5/wts/scripts/data_loaders/a5_wts_dataloader.r")
-data_loader_a5_wts_counts(count_file_dir = "/g/data/pq08/projects/ppgl/a5/wts/analysis/htseq/truseq/gene", 
+data_loader_a5_wts_counts(count_file_dir = "/g/data/pq08/projects/ppgl/a5/wts/analysis/htseq/neb/gene", 
                           count_file_pattern = ".gene.counts")
-# data_loader_arriba(arriba_out_dir = "/g/data/pq08/projects/ppgl/a5/wts/analysis/arriba/truseq/")
+# data_loader_arriba(arriba_out_dir = "/g/data/pq08/projects/ppgl/a5/wts/analysis/arriba/neb/")
 
 wts_log_cpm <- edgeR::cpm(a5_wts_dge_list$qc_ok, log=T) %>% 
   data.frame(check.names = F) %>% 

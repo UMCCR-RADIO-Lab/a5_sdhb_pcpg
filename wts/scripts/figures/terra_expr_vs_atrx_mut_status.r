@@ -29,7 +29,7 @@ source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_
 # TERRA #
 #########
 
-a5th.summary.rna <- read.delim("/g/data/pq08/projects/ppgl/a5/wts/analysis/telomerehunter/truseq/combined/telomerehunter_a5_rna_summary.tsv")
+a5th.summary.rna <- read.delim("/g/data/pq08/projects/ppgl/a5/wts/analysis/telomerehunter/neb/combined/telomerehunter_a5_rna_summary.tsv")
 
 
 #################################

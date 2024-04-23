@@ -28,7 +28,7 @@ data_loader_a5_methylation_array(quickload = T, output_qc = F, normalisation="fu
 
 #load WTS data
 source("/g/data/pq08/projects/ppgl/a5/wts/scripts/data_loaders/a5_wts_dataloader.r")
-htseq_outs <- "/g/data/pq08/projects/ppgl/a5/wts/analysis/htseq/truseq/gene"
+htseq_outs <- "/g/data/pq08/projects/ppgl/a5/wts/analysis/htseq/neb/gene"
 data_loader_a5_wts_counts(count_file_dir=htseq_outs)
 
 ######################

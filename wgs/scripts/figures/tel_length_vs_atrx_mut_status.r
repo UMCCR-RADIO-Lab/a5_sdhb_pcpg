@@ -31,7 +31,7 @@ source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_
 # 
 # source("/g/data/pq08/projects/ppgl/a5/wts/scripts/data_loaders/a5_wts_dataloader.r")
 # 
-# data_loader_a5_wts_counts(count_file_dir = "/g/data/pq08/projects/ppgl/a5/wts/analysis/htseq/truseq/gene/")
+# data_loader_a5_wts_counts(count_file_dir = "/g/data/pq08/projects/ppgl/a5/wts/analysis/htseq/neb/gene/")
 
 #################################
 # ATRX mutation type annotation #

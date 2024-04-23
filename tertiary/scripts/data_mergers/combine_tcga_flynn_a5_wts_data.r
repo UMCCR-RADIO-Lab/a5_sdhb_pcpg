@@ -29,7 +29,7 @@ source("./a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
 #############
 
 #Load A5 Samples
-htseq_outs <- "/g/data/pq08/projects/ppgl/a5/wts/analysis/htseq/truseq/gene/"
+htseq_outs <- "/g/data/pq08/projects/ppgl/a5/wts/analysis/htseq/neb/gene/"
 data_loader_a5_wts_counts(htseq_outs)
 
 #load TCGA count data

@@ -80,7 +80,7 @@ a5_anno$TERT_ATRX_Mutation <- factor(as.character(a5_anno$TERT_ATRX_Mutation), l
 
 source("/g/data/pq08/projects/ppgl/a5/wts/scripts/data_loaders/a5_wts_dataloader.r")
 
-data_loader_a5_wts_counts(count_file_dir = "/g/data/pq08/projects/ppgl/a5/wts/analysis/htseq/truseq/gene/")
+data_loader_a5_wts_counts(count_file_dir = "/g/data/pq08/projects/ppgl/a5/wts/analysis/htseq/neb/gene/")
 
 ################################
 # Telomere Hunter Summary Data #
@@ -125,7 +125,7 @@ a5th.telosv <- read.delim("/g/data/pq08/projects/ppgl/a5/wgs/analysis/telomerehu
 # TERRA #
 #########
 
-a5th.summary.rna <- read.delim("/g/data/pq08/projects/ppgl/a5/wts/analysis/telomerehunter/truseq/combined/telomerehunter_a5_rna_summary.tsv")
+a5th.summary.rna <- read.delim("/g/data/pq08/projects/ppgl/a5/wts/analysis/telomerehunter/neb/combined/telomerehunter_a5_rna_summary.tsv")
 
 
 ```

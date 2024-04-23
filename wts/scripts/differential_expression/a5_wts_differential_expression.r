@@ -62,7 +62,7 @@ source("./a5/sample_annotation/scripts/data_loaders/a5_contrast_groups.r")
 data_loader_a5_clinical_anno("aidan.flynn@umccr-radio-lab.page", use_cache = T)
 
 # Read in the htseq counts ----
-htseq_outs <- "./a5/wts/analysis/htseq/truseq/gene"
+htseq_outs <- "./a5/wts/analysis/htseq/neb/gene"
 data_loader_a5_wts_counts(count_file_dir=htseq_outs)
 
 

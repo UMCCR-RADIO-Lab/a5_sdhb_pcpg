@@ -32,7 +32,7 @@ if (!exists("a5_methylation_filtered")) {
 #WTS
 source("./a5/wts/scripts/data_loaders/a5_wts_dataloader.r")
 if (!exists("a5_wts_dge_list")) {
-  htseq_outs <- "./a5/wts/analysis/htseq/truseq/gene"
+  htseq_outs <- "./a5/wts/analysis/htseq/neb/gene"
   data_loader_a5_wts_counts(count_file_dir=htseq_outs)
 }
 
