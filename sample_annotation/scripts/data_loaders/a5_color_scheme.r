@@ -144,6 +144,10 @@ driver_cols <- c(ATRX=ColorPalette[["DarkBlue1"]],
                 TERT=ColorPalette[["LightOrange1"]], 
                 WT=ColorPalette[["LightGreen1"]])
 
+cell_of_origin_cols <- c(Chromaffin="#95665a",
+                         Non_chromaffin="#f18d73ff",
+                         Ambiguous="#b4b4b4ff")
+
 all_cell_types <- c("Tumor",
                     "Endothelial cells" ,
                     "Chromaffin cells" ,
