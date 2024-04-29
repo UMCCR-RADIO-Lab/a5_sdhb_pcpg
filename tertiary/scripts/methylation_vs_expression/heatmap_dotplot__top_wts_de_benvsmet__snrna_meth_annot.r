@@ -92,6 +92,15 @@ rownames(md)  <- rownames(a5_snrna@meta.data)
 a5_snrna@meta.data <- md
 
 
+
+#########################################
+# Remove non-A5 samples for publication #
+#########################################
+
+pub_keep <- !(a5_snrna@meta.data$orig.ident %in% c("E018", "P018-PGL1", "P018-PGL3"))
+a5_snrna@meta.data$publication_include <- pub_keep
+a5_snrna <- subset(a5_snrna, publication_include)
+
 #################
 # Heatmap Genes #
 #################
