@@ -6,7 +6,7 @@ setwd("/g/data/pq08/projects/ppgl")
 ################
 
 quickload_diff_meth = T; quickload_gsea <- T; quickload_dmr <- T;
-source("./a5/methylation/scripts/a5_methylation_analysis_v2.r")
+source("./a5/methylation/scripts/a5_methylation_analysis.r")
 
 source("./a5/wts/scripts/differential_expression/a5_wts_differential_expression.r")
 

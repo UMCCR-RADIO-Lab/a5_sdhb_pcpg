@@ -24,7 +24,7 @@ setwd("/g/data/pq08/projects/ppgl")
 # creates globals:
 # - epic_array_annotation_hg38
 # - diff_meth_result
-source("./a5/methylation/scripts/a5_methylation_analysis_v2.r")
+source("./a5/methylation/scripts/a5_methylation_analysis.r")
 
 ########################################
 # Annotate DM TopTable with probe data #

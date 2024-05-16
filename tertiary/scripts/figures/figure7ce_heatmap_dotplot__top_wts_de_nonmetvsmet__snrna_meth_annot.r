@@ -21,7 +21,7 @@ a5_snrna <- snrna_annotate_cell_types(a5_snrna)
 
 #load methylation array data
 quickload_diff_meth = T; quickload_gsea <- T; quickload_dmr <- T;
-source("./a5/methylation/scripts/a5_methylation_analysis_v2.r")
+source("./a5/methylation/scripts/a5_methylation_analysis.r")
 
 #Differential Expression - WTS
 output_qc <- F; output_tables <- F; output_plots <- F;

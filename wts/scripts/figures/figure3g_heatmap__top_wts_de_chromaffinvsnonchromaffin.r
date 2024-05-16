@@ -21,7 +21,7 @@ source("/g/data/pq08/projects/ppgl/a5/methylation/scripts/helpers/plot_methylati
 
 #load methylation array data
 quickload_diff_meth = T; quickload_gsea <- T; quickload_dmr <- T;
-source("./a5/methylation/scripts/a5_methylation_analysis_v2.r")
+source("./a5/methylation/scripts/a5_methylation_analysis.r")
 
 ##Differential Expression 
 #WTS
