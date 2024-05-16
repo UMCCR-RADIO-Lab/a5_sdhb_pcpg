@@ -8,9 +8,6 @@ library(patchwork)
 # Imports #
 ###########
 
-#Modified version of gometh from missmethyl to use an offline cache for KEGG pathways
-source("./methylation/scripts/go_meth_offline.r")
-
 #Plotting helper functions
 source("./methylation/scripts/helpers/plot_methylation.r")
 

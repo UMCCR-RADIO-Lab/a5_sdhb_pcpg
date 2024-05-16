@@ -28,9 +28,6 @@ if(!quickload_diff_meth | !quickload_gsea | !quickload_dmr)
   # Imports #
   ###########
   
-  #Modified version of gometh from missmethyl to use an offline cache for KEGG pathways
-  source("./a5/methylation/scripts/go_meth_offline.r")
-  
   #Plotting helper functions
   source("/g/data/pq08/projects/ppgl/a5/methylation/scripts/helpers/plot_methylation.r")
   
