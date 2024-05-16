@@ -10,7 +10,7 @@ setwd("/g/data/pq08/projects/ppgl/a5")
 # Helper scripts #
 ##################
 
-source("./wgs/scripts/utility/compare_vcf_calls.r")
+source("./utility_scripts/compare_vcf_calls.r")
 
 ###############
 # Data loader #
