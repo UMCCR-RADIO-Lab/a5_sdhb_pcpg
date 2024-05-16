@@ -396,7 +396,7 @@ data_loader_a5_snrna <- function(quickload=T,
     
     zethoven_metadata <- zethoven_metadata %>%
       dplyr::rename(A5_ID = Sample) %>% 
-      filter(A5_ID %in% c(zethoven_samples)) %>% 
+      dplyr::filter(A5_ID %in% c(zethoven_samples)) %>% 
       dplyr::select(A5_ID, 
                     Gender, 
                     tumour_metastasised=Malignancy, 
@@ -672,11 +672,11 @@ snrna_annotate_cell_types <- function(snrna_object, output_qc=FALSE, qc_out_dir=
   #cluster_markers <- read_tsv("results/differential_gene_expression/cluster_markers.tsv")
   # get top 10 significant genes for each cluster 
   # top_5 <- cluster_markers %>% 
-  #   filter(p_val_adj < 0.05) %>% 
+  #   dplyr::filter(p_val_adj < 0.05) %>% 
   #   group_by(cluster) %>% 
   #   slice_max(n = 5, order_by = avg_log2FC)
   # 
-  # top_5 %>% filter(cluster == 27)
+  # top_5 %>% dplyr::filter(cluster == 27)
   
   #----
   # Annotate clusters

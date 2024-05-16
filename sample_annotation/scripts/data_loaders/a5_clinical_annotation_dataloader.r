@@ -32,7 +32,7 @@ data_loader_a5_clinical_anno <- function(google_account=NULL,
   a5_anno <- a5_anno %>% mutate(is_primary_or_met = replace(is_primary_or_met, is_primary_or_met == "Metastatic", "Metastasis"))
   
   if(remove_excluded_samples == T) {
-    a5_anno <- a5_anno %>% filter(Exclude == "N")
+    a5_anno <- a5_anno %>% dplyr::filter(Exclude == "N")
   }
   
   a5_anno <- add_differential_groups(a5_anno)
@@ -83,7 +83,7 @@ data_loader_a5_clinical_anno <- function(google_account=NULL,
 message("Created data loader function data_loader_a5_clinical_anno()")
 
 a5_to_zethoven_anno_format <- function(a5_anno) {
-  a5_anno_tcga_format <- a5_anno %>% filter(Exclude == "N") %>%
+  a5_anno_tcga_format <- a5_anno %>% dplyr::filter(Exclude == "N") %>%
     mutate(
       Dataset = "A5",
       TCGA_Cluster = "Pseudohypoxia",
