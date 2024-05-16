@@ -20,6 +20,6 @@ Within each data-type folder there can be the following subfolders:
   - data_mergers: Data merger scripts combine multiple datasets of the same type from different sources, e.g publicly available datasets 
   - figures: these scripts contain the code to reproduce the figures as presented in the manuscript
  
-#Additional folders
+## Additional folders
 - external_dataloaders: Contains data loaders to load and preprocess publicly available datasets
 - utility_scripts: Helper scripts used by one or more other scripts 
