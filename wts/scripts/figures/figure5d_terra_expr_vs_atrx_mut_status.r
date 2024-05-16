@@ -31,49 +31,6 @@ source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_
 
 a5th.summary.rna <- read.delim("/g/data/pq08/projects/ppgl/a5/wts/analysis/telomerehunter/neb/combined/telomerehunter_a5_rna_summary.tsv")
 
-
-#################################
-# ATRX mutation type annotation #
-#################################
-
-offline = F 
-if(offline) { 
-  features <- read.delim("/g/data/pq08/projects/ppgl/a5/offline_cache/sample_features.tsv")
-} else {
-  feature_sheet <- as_sheets_id("1IOczHu91crprHvjxTKDRpqLfpeuYLaGwNXZVsWmXIKY")
-  gs4_auth("aidan.flynn@umccr-radio-lab.page")
-  features <- read_sheet(ss = feature_sheet,sheet = "SampleFeatures", col_types = "c")
-}
-
-features <- features %>%  filter(as.logical(Include))
-features$Gene <- factor(as.character(features$Gene), features %>% group_by(Gene) %>% dplyr::count() %>% arrange(n) %>% pull(Gene))
-features$Event <- factor(as.character(features$Event), levels = c("Missense", "Stop Gained", "Stop Lost", "Frameshift", "Promotor Mutation", "Structural Variant",
-                                                                  "Splice Acceptor", "Splice Region", "Homozyg. Del."))
-if (!("TERT_ATRX_Mutation_Event" %in% colnames(a5_anno)))
-{
-  a5_anno <- a5_anno %>%  left_join(features %>% 
-                                      filter(Gene %in% c("TERT","ATRX")) %>%  
-                                      #mutate(Event=paste(Gene, Event, sep =" - ")) %>% 
-                                      dplyr::select(A5_ID,Gene, Event) %>% 
-                                      dplyr::rename(TERT_ATRX_Mutation_Event=Event, TERT_ATRX_Mutation=Gene)) %>% 
-    mutate(TERT_ATRX_Mutation_Event=ifelse(TERT_ATRX_Mutation=="WT","None",as.character(TERT_ATRX_Mutation_Event)))
-  
-  a5_anno$TERT_ATRX_Mutation_Event <- factor(as.character(a5_anno$TERT_ATRX_Mutation_Event), levels=c("Missense", "Splice Region", "Splice Acceptor", "Stop Gained", "Frameshift", "Structural Variant", "Promotor Mutation", "None"))
-  levels(a5_anno$TERT_ATRX_Mutation_Event) <- c("Missense", "Splice", "Splice", "Stop/Frameshift", "Stop/Frameshift", "Structural Variant", "Promotor Mutation", "None")
-  
-  a5_anno$TERT_ATRX_Mutation <- factor(as.character(a5_anno$TERT_ATRX_Mutation), levels=c("ATRX", "TERT", "WT"))
-}
-
-#####################
-# Prepare Expr Data #
-#####################
-# 
-# log2cpm <- edgeR::cpm(a5_wts_dge_list[["SDHB"]], log=T) %>% 
-#   as_tibble(rownames = "ensgid_symbol") %>% 
-#   separate(ensgid_symbol, into=c("ensgid","symbol"), sep="_", extra = "merge") %>% 
-#   pivot_longer(cols = c(-ensgid,-symbol), names_to = "A5_ID", values_to = "log2_cpm") %>% 
-#   group_by(symbol) %>% mutate(log2_cpm_z=(log2_cpm-mean(log2_cpm))/sd(log2_cpm))
-
 ############
 # Plotting #
 ############
@@ -85,7 +42,7 @@ if (!("TERT_ATRX_Mutation_Event" %in% colnames(a5_anno)))
 
 plot_data <- a5th.summary.rna %>% dplyr::rename(A5_ID=PID) %>% 
   inner_join(a5_anno %>%  
-  dplyr::select(A5_ID, `Patient ID`, TERT_ATRX_Mutation, TERT_ATRX_Mutation_Event,
+  dplyr::select(A5_ID, `Patient ID`, TERT_ATRX_Mutation,
                 telhunter_log2_telcontentratio, cell_of_origin , 
                 differential_group_sampletype_strict, c_circle_result) %>% 
     mutate(c_circle_result = recode(c_circle_result, "Positive - Low"="Positive"),

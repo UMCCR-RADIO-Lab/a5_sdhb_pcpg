@@ -53,33 +53,7 @@ data_loader_a5_clinical_anno(google_account="aidan.flynn@umccr-radio-lab.page", 
 # Colour Palette #
 ##################
 
-ColorPalette <- c(LightBlue1="#cadae8ff",LightBlue2="#abc4e2ff",LightBlue3="#8aa9d6ff",
-                  DarkBlue1="#7884baff",DarkBlue2="#606d9fff",DarkBlue3="#4c5a88ff",
-                  Purple1="#765b92ff",Purple2="#9370a5ff",Purple3="#b280a9ff",Purple4="#cc85b1ff",
-                  LightRed1="#ee7474ff",LightRed2="#e2696aff",LightRed3="#de5353ff",
-                  DarkRed1="#c25858ff",DarkRed2="#c04241ff",DarkOrange1="#c65a44ff",
-                  DarkOrange2="#eb7b54ff",LightOrange1="#f18d73ff",LightOrange2="#f5a697ff",
-                  LightBrown1="#f5b9b0ff",LightBrown2="#d6a097ff",DarkBrown1="#c17963ff",DarkBrown2="#96665aff",
-                  DarkGreen1="#637b62ff",DarkGreen2="#6ea668ff",LightGreen1="#98ca8cff",LightGreen2="#e2eab5ff",
-                  Yellow1="#fbf2adff",Yellow2="#fef8c6ff",Yellow3="#f4e764ff",Salmon="#f2c5a7ff",LightSalmon="#f2dec4ff",
-                  LemonGrey1="#f7f0e2ff",LemonWhite1="#fefbe5ff",LemonWhite2="#f7f4dcff",LemonGrey2="#efecdcff",
-                  LightGrey1="#e2e0d9ff",LightGrey2="#d6d6d4ff",DarkGrey1="#b4b4b4ff",DarkGrey2="#9a9999ff")
-
-cna_palette <- c(`None`=ColorPalette[["LightGrey1"]],
-                 Loss=ColorPalette[["DarkRed1"]],
-                 `Subclonal Loss`="#fdadadff",
-                 `Hom. Del.`=ColorPalette[["Yellow1"]], CNLOH="#f97344ff", 
-                 Gain=ColorPalette[["DarkBlue3"]],
-                 `Subclonal Gain`=ColorPalette[["LightBlue1"]],
-                 WGD=ColorPalette[["Purple2"]],
-                 Chromothripsis=ColorPalette[["LightGreen1"]],
-                 Other=ColorPalette[["DarkGrey2"]],
-                 `Gain+LOH`=ColorPalette[["LightBlue3"]],
-                 `WGD+Gain`=ColorPalette[["DarkBlue1"]], 
-                 `Loss + Subclonal CNLOH`=ColorPalette[["LightOrange2"]],
-                 `Diploid/Haploid-X`=ColorPalette[["LightGrey1"]],
-                 `Diploid`=ColorPalette[["LightGrey1"]],
-                 `Minor Subclonal Loss`= ColorPalette[["Salmon"]])
+source("./a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
 
 ###############
 # Public Data #
@@ -254,14 +228,14 @@ tcga_ppgl_cna_ascat_chr14.summarised <-
 #A5 segment data
 ####
 
-A5_seg_keep_gr <- 
-  GenomicRanges::makeGRangesFromDataFrame(A5_seg_keep, 
+a5_seg_keep_gr <- 
+  GenomicRanges::makeGRangesFromDataFrame(a5_seg_keep, 
                                           seqnames.field ="chromosome", 
                                           start.field =  "start", 
                                           end.field = "end", 
                                           ignore.strand = T,keep.extra.columns = T)
 
-hits <- findOverlaps(subject = A5_seg_keep_gr, query = cytoband_gr)
+hits <- findOverlaps(subject = a5_seg_keep_gr, query = cytoband_gr)
 mcols(hits)[["cytoband"]] <- mcols(cytoband_gr)[["cytoband"]][queryHits(hits)]
 mcols(hits)[["cytoband_start_pos"]] <- start(cytoband_gr)[queryHits(hits)]
 mcols(hits)[["cytoband_end_pos"]] <- end(cytoband_gr)[queryHits(hits)]
@@ -273,96 +247,40 @@ hits <- as.data.frame(hits) %>%
   summarise(cytoband=paste(unique(cytoband), collapse = "-"), 
             arm=paste(unique(arm), collapse = "/"))
 
-A5_seg_keep[hits$subjectHits,"cytoband"] <- hits$cytoband
-A5_seg_keep[hits$subjectHits,"arm"] <- hits$arm
+a5_seg_keep[hits$subjectHits,"cytoband"] <- hits$cytoband
+a5_seg_keep[hits$subjectHits,"arm"] <- hits$arm
 
 
-A5_seg_keep_chr14 <- A5_seg_keep %>% filter(chromosome=="chr14")
+a5_seg_keep_chr14 <- a5_seg_keep %>% filter(chromosome=="chr14")
 
 #not true sizes just regions represented in segments
-chrom_sizes <- A5_seg_keep %>% 
+chrom_sizes <- a5_seg_keep %>% 
   group_by(chromosome) %>% 
   summarise(size=max(end)-min(start)) %>%  
   {'names<-'(.$size, .$chromosome)}
 
-A5_seg_keep_chr14.summarised <- A5_seg_keep_chr14 %>%  
-  mutate(cn_state=case_when(
-      (majorAlleleCopyNumber >= 1.85 &
-         majorAlleleCopyNumber <= 2.15) &
-        (minorAlleleCopyNumber >= 1.85 &
-           minorAlleleCopyNumber <= 2.15) &
-        (mean_tumorCopyNumber >= 3) ~ "WGD",
-      (majorAlleleCopyNumber >= 2.85) &
-        (minorAlleleCopyNumber >= 1.85 &
-           minorAlleleCopyNumber <= 2.15) &
-        (mean_tumorCopyNumber >= 3) ~ "WGD+Gain",
-      (majorAlleleCopyNumber >= 0.5 &
-         majorAlleleCopyNumber <= 1.0) &
-        (minorAlleleCopyNumber >= 0.97 &
-           minorAlleleCopyNumber <= 1.15) ~ "Diploid/Haploid-X",
-      (majorAlleleCopyNumber >= 0.5 &
-         majorAlleleCopyNumber <= 1.15) &
-        (minorAlleleCopyNumber <= 0.25) &
-        (chromosome != "chrX" |
-           (chromosome == "chrX" & Gender == "female")) ~ "Loss",
-      (majorAlleleCopyNumber >= 1.15 &
-         majorAlleleCopyNumber <= 1.85) &
-        (minorAlleleCopyNumber <= 0.25) &
-        (chromosome != "chrX" |
-           (chromosome == "chrX" &
-              Gender == "female")) ~ "Loss + Subclonal CNLOH",
-      (majorAlleleCopyNumber >= 0.5 &
-         majorAlleleCopyNumber <= 1.15) &
-        (minorAlleleCopyNumber <= 0.25) &
-        (chromosome == "chrX" &
-           Gender == "male") ~ "Diploid/Haploid-X",
-      (majorAlleleCopyNumber >= 0.5 &
-         majorAlleleCopyNumber <= 1.15) &
-        (minorAlleleCopyNumber <= 0.85) &
-        (chromosome != "chrX" |
-           (chromosome == "chrX" &
-              Gender == "female")) ~ "Subclonal Loss",
-      (majorAlleleCopyNumber >= 0.5 &
-         majorAlleleCopyNumber <= 1.15) &
-        (minorAlleleCopyNumber <= 0.97) &
-        (chromosome != "chrX" |
-           (chromosome == "chrX" &
-              Gender == "female")) ~ "Minor Subclonal Loss",
-      (majorAlleleCopyNumber >= 1.85 &
-         majorAlleleCopyNumber <= 2.15) &
-        (minorAlleleCopyNumber <= 0.25) ~ "CNLOH",
-      (majorAlleleCopyNumber >= 1.85) &
-        (minorAlleleCopyNumber >= 0.85) ~ "Gain",
-      #& minorAlleleCopyNumber <= 1.15
-      (majorAlleleCopyNumber >= 1.0) &
-        (minorAlleleCopyNumber >= 0.85) ~ "Subclonal Gain",
-      #& minorAlleleCopyNumber <= 1.15
-      (majorAlleleCopyNumber >= 1.85) &
-        (minorAlleleCopyNumber <= 0.85) ~ "Gain+LOH",
-      tumorCopyNumber <= 0.5 ~ "Hom. Del.",
-      TRUE ~ "Other"
-    ),
-    seg_size=end-start) %>% 
-  group_by(A5_ID, chromosome, cn_state) %>% 
+a5_seg_keep_chr14.summarised <- a5_seg_keep_chr14 %>%  
+  mutate(seg_size=end-start) %>% 
+  group_by(A5_ID, chromosome, Class) %>% 
   summarise(seg_size=sum(seg_size)) %>% 
   mutate(prop=seg_size/chrom_sizes[chromosome]) 
 
-A5_seg_keep_chr14.summarised <- 
-  A5_seg_keep_chr14.summarised %>% 
+a5_seg_keep_chr14.summarised <- 
+  a5_seg_keep_chr14.summarised %>% 
   group_by(A5_ID) %>% 
   mutate(priority=case_when(
-    cn_state=="Loss" & prop > 0.25 ~ 1,
-    cn_state=="Subclonal Loss" & prop > 0.25 ~ 1,
-    cn_state=="CNLOH" & prop > 0.25 ~ 1,
-    cn_state=="Gain" & prop > 0.25 ~ 2,
-    cn_state=="Diploid/Haploid-X" & prop > 0.25 ~ 3,
+    Class=="Loss" & prop > 0.25 ~ 1,
+    Class=="Subclonal Loss" & prop > 0.25 ~ 1,
+    Class=="CNLOH" & prop > 0.25 ~ 1,
+    Class=="Gain" & prop > 0.25 ~ 2,
+    Class=="Diploid/Haploid-X" & prop > 0.25 ~ 3,
     prop > 0.5 ~ 4, 
     prop > 0.25 ~ 5, 
     TRUE ~ 6)) %>% 
   arrange(priority,desc(prop)) %>% 
   slice_head(n = 1) %>% 
-  dplyr::select(A5_ID, cn_state) %>% 
-  mutate(cn_state=dplyr::recode(cn_state,
+  dplyr::select(A5_ID, Class) %>% 
+  mutate(Class=dplyr::recode(Class,
                                 "Diploid/Haploid-X"="Diploid",
                                 "Minor Subclonal Loss"="Diploid"))
 
@@ -440,12 +358,6 @@ GOI_expression <- wts_tcga_comete_a5_lcpm.batch_removed %>%
   group_by(symbol) %>% 
   mutate(log2_cpm_z=((log2_cpm-mean(log2_cpm))/sd(log2_cpm))) 
 
-# GOI_mir_meth %>%  mutate(feature=paste0(feature, "_methylation")) %>% 
-#   dplyr::select(Gene, 
-#                 Sample, 
-#                 data_type=feature,   
-#                 z_value=m_val_z) 
-
 plot_data_expr_meth <- bind_rows(
   GOI_mir_meth %>% 
     dplyr::select(Gene, 
@@ -471,7 +383,7 @@ plot_data_expr_meth$source <- factor(plot_data_expr_meth$source)
 
 plot_data_14q_cn <- bind_rows(
   tcga_ppgl_cna_ascat_chr14.summarised,
-  A5_seg_keep_chr14.summarised %>% dplyr::rename(Sample=A5_ID))
+  a5_seg_keep_chr14.summarised %>% dplyr::rename(Sample=A5_ID))
 
 complete_samples <- purrr::reduce(.x = list(colnames(smallrna_tcga_comete_a5_lcpm.batch_removed),
                         colnames(wts_tcga_comete_a5_lcpm.batch_removed),
@@ -495,17 +407,6 @@ use_samples <- unique(c(use_samples,small_rna_outliers))
 
 plot_data_expr_meth.use  <- plot_data_expr_meth %>% filter(Sample %in% use_samples)
 plot_data_14q_cn.use  <- plot_data_14q_cn %>% filter(Sample %in% use_samples)
-
-# hc_input <- plot_data_expr_meth.use %>%  
-#   pivot_wider(id_cols = c(Gene, data_type, source), 
-#               names_from = Sample, values_from = value ) %>% 
-#   unite(Gene, data_type, source, sep="_", col = "id")
-# rownames(hc_input) <- hc_input$id
-# hc_input <- hc_input %>%  dplyr::select(-id)
-# hc_result.sample <- hclust(dist(hc_input))
-# sample_order <- colnames(hc_input)[hc_result.sample$order]
-# 
-
 
 plot_data_annotation_bar <- wts_tcga_flynn_a5_anno %>% 
   dplyr::select(Sample, new_naming) %>%  

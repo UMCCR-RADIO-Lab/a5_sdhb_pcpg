@@ -9,6 +9,7 @@
 library(ggplot2)
 
 source("./a5/sample_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r")
+source("./a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
 
 #############
 # Load data #

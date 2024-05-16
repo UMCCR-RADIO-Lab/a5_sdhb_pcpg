@@ -344,7 +344,7 @@ for (contrast in c("Metastatic_All_vs_NonMetPri_WT", "TERT_PriMet_vs_NonMetPri_W
 }
 
 
-gg_volcano_go_nonchromaffin <- list()
+gg_volcano_go_nonvschromaffin <- list()
 gg_volcano_geneset_nonvschromaffin <- list()
 for (contrast in c("Non_chromaffin_vs_Chromaffin"))
 {

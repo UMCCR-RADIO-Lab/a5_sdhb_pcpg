@@ -89,8 +89,8 @@ ATRX_Changes <- ATRX_Changes %>% inner_join(
 ) %>% 
   mutate(tumour_metastasised=factor(ifelse(grepl("Short|Data",tumour_metastasised),
                                            "Short follow-up/No Data" , 
-                                           tumour_metastasised), levels=c("No", "Short follow-up/No Data", "Yes"))) %>% 
-  filter(PCGR_CONS)
+                                           tumour_metastasised), levels=c("No", "Short follow-up/No Data", "Yes"))) 
+
 ATRX_Changes <- ATRX_Changes %>% filter(Include)
 
 #########################
@@ -240,7 +240,7 @@ ggATRX_AA_label <- ggplot(plot_data_mutation_protein,
 
 ATRX_Changes.deletion <- ATRX_Changes %>% filter(Type=="Deletion")
 ATRX_Changes.deletion <- ATRX_Changes.deletion  %>%  
-  group_by(Genomic_coord_start, Genomic_coord_end, AApos_Start, AApos_End) %>% summarise(nPatients=n()) %>% 
+  group_by(Genomic_coord_start, Genomic_coord_end, AApos_Start, AApos_End) %>% summarise(nPatients=dplyr::n()) %>% 
   mutate(ylevel=1) %>% 
   arrange(AApos_Start, AApos_End) %>% ungroup()
 

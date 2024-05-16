@@ -4,7 +4,7 @@ if(!exists("padj_cutoff")) { padj_cutoff = 0.05 }
 if(!exists("lfc_cutoff")) { lfc_cutoff = 1 }
 
 
-source("/g/data/pq08/projects/ppgl/a5/./wts/scripts/figures/a5_wts_de_annotated_volcano_plots.r")
+source("/g/data/pq08/projects/ppgl/a5/wts/scripts/figures/figure7b_wts_de_annotated_volcano_plots.r")
 
 contrasts_to_use <- c("TERT_PriMet_vs_NonMetPri_WT","ATRX_PriMet_vs_NonMetPri_WT","Metastatic_All_vs_NonMetPri_WT", "ATRX_All_vs_TERT_All")
 
