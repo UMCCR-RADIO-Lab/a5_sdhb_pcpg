@@ -50,7 +50,7 @@ cytoband_gr <- GenomicRanges::makeGRangesFromDataFrame(cytoband,
 # Annotate DE TopTable with cytoband data #
 ###########################################
 
-top_table <- wts_top_tables[["Non_chromaffin_vs_Chromaffin"]][["Non_chromaffin_vs_Chromaffin"]] 
+top_table <- wts_top_tables[["Chromaffin_vs_Non_chromaffin"]][["Chromaffin_vs_Non_chromaffin"]] 
 
 top_table <- top_table %>% 
   separate(Gene, into=c("ensembl_gene_id", "gene_symbol"), 

@@ -29,8 +29,8 @@ make_chromaffin_vs_nonchromaffin_contrasts <- function(sample_anno, exclude_samp
   rownames(design_mat) <- sample_anno$A5_ID
   
   contr_matrix <- makeContrasts(
-    Non_chromaffin_vs_Chromaffin = (ATRX_Abdominal_Thoracic + TERT_Abdominal_Thoracic + WT_Abdominal_Thoracic)/3 - (WT_Head_neck),
-    Non_chromaffin_vs_Chromaffin_WT = (WT_Abdominal_Thoracic) - (WT_Head_neck),
+    Chromaffin_vs_Non_chromaffin = (ATRX_Abdominal_Thoracic + TERT_Abdominal_Thoracic + WT_Abdominal_Thoracic)/3 - (WT_Head_neck),
+    Chromaffin_vs_Non_chromaffin_WT = (WT_Abdominal_Thoracic) - (WT_Head_neck),
     levels = colnames(design_mat))
   
   assign("contrast_matrix_hn", contr_matrix, globalenv())

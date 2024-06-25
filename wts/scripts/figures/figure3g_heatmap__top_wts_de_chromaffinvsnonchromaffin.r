@@ -73,7 +73,7 @@ GOI_slice_pipe <-  . %>% {
 
 
 
-GOI <- wts_top_tables[["Non_chromaffin_vs_Chromaffin"]][["Non_chromaffin_vs_Chromaffin"]] %>% 
+GOI <- wts_top_tables[["Chromaffin_vs_Non_chromaffin"]][["Chromaffin_vs_Non_chromaffin"]] %>% 
   filter(gene_biotype == "protein_coding") %>% 
   GOI_lfc_pipe %>%  
   GOI_slice_pipe
@@ -121,7 +121,7 @@ a5_anno_use <- a5_anno %>%
 
 sample.order <- levels(a5_anno_use$A5_ID)
 
-contrast_membership <- contrastdesign_to_memberlist("Non_chromaffin_vs_Chromaffin", contrast_matrix_hn, design_matrix_hn, contrast_name_sep="_vs_")
+contrast_membership <- contrastdesign_to_memberlist("Chromaffin_vs_Non_chromaffin", contrast_matrix_hn, design_matrix_hn, contrast_name_sep="_vs_")
 
 plot.data <- GOI.plot %>% 
   inner_join(a5_wts_lcpm_list[["SDHB"]][GOI.plot$Gene,sample.order] %>% 

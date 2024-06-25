@@ -347,9 +347,9 @@ plotSA(efit, main="Final model: Mean-variance trend")
 smallrna_de_fits[["SDHB"]] <- efit
 
 # get top genes 
-smallrna_top_tables[["Non_chromaffin_vs_Chromaffin"]][["Non_chromaffin_vs_Chromaffin"]] <- 
+smallrna_top_tables[["Chromaffin_vs_Non_chromaffin"]][["Chromaffin_vs_Non_chromaffin"]] <- 
   topTable(efit, 
-           coef = "Non_chromaffin_vs_Chromaffin", 
+           coef = "Chromaffin_vs_Non_chromaffin", 
            number = Inf, 
            sort.by = "P") %>% 
   rownames_to_column(var = "Gene")
@@ -380,7 +380,7 @@ knitr::knit_expand(text="\n\n# Top 1000 DE genes - HN vs abdo/thoracic\n\n") %>%
 #+ de_hnabdo_summary_print, eval=output_tables, echo=FALSE
 if(output_tables)
 {
-  DT::datatable(data = smallrna_top_tables[["Non_chromaffin_vs_Chromaffin"]][["Non_chromaffin_vs_Chromaffin"]] %>% 
+  DT::datatable(data = smallrna_top_tables[["Chromaffin_vs_Non_chromaffin"]][["Chromaffin_vs_Non_chromaffin"]] %>% 
                   filter(abs(logFC)>1, 
                          adj.P.Val<0.05) %>% 
                   slice_min(n = 1000, 
@@ -406,7 +406,7 @@ knitr::knit_expand(text="\n\n# Boxplots of Top 20 DE genes - H/N vs abdo/thoraci
 
 #+ de_hnabdo_boxplots_code, eval=output_plots, echo=FALSE
 if(output_plots){
-  gene_list <- smallrna_top_tables[["Non_chromaffin_vs_Chromaffin"]][["Non_chromaffin_vs_Chromaffin"]] %>% 
+  gene_list <- smallrna_top_tables[["Chromaffin_vs_Non_chromaffin"]][["Chromaffin_vs_Non_chromaffin"]] %>% 
     filter(abs(logFC)>1, adj.P.Val<0.05) %>% 
     slice_min(n = 20, order_by = adj.P.Val) %>% 
     pull(Gene)
@@ -455,7 +455,7 @@ knitr::knit_expand(text="\n\n# Annotated heatmap of top 100 genes - H/N vs abdo/
 if(output_plots){
   n_genes <- 20
   
-  GOI <- smallrna_top_tables[["Non_chromaffin_vs_Chromaffin"]][["Non_chromaffin_vs_Chromaffin"]] %>% 
+  GOI <- smallrna_top_tables[["Chromaffin_vs_Non_chromaffin"]][["Chromaffin_vs_Non_chromaffin"]] %>% 
     filter(adj.P.Val < 0.05) %>% 
     arrange(desc(logFC)) %>% 
     dplyr::pull(Gene)

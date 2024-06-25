@@ -135,7 +135,7 @@ source("./a5/wts/scripts/differential_expression/a5_wts_differential_expression.
 # GO Terms #
 ############
 
-GOI <- purrr::map(.x = c(wts_top_tables$Non_chromaffin_vs_Chromaffin, wts_top_tables$genosampletype), .f = \(tt) { tt %>% filter(adj.P.Val < 0.05) %>% pull(ensembl_gene_id) }) %>% 
+GOI <- purrr::map(.x = c(wts_top_tables$Chromaffin_vs_Non_chromaffin, wts_top_tables$genosampletype), .f = \(tt) { tt %>% filter(adj.P.Val < 0.05) %>% pull(ensembl_gene_id) }) %>% 
   purrr::reduce(.f = c) %>% unique()
 
 goterms <- ensgid_to_goterm_from_biomart(ens_gids = gsub("[.][0-9]{1,2}_.+$","",GOI), 
@@ -346,10 +346,10 @@ for (contrast in c("Metastatic_All_vs_NonMetPri_WT", "TERT_PriMet_vs_NonMetPri_W
 
 gg_volcano_go_nonvschromaffin <- list()
 gg_volcano_geneset_nonvschromaffin <- list()
-for (contrast in c("Non_chromaffin_vs_Chromaffin"))
+for (contrast in c("Chromaffin_vs_Non_chromaffin"))
 {
   
-  plot_data_base <- wts_top_tables[["Non_chromaffin_vs_Chromaffin"]][[contrast]] %>% 
+  plot_data_base <- wts_top_tables[["Chromaffin_vs_Non_chromaffin"]][[contrast]] %>% 
     left_join(gene_geneset_lookup) %>% 
     left_join(goterms) %>% 
     mutate(gene_symbol = ifelse(grepl("^A[CL][0-9]", gene_symbol), 

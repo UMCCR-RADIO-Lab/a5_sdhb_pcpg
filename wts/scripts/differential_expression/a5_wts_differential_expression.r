@@ -395,10 +395,10 @@ efit <- eBayes(vfit)
 plotSA(efit, main="Final model: Mean-variance trend")
 
 #Store fit
-wts_de_fits[["Non_chromaffin_vs_Chromaffin"]] <- efit
+wts_de_fits[["Chromaffin_vs_Non_chromaffin"]] <- efit
 
 # get top tables 
-wts_top_tables[["Non_chromaffin_vs_Chromaffin"]] <- list()
+wts_top_tables[["Chromaffin_vs_Non_chromaffin"]] <- list()
 for (contrast in dimnames(contrast_matrix_hn)$Contrasts)
 {
   go_pval_cutoff <- 0.05
@@ -428,7 +428,7 @@ for (contrast in dimnames(contrast_matrix_hn)$Contrasts)
   tt$GO_id[is.na(tt$GO_id) & tt$adj.P.Val < go_pval_cutoff] <- "None"
   tt$GO_name[is.na(tt$GO_name) & tt$adj.P.Val < go_pval_cutoff] <- "None"
   
-  wts_top_tables[["Non_chromaffin_vs_Chromaffin"]][[contrast]] <-  tt
+  wts_top_tables[["Chromaffin_vs_Non_chromaffin"]][[contrast]] <-  tt
   
 }
 
@@ -459,7 +459,7 @@ knitr::knit_expand(text="\n\n# Top 1000 DE genes - HN vs abdo/thoracic\n\n") %>%
 #+ de_hnabdo_summary_print, eval=output_tables, echo=FALSE
 if(output_tables)
 {
-  DT::datatable(data = wts_top_tables[["Non_chromaffin_vs_Chromaffin"]][["Non_chromaffin_vs_Chromaffin"]] %>% 
+  DT::datatable(data = wts_top_tables[["Chromaffin_vs_Non_chromaffin"]][["Chromaffin_vs_Non_chromaffin"]] %>% 
                   filter(abs(logFC)>1, 
                          adj.P.Val<0.05) %>% 
                   slice_min(n = 1000, 
@@ -511,7 +511,7 @@ if(output_plots){
     
   }
   
-  plot_volcano(wts_top_tables[["Non_chromaffin_vs_Chromaffin"]][["Non_chromaffin_vs_Chromaffin"]], 60) + ggtitle("Head and Neck vs Abdo-thoracic")
+  plot_volcano(wts_top_tables[["Chromaffin_vs_Non_chromaffin"]][["Chromaffin_vs_Non_chromaffin"]], 60) + ggtitle("Head and Neck vs Abdo-thoracic")
   
 }
 
@@ -527,7 +527,7 @@ if(output_plots){
   
 #+ de_hnabdo_boxplots_code, eval=output_plots, echo=FALSE
   if(output_plots){
-  gene_list <- wts_top_tables[["Non_chromaffin_vs_Chromaffin"]][["Non_chromaffin_vs_Chromaffin"]] %>% 
+  gene_list <- wts_top_tables[["Chromaffin_vs_Non_chromaffin"]][["Chromaffin_vs_Non_chromaffin"]] %>% 
     filter(Gene %in% (ensid_to_biotype %>% 
                         filter(gene_biotype=="protein_coding") %>% 
                         pull(Gene))) %>% 
@@ -583,7 +583,7 @@ if(output_plots){
 if(output_plots){
   genes_per_group <- 100
   
-  GOI <- wts_top_tables[["Non_chromaffin_vs_Chromaffin"]][["Non_chromaffin_vs_Chromaffin"]] %>% filter(adj.P.Val < 0.05) %>% arrange(desc(abs(logFC))) %>% slice_head(n = genes_per_group) %>% dplyr::pull(Gene)
+  GOI <- wts_top_tables[["Chromaffin_vs_Non_chromaffin"]][["Chromaffin_vs_Non_chromaffin"]] %>% filter(adj.P.Val < 0.05) %>% arrange(desc(abs(logFC))) %>% slice_head(n = genes_per_group) %>% dplyr::pull(Gene)
   
   extra_genes <- c(marker_genes$Catecholamin_Biosynth[c(1,4,6,7)], "LEF1", "CHGA")
   
