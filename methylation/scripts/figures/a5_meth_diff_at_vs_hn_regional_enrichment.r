@@ -30,7 +30,7 @@ source("./a5/methylation/scripts/a5_methylation_analysis_v2.r")
 # Annotate DM TopTable with probe data #
 ########################################
 
-top_table <- diff_meth_result[["hn"]][["Non_chromaffin_vs_Chromaffin"]][["top_control2_adj"]]
+top_table <- diff_meth_result[["hn"]][["Chromaffin_vs_Non_chromaffin"]][["top_control2_adj"]]
 
 top_table <- top_table %>% as_tibble(rownames = "Name") %>% 
   left_join(epic_array_annotation_hg38 %>% 
