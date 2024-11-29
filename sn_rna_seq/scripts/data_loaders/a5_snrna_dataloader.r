@@ -690,6 +690,7 @@ snrna_annotate_cell_types <- function(snrna_object, output_qc=FALSE, qc_out_dir=
   
   # all cell types -  c("Tumour", "Chromaffin cells", "Adrenocortical cells", "Endothelial cells", "Fibroblasts", "SCLCs", "Myeloid cells", "Lymphocytes")
   
+  if (digest::digest(snrna_object$seurat_clusters, algo="md5") != "36b6e32adda0b888a695546ad4e48cfb"){
   new.cluster.ids <- c(
     "Tumor", #0
     "Tumor", #1
@@ -725,10 +726,47 @@ snrna_annotate_cell_types <- function(snrna_object, output_qc=FALSE, qc_out_dir=
     "Tumor", #31
     "Tumor", #32
     "Tumor" #33
-    
   )
-  
-  if (digest::digest(snrna_object$seurat_clusters, algo="md5") != "36b6e32adda0b888a695546ad4e48cfb"){
+  }
+  else if (digest::digest(snrna_object$seurat_clusters, algo="md5") != "99b25989a8e9205ed2dc5977e838f4aa"){
+   new.cluster.ids <- c(
+    "Tumor", #0
+    "Tumor", #1
+    "Tumor", #2
+    "Tumor", #3
+    "Tumor", #4
+    "Tumor", #5 
+    "Tumor", #6
+    "Tumor", #7
+    "Tumor", #8
+    "Tumor", #9
+    "Myeloid cells", #10
+    "Tumor", #11
+    "Chromaffin cells", #12 
+    "Tumor", #13
+    "Tumor", #14
+    "Adrenocortical cells", #15
+    "SCLCs", #16
+    "Tumor",#17
+    "Fibroblasts", #18
+    "Endothelial cells", #19
+    "Tumor", #20
+    "Adrenocortical cells", #21
+    "Lymphocytes", #22
+    "Tumor", #23
+    "Tumor", #24
+    "Endothelial cells", #25
+    "Fibroblasts", #26 
+    "Tumor", #27
+    "Tumor", #28
+    "SCLCs", #29
+    "Lymphocytes", #30
+    "Tumor", #31
+    "Tumor", #32
+    "Tumor" #33
+  )
+  }
+  else {
     if (names(dev.cur()) != "null device") { dev.off() }
     stop("The checksum for cell to cluster assignment does not match the stored checksum. This may be due to a change in 
     package versions or input data. The cluster to cell-type assignments hardcoded in this function are only valid when 
