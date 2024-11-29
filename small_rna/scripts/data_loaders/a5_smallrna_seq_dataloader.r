@@ -137,7 +137,7 @@ data_loader_a5_smallrna <- function(genome_version="hg38", exclude_samples=c(), 
   counts_dge_list <- map(.x = counts_dge_list, 
                          .f = function (dge_object)  { 
                            diff_groups <- a5_anno$differential_group[match(colnames(dge_object), a5_anno$A5_ID)]
-                           expr_genes <- filterByExpr(dge_object, group = diff_groups)  
+                           expr_genes <- filterByExpr(dge_object, group = diff_groups, min.count = 100, min.total.count=1000)  
                            dge_object[expr_genes,, keep.lib.sizes = FALSE] })
 
   #######

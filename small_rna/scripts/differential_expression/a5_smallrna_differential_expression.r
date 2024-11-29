@@ -796,7 +796,7 @@ if(output_plots){
   tert <- plot_volcano(smallrna_top_tables[["genosampletype"]][["TERT_PriMet_vs_NonMetPri_WT"]], 20) + ggtitle("TERT Mutant Vs non-met. primary")
   atrx <- plot_volcano(smallrna_top_tables[["genosampletype"]][["ATRX_PriMet_vs_NonMetPri_WT"]], 20) + ggtitle("ATRX Mutant Vs non-met. primary")
   tert_vs_atrx <- plot_volcano(smallrna_top_tables[["genosampletype"]][["ATRX_All_vs_TERT_All"]], 20) + ggtitle("TERT Vs ATRX")
-  met_vs_nonmet <- plot_volcano(smallrna_top_tables[["genosampletype"]][["Metastatic_All_vs_NonMetPri_WT"]], 20) + ggtitle("All metastases vs non-metastatic primaries")
+  met_vs_nonmet <- plot_volcano(smallrna_top_tables[["genosampletype"]][["Metastatic_All_vs_NonMetPri_WT"]], 20) + ggtitle("All metastatic vs non-metastatic primaries")
   
   tert + atrx + met_vs_nonmet + plot_layout(nrow=1, guides="collect")
 }
