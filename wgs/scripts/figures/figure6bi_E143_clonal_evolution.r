@@ -16,9 +16,12 @@ source("/g/data/pq08/projects/ppgl/a5/wgs/scripts/data_loaders/wgs_dataloaders.r
 data_loader_somatic_variants(quickload = T)
 data_loader_cna_segs()
 
-source("/g/data/pq08/projects/ppgl/a5/wts/scripts/data_loaders/a5_wts_dataloader.r")
-data_loader_a5_wts_counts(count_file_dir = "/g/data/pq08/projects/ppgl/a5/wts/analysis/htseq/neb/gene", 
-                          count_file_pattern = ".gene.counts")
+# source("/g/data/pq08/projects/ppgl/a5/wts/scripts/data_loaders/a5_wts_dataloader.r")
+# data_loader_a5_wts_counts(count_file_dir = "/g/data/pq08/projects/ppgl/a5/wts/analysis/htseq/neb/gene", 
+#                           count_file_pattern = ".gene.counts")
+
+blacklist_from_tumours_file="/g/data/pq08/projects/ppgl/a5/wgs/analysis/blacklist_from_vcf/output/blacklist_reject_pr_ratio_gt1.tsv"
+blacklist_from_tumours <- readr::read_delim(blacklist_from_tumours_file)
 
 ##########
 # Colors #
@@ -36,6 +39,18 @@ E143_pileup <- readr::read_delim("/g/data/pq08/projects/ppgl/a5/wgs/analysis/mpi
   pivot_wider(names_from = metric, values_from = count) %>% mutate(A5_ID = gsub("-T0" , "-", A5_ID)) %>% 
   dplyr::rename(pileup_altCount = altCount, pileup_refCount = refCount, pileup_TotalCount = TotalCount) %>% 
   mutate(pileup_VAF = pileup_altCount/pileup_TotalCount)
+
+E143_pileup <- E143_pileup %>%  anti_join(blacklist_from_tumours %>% filter(pass_reject_ratio > 1), by=c("CHROM"="Chr", "POS"="Pos", "ALT"="Alt")) 
+
+low_vaf_all_samples <- E143_pileup %>%  
+  group_by(CHROM, POS, ALT) %>%  
+  filter(A5_ID != "E143-B01") %>% 
+  filter(all(pileup_VAF < 0.15) & all(pileup_VAF > 0) ) %>% 
+  dplyr::select(CHROM, POS, REF, ALT)
+
+E143_pileup <- E143_pileup %>% anti_join(low_vaf_all_samples)
+
+E143_pileup <- E143_pileup %>%  mutate(pileup_VAF = ifelse(pileup_altCount <= 3, 0, pileup_VAF))
 
 E143_pileup <- E143_pileup %>% inner_join(
   E143_pileup %>%  
@@ -134,7 +149,7 @@ E143_mut_seg_annotated_keep <- E143_mut_seg_annotated %>%
 
 
 #VAF Panel
-pj <- position_jitter(width = 0.2, seed = 42)
+pj <- position_jitter(height=0, width = 0.2, seed = 42)
 gg_vaf <- ggplot(data = E143_mut_seg_annotated, 
                  mapping=aes(x=PublicationID, 
                              y=pileup_VAF, 
@@ -221,4 +236,4 @@ alternating_labels <- c(unlist(zip(paste0("chr", seq(1,20,2)),"")),"","","chrX")
   gg_tcr + theme(axis.text.x = element_blank(), axis.title.x = element_blank()) + 
     gg_vaf +
     cna_plot +
-    plot_layout(heights = c(1,2), widths = c(3,1), design = "A#\nBC", nrow = 2, ncol = 2, guides = "collect")
+    plot_layout(heights = c(1,3), widths = c(3,1), design = "A#\nBC", nrow = 2, ncol = 2, guides = "collect")

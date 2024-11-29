@@ -29,12 +29,6 @@ if (!exists("a5_anno"))
   data_loader_a5_clinical_anno(google_account = "aidan.flynn@umccr-radio-lab.page", use_cache = TRUE)
 }
 
-####################
-# Excluded Samples #
-####################
-exclude_samples <- a5_anno %>% dplyr::filter(Exclude=="Y") %>% pull(A5_ID) #c("E181-1")
-#"E124-1", "E145-1",
-
 #####################
 # Curated Gene List #
 #####################
@@ -68,7 +62,7 @@ data_loader_germline_variants <- function(threads = 1)
   A5_germline_cpsr <- load_germline_cpsr_tsv(germline_cpsr_tsv_dir)
   
   A5_germline_cpsr_keep <- A5_germline_cpsr %>% 
-    filter(!(A5_ID %in% exclude_samples), 
+    filter(A5_ID %in% a5_anno$A5_ID, 
            !(CLINVAR_CLASSIFICATION %in% c("Benign","Likely_Benign")),
            !(grepl("Q80", CDS_CHANGE) & SYMBOL=="AR"))
   
@@ -90,7 +84,9 @@ message("Created data loader function data_loader_germline_variants()")
 snv_quickloadRDS <- "/g/data/pq08/projects/ppgl/a5/wgs/quickload_checkpoints/somatic_vcfs.rds"
 
 data_loader_somatic_variants <- function(somatic_vcf_dir=NULL, quickload=TRUE, 
-                                         blacklist="/g/data/pq08/projects/ppgl/a5/wgs/analysis/mpileup/blacklist/blacklists/blacklist_readsupport_gteq3_samplesupport_gteq3.tsv")
+                                         blacklist_from_normals="/g/data/pq08/projects/ppgl/a5/wgs/analysis/mpileup/blacklist/blacklists/blacklist_readsupport_gteq3_samplesupport_gteq3.tsv",
+                                         blacklist_from_tumours="/g/data/pq08/projects/ppgl/a5/wgs/analysis/blacklist_from_vcf/output/blacklist_reject_pr_ratio_gt1.tsv",
+                                         threads=3)
 {
  if(quickload==FALSE & is.null(somatic_vcf_dir)) {
    stop("You must provide a somatic VCF directory when quickload==FALSE")
@@ -124,7 +120,7 @@ data_loader_somatic_variants <- function(somatic_vcf_dir=NULL, quickload=TRUE,
   
   if (!quickload)
   {
-    a5_somatic_variants <- load_somatic_vcfs(somatic_vcf_dir=somatic_vcf_dir,combine = T, threads = 3)
+    a5_somatic_variants <- load_somatic_vcfs(somatic_vcf_dir=somatic_vcf_dir,combine = T, threads = threads)
     a5_somatic_variants$start <- as.numeric(a5_somatic_variants$start)
     a5_somatic_variants$end <- as.numeric(a5_somatic_variants$end)
     a5_somatic_variants$TUMOR_AF <- as.numeric(a5_somatic_variants$TUMOR_AF)
@@ -132,9 +128,7 @@ data_loader_somatic_variants <- function(somatic_vcf_dir=NULL, quickload=TRUE,
     #a5_somatic_variants <- a5_somatic_variants[,!unlist(lapply(a5_somatic_variants, function (x) { all(is.na(x))}))]
     
     a5_somatic_variants <- a5_somatic_variants %>% mutate(A5_ID=gsub("T0","", A5_ID))
-    a5_somatic_variants <- a5_somatic_variants %>% 
-      left_join(CGI %>% dplyr::select(seqnames, start, end, ALT, CGI_context, CGI_source, CGI_info), by=c("seqnames", "start", "end", "ALT"))
-    
+
     a5_somatic_variants <- a5_somatic_variants %>% 
       separate_rows(CSQ,sep=",") %>% 
       separate(col=CSQ, into=AnnoColNames, sep="[|]") %>%  
@@ -144,12 +138,11 @@ data_loader_somatic_variants <- function(somatic_vcf_dir=NULL, quickload=TRUE,
       slice_head(n=1)
     
     saveRDS(a5_somatic_variants, snv_quickloadRDS)
-  }
-  else {
+  } else {
     a5_somatic_variants <- readRDS(snv_quickloadRDS)
   }
   
-  a5_somatic_variants <- a5_somatic_variants %>% filter(!(A5_ID %in% exclude_samples))
+  a5_somatic_variants <- a5_somatic_variants %>% filter(A5_ID %in% a5_anno$A5_ID)
   
   #failed validation
   a5_somatic_variants <- a5_somatic_variants %>% 
@@ -163,20 +156,31 @@ data_loader_somatic_variants <- function(somatic_vcf_dir=NULL, quickload=TRUE,
   
   a5_somatic_variants <- bind_rows(a5_somatic_variants, missing_tert)
   
-  if (!is.null(blacklist))
+  
+  if (is.null(blacklist_from_normals) & is.null(blacklist_from_tumours))
   {
-    message("Adding blacklist annotation...")
-    blacklisted_variants <- read.delim(blacklist)
-    a5_somatic_variants <- a5_somatic_variants %>% 
-      left_join(blacklisted_variants %>% dplyr::select(-REF) %>% 
-                  dplyr::rename("blacklist_n_normal_observed"=n_above_threshold) %>% 
-                  mutate(blacklist=TRUE),
-                by = c("seqnames"="CHROM", "start"="POS", "ALT"))
-    
-    a5_somatic_variants$blacklist_n_normal_observed[is.na(a5_somatic_variants$blacklist_n_normal_observed)] <- 0
-    a5_somatic_variants$blacklist[is.na(a5_somatic_variants$blacklist)] <- F
-    
+    stop("Blacklist annotation not provided")
   }
+  
+  message("Adding blacklist annotation...")
+  blacklisted_variants_normal <- read.delim(blacklist_from_normals)
+  blacklisted_variants_tumour <- read.delim(blacklist_from_tumours)
+
+  a5_somatic_variants <- a5_somatic_variants %>% 
+    left_join(blacklisted_variants_normal %>% dplyr::select(-REF) %>% 
+                dplyr::rename("blacklist_n_normal_observed"=n_above_threshold) %>% 
+                mutate(blacklist_from_normals=TRUE),
+              by = c("seqnames"="CHROM", "start"="POS", "ALT"))
+  
+  a5_somatic_variants$blacklist_n_normal_observed[is.na(a5_somatic_variants$blacklist_n_normal_observed)] <- 0
+  a5_somatic_variants$blacklist_from_normals[is.na(a5_somatic_variants$blacklist_from_normals)] <- F
+  
+  a5_somatic_variants <- a5_somatic_variants %>% 
+    left_join(blacklisted_variants_tumour, by = c("seqnames"="Chr", "start"="Pos", "ALT"="Alt"))
+  
+  a5_somatic_variants$pass_reject_blacklist[is.na(a5_somatic_variants$pass_reject_blacklist)] <- F
+
+  a5_somatic_variants$blacklist = a5_somatic_variants$pass_reject_blacklist | a5_somatic_variants$blacklist_from_normals
   
   
   #Annotate with Cancer Genome interpreter output
@@ -220,9 +224,8 @@ data_loader_somatic_variants <- function(somatic_vcf_dir=NULL, quickload=TRUE,
     mutate(PCGR_ClinSig=ifelse(!is.na(PCGR_CLINVAR_CLNSIG) & PCGR_CLINVAR_CLNSIG !="uncertain_significance",
                                paste0(",PCGR_ClinSig:",PCGR_CLINVAR_CLNSIG),
                                ""),
-           CGI=ifelse(!is.na(CGI_source),
-                      paste0(",CGI:",CGI_source,"-",CGI_context),
-                      ""),
+           CGI=ifelse(!is.na(CGI.Oncogenic.Summary),
+                      paste0(",CGI:",CGI.Oncogenic.Summary)),
            Annotation=paste0(PCGR_CONSEQUENCE,"(", round(TUMOR_AF,2),")", 
                              CGI, 
                              PCGR_ClinSig)) %>%
@@ -429,7 +432,8 @@ data_loader_gene_cn <- function()
   A5_gene_cn <- readPurpleGeneCN(fetchPurpleGeneCNFileNames(purple_cn_dir))
   A5_gene_cn$A5_ID <- gsub(".purple.cnv.gene.tsv","",A5_gene_cn$A5_ID)
   #A5_gene_cn <- A5_gene_cn %>% mutate(A5_ID=gsub("(E[0-9]{3})$","\\1_1", A5_ID), A5_ID=gsub("_","-", A5_ID))
-  A5_gene_cn <- A5_gene_cn %>% filter(!(A5_ID %in% exclude_samples))
+  A5_gene_cn <- A5_gene_cn %>% mutate(A5_ID=gsub("-T0", "-", A5_ID))
+  A5_gene_cn <- A5_gene_cn %>% filter(A5_ID %in% a5_anno$A5_ID)
   ploidyadjust <- A5_gene_cn %>% group_by(A5_ID) %>% summarise(MedCN=median(maxCopyNumber)) %>% mutate(ploidy=round(MedCN,0),ploidyadj=ploidy-2) %>% dplyr::select(-MedCN)
   A5_gene_cn <- A5_gene_cn %>% left_join(ploidyadjust) %>% mutate(minCopyNumber_ploidyAdj=minCopyNumber-ploidyadj,maxCopyNumber_ploidyAdj=maxCopyNumber-ploidyadj)
   A5_gene_cn <- A5_gene_cn %>% left_join(a5_anno %>% dplyr::select(A5_ID, Gender))

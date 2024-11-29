@@ -16,9 +16,18 @@ library(ggplot2)
 setwd("/g/data/pq08/projects/ppgl/")
 
 #Load black listed variants
-blacklist="/g/data/pq08/projects/ppgl/a5/wgs/analysis/mpileup/blacklist/blacklists/blacklist_readsupport_gteq3_samplesupport_gteq3.tsv"
-blacklisted_variants <- read.delim(blacklist)
+blacklist_from_normals="/g/data/pq08/projects/ppgl/a5/wgs/analysis/mpileup/blacklist/blacklists/blacklist_readsupport_gteq3_samplesupport_gteq3.tsv"
+blacklist_from_tumours="/g/data/pq08/projects/ppgl/a5/wgs/analysis/blacklist_from_vcf/output/blacklist_reject_pr_ratio_gt1.tsv"
+
+blacklisted_variants_normal <- read.delim(blacklist_from_normals)
+blacklisted_variants_tumour <- read.delim(blacklist_from_tumours)
+
+blacklisted_variants <- blacklisted_variants_normal %>% left_join(blacklisted_variants_tumour, by=c("CHROM"="Chr","POS"="Pos","ALT"="Alt")) %>% 
+  filter(is.na(pass_reject_blacklist) | pass_reject_blacklist == TRUE) %>% 
+  dplyr::select(CHROM, POS, ALT)
+
 blacklisted_variants_gr <- makeGRangesFromDataFrame(blacklisted_variants, seqnames.field = "CHROM", start.field = "POS", end.field = "POS", keep.extra.columns = T)
+
 
 ref_genome <- "BSgenome.Hsapiens.UCSC.hg38"
 
@@ -32,6 +41,11 @@ all_grl <- read_vcfs_as_granges(vcf_files, sample_names, ref_genome, type = "all
 #Remove blacklisted SNVs
 all_grl_noblacklist <- map(.x = all_grl, .f = function(vcf, blacklist_gr=blacklisted_variants_gr) {
   hits <- findOverlaps(subject=vcf, query=blacklist_gr)
+  vcf_alts <- unlist(map(.x = mcols(vcf)[["ALT"]][subjectHits(hits)], .f=Biostrings::toString))
+  blacklist_alts = mcols(blacklist_gr)[["ALT"]][queryHits(hits)]
+  if(length(vcf_alts) != length(blacklist_alts)) { stop("Bad ALT list length") }
+  alt_match = vcf_alts == blacklist_alts
+  hits <- hits[alt_match]
   mcols(vcf)[["FILTER"]][subjectHits(hits)] <- "blacklist"
   return(vcf[mcols(vcf)[["FILTER"]]=="PASS",])
 })

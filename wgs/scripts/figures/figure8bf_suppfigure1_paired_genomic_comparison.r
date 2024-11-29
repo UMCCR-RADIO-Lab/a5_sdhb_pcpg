@@ -67,7 +67,7 @@ Samples <- list(
   E146=c("E146-T01","E146-T02"),
   E158=c("E158-T01","E158-T02"),
   E159=c("E159-T01","E159-T02","E159-T03","E159-T04"),
-  E166=c("E166-T01","E166-T02"),
+  #E166=c("E166-T01","E166-T02"),
   E167=c("E167-T01","E167-T02"),
   E169=c("E169-T01","E169-T02"),
   E225=c("E225-T01","E225-T02"),
@@ -136,20 +136,25 @@ matched_variant_tables <-
   })
 
 #Annotate black listed variants
-blacklist="./wgs/analysis/mpileup/blacklist/blacklists/blacklist_readsupport_gteq3_samplesupport_gteq3.tsv"
-blacklisted_variants <- read.delim(blacklist)
+blacklist_normal_file <- "./wgs/analysis/mpileup/blacklist/blacklists/blacklist_readsupport_gteq3_samplesupport_gteq3.tsv"
+blacklist_normal <- read.delim(blacklist_normal_file)
+blacklist_tumour_file <- "./wgs/analysis/blacklist_from_vcf/output/blacklist_reject_pr_ratio_gt1.tsv"
+blacklist_tumour <- read.delim(blacklist_tumour_file)
+
+blacklisted_variants <-blacklist_tumour %>%  
+  filter(pass_reject_ratio > 1) %>% 
+  left_join(blacklist_normal, 
+            by=c("Chr"="CHROM", "Pos"="POS", "Alt"="ALT")) %>% 
+  dplyr::select(Chr, Pos, Alt) %>%  mutate(blacklist=TRUE)
+
 
 matched_variant_tables <-
   lapply(matched_variant_tables, function (table, black_list = blacklisted_variants) {
     table <- table %>% 
-      left_join(black_list %>% dplyr::select(-REF) %>% 
-                  dplyr::rename("blacklist_n_normal_observed"=n_above_threshold) %>% 
-                  mutate(blacklist=TRUE),
-                by = c("seqnames"="CHROM", "start"="POS", "ALT"="ALT"))
+      anti_join(black_list,
+                by = c("seqnames"="Chr", "start"="Pos", "ALT"="Alt"))
     
-    table$blacklist_n_normal_observed[is.na(table$blacklist_n_normal_observed)] <- 0
-    table$blacklist[is.na(table$blacklist)] <- F
-    return(table %>% filter(blacklist==F))
+    return(table)
   })
 
 

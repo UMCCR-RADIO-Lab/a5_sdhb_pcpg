@@ -31,9 +31,9 @@ var_pos <- a5_somatic_variants %>% ungroup() %>%
   nchar(REF) == 1 & nchar(ALT) > 1 ~ "INS")) %>% 
   distinct()
 
-postemp <- read.delim("/g/data/pq08/projects/ppgl/a5/wgs/analysis/mpileup/blacklist/positions/pos.done") 
-colnames(postemp) <- c("seqnames", "start")
-var_pos <- var_pos %>% anti_join(postemp) 
+# postemp <- read.delim("/g/data/pq08/projects/ppgl/a5/wgs/analysis/mpileup/blacklist/positions/pos.done") 
+# colnames(postemp) <- c("seqnames", "start")
+# var_pos <- var_pos %>% anti_join(postemp) 
 
 var_by_chrom <- var_pos %>% 
   group_by(seqnames) %>% 
