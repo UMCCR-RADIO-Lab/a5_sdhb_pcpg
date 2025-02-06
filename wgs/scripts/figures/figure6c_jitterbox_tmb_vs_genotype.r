@@ -24,11 +24,15 @@ source("/g/data/pq08/projects/ppgl/a5/sample_annotation/scripts/data_loaders/a5_
 
 plot_data <- a5_anno %>% 
   mutate(wgs_tmb = as.numeric(wgs_tmb),
+         differential_group_sampletype_strict = dplyr::recode(differential_group_sampletype_strict, 
+                                                              "Metastatic local recurrence" = "Metastatic primary",
+                                                              "Non-metastatic local recurrence" = "Non-metastatic primary",
+                                                              "Local recurrence (metastasis reported)"="Primary (metastasis reported)"),
          differential_group_sampletype_strict = factor(differential_group_sampletype_strict,
                                                      levels=c("Metastasis",
                                                               "Metastatic primary",
                                                               "Primary (metastasis reported)",
-                                                              "Non-metastatic local recurrence",
+                                                              "Local recurrence (metastasis reported)",
                                                               "Primary (short follow up)",
                                                               "Non-metastatic primary"))) %>%   
   arrange(TERT_ATRX_Mutation, `Patient ID`, differential_group_sampletype_strict)
