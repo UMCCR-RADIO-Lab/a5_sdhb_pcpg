@@ -310,7 +310,7 @@ hgnc_to_ensgid_from_biomart <- function(hgnc_symbols,
       message("WARNING: Not all requested gene IDs are present in the offline cache. This may be because the cache was built with a different 
               query set or because not all IDs return a result. Rerun in online mode to attempt to update. Missing genes:", toString(message_genes))
     }
-    hgnc_to_ensgid <- hgnc_to_ensgid %>% filter(hgnc_symbol %in% hgnc_symbols)
+    hgnc_to_ensgid <- hgnc_to_ensgid %>% filter(hgnc_symbol %in% hgnc_symbols) %>% distinct()
   } else {
     message("Fetching ensembl_ids from biomart")
     mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl",host = ensembl_mirror))
@@ -331,7 +331,7 @@ hgnc_to_ensgid_from_biomart <- function(hgnc_symbols,
     }
   }
   return_data <- data.frame(hgnc_symbol=hgnc_symbols) %>% 
-    left_join(hgnc_to_ensgid, by=c("hgnc_symbol")) 
+    left_join(hgnc_to_ensgid, by=c("hgnc_symbol")) %>% distinct()
   return(return_data)
 }
 message("Created helper function hgnc_to_ensgid_from_biomart()")
