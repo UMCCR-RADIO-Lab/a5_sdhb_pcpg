@@ -22,9 +22,27 @@ setwd("/g/data/pq08/projects/ppgl")
 
 #Performs DM
 # creates globals:
-# - epic_array_annotation_hg38
 # - diff_meth_result
 source("./a5/methylation/scripts/a5_methylation_analysis.r")
+
+###############
+# Dataloaders #
+###############
+
+if (quickload_diff_meth & quickload_gsea & quickload_dmr)
+{
+  #load array data
+  source("./a5/methylation/scripts/data_loaders/a5_methylation_dataloader.r")
+  data_loader_a5_methylation_array(quickload = T, output_qc = F, normalisation="functional")
+  b_vals <- getBeta(a5_methylation_filtered)
+}
+
+if (!exists("epic_array_annotation_hg38")) {
+  epic_array_annotation_hg38 <- getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b5.hg38)
+}
+
+
+source("./a5/sample_annotation/scripts/data_loaders/a5_color_scheme.r")
 
 ########################################
 # Annotate DM TopTable with probe data #
@@ -73,6 +91,8 @@ peak_probes <- top_table %>%
 ########
 # Join per sample expression 
 ########
+
+region_probes <- region_probes %>%  filter(Name %in% rownames(b_vals))
 
 plot_data <- region_probes %>% inner_join(b_vals[region_probes$Name,] %>% 
                                          as_tibble(rownames = "Name") %>% 
