@@ -17,7 +17,7 @@ source("./methylation/scripts/helpers/plot_methylation.r")
 ###############
 
 #load clinical annotation
-source("./a5_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r")
+source("./sample_annotation/scripts/data_loaders/a5_clinical_annotation_dataloader.r")
 data_loader_a5_clinical_anno(google_account="aidan.flynn@umccr-radio-lab.page", use_cache=T)
 
 #load methylation array data

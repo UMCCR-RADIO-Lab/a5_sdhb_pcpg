@@ -22,7 +22,7 @@ library(patchwork)
 library(parallel)
 library(GenomicRanges)
 
-source("/g/data/pq08/projects/ppgl/a5/scripts/geom_split_tile.r")
+source("/g/data/pq08/projects/ppgl/a5/utility_scripts/geom_split_tile.r")
 
 ############################################
 # Import data loaders and run data mergers #
