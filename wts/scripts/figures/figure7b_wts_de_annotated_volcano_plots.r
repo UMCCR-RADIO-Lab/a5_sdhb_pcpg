@@ -92,7 +92,6 @@ zethovan_pseudobulk_de <- read_csv("./a5/sn_rna_seq/reference/published_datasets
 zethovan_pseudobulk_de <- zethovan_pseudobulk_de %>% 
   dplyr::filter(grepl("_normal" , Contrast)) %>%
   mutate(Contrast = Contrast %>% str_replace_all("\\.", "_") %>%
-           str_replace("Sustentacular_cells", "SCLCs") %>% 
            str_remove("_normal")) %>% 
   dplyr::filter(adj.P.Val < 0.05) %>% 
   dplyr::filter(logFC > 3)
@@ -115,7 +114,7 @@ genesets_to_use <- c(
   "HALLMARK_E2F_TARGETS",
   "HALLMARK_G2M_CHECKPOINT",
   "JANSKY_cycling_neuroblast",
-  "ZETHOVEN_SCLCs",
+  "ZETHOVEN_Sustentacular_cells",
   "JANSKY_late_SCPs",
   "JANSKY_early_SCPs"
 )

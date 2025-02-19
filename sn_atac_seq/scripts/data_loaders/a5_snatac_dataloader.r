@@ -206,7 +206,7 @@ perform_cell_type_transfer <- function(snatac_object, snrna_object,  output_qc, 
     chromaffin_markers <- c("PNMT", "TH", "DBH","CHGA", "CHGB")
     adrenocortical_markers <- c("STAR", "CYP11B1", "CYP11A1")
     endothelial_markers <- c("EPAS1", "FLT1")
-    sustentacular_markers <- c("CDH19", "SOX10", "S100B", "VIM")
+    sclc_markers <- c("CDH19", "SOX10", "S100B", "VIM")
     lymphocyte_markers <- c("CD2", "CD3E" , "MS4A1")
     
     marker_genes <- c(
@@ -216,7 +216,7 @@ perform_cell_type_transfer <- function(snatac_object, snrna_object,  output_qc, 
       fibroblast_markers,
       lymphocyte_markers,
       mono_macro_markers,
-      sustentacular_markers)
+      sclc_markers)
     
     # make a dotplot for marker gene activity in the atac cell types  
     DotPlot(

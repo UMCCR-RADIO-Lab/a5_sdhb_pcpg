@@ -281,7 +281,7 @@ markerGenes  <- c(
   "PNMT", "TH", "DBH","CHGA", "CHGB", #chromaffin_markers
   "STAR", "CYP11B1", "CYP11A1", #adrenocortical_markers
   "FLT1", "EPAS1", #endothelial_markers
-  "CDH19", "SOX10", "S100B", "VIM", #sustentacular_markers
+  "CDH19", "SOX10", "S100B", "VIM", #sclc_markers
   "CD2", "CD3E" , "MS4A1" #lymphocyte_markers
 )
 

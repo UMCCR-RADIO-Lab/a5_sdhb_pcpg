@@ -29,7 +29,7 @@ source("/g/data/pq08/projects/ppgl/a5/wts/scripts/data_loaders/a5_wts_dataloader
 htseq_outs <- "/g/data/pq08/projects/ppgl/a5/wts/analysis/htseq/neb/gene"
 data_loader_a5_wts_counts(count_file_dir=htseq_outs)
 
-source("./a5_annotation/scripts/data_loaders/a5_color_scheme.r")
+source("./sample_annotation/scripts/data_loaders/a5_color_scheme.r")
 
 ######################
 # Compute M/B-values #
